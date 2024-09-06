@@ -1,79 +1,139 @@
 <script>
-	// Svelte
-	import { onMount } from 'svelte';
-
-	// Geolocation
-	import Geolocation from 'svelte-geolocation';
+	// // Geolocation
+	// import Geolocation from 'svelte-geolocation';
+	import { Geolocation } from '@capacitor/geolocation';
 
 	// UI components
-	import { Navbar, Listgroup, Button } from 'flowbite-svelte';
+	import {
+		Navbar,
+		NavBrand,
+		Listgroup,
+		Button,
+		Spinner,
+		Alert,
+		Label,
+		Range
+	} from 'flowbite-svelte';
 
 	// Icons
-	import { MapPinAltOutline, RefreshOutline, FileOutline } from 'flowbite-svelte-icons';
+	import {
+		MapPinAltOutline,
+		RefreshOutline,
+		FileOutline,
+		BuildingOutline
+	} from 'flowbite-svelte-icons';
 
 	const nArticles = 20;
-	const radius = 2000;
+	let radius = 1000;
 
 	let appName = 'City Wanderer';
 	let lang = 'de';
-	let coords = [];
-	let articles;
+	let places = null;
+	let coordinates;
+	let loading = false;
 
 	// load articles
 	const updateArticles = async () => {
 		try {
 			const response = await fetch(
-				`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coords[1]}|${coords[0]}&gsradius=${radius}&gslimit=${nArticles}&format=json&origin=*`
+				`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.coords.latitude}|${coordinates.coords.longitude}&gsradius=${radius}&gslimit=${nArticles}&format=json&origin=*`
 			);
 			const data = await response.json();
-			articles = data.query.geosearch;
-			console.log(articles);
+			places = data.query.geosearch;
 		} catch (error) {
 			console.error(error);
 		}
 	};
+
+	const updatePosition = async () => {
+		try {
+			loading = true;
+			places = null;
+			coordinates = null;
+			coordinates = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+			await updateArticles();
+			loading = false;
+		} catch (error) {
+			console.error('Error getting current position', error);
+		}
+	};
 </script>
 
-<Navbar>
-	<h1 class="text-xl">{appName}</h1>
+<Navbar class="border-b" color="primary">
+	<NavBrand href="/" class="text-xl">
+		<BuildingOutline class="mr-2" size="lg" />
+		<h1>{appName}</h1>
+	</NavBrand>
 </Navbar>
 <main id="main" class="p-4">
 	<div class="flex">
 		<div class="flex-auto">
-			<h2 class="text-lg">Coordinates</h2>
-			<Geolocation getPosition bind:coords />
-			{#if !coords || coords.length < 2}
-				<p>... loading</p>
-			{:else}
-				<p>Latitude: {coords[0]}</p>
-				<p>Longitude: {coords[1]}</p>
-			{/if}
+			<h2 class="text-lg">My Position</h2>
+			<div class="h-4">
+				{#if loading && !coordinates}
+					<Spinner size="3" />
+				{:else}
+					<div class="text-xs">
+						{#if !coordinates}
+							<p>Click the refresh button to get your current position</p>
+						{:else}
+							<div>
+								<a
+									href={`https://www.google.com/maps/search/?api=1&query=${coordinates.coords.latitude},${coordinates.coords.longitude}`}
+									target="_blank"
+									class="flex"
+									><MapPinAltOutline size="sm" class="mr-2" />Lat.: {coordinates.coords.latitude};
+									Long.: {coordinates.coords.longitude}</a
+								>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
 		<div class="flex-none">
-			<a
-				href={`https://www.google.com/maps/search/?api=1&query=${coords[1]},${coords[0]}`}
-				target="_blank"
-				><Button pill class="!p-2" disabled={!coords || coords.length < 2}>
-					<MapPinAltOutline />
-				</Button></a
-			>
+			<Button on:click={updatePosition} pill class="!p-2"><RefreshOutline /></Button>
 		</div>
 	</div>
 	<hr class="m-4" />
-	<div class="flex mb-2">
-		<h2 class="text-lg flex-auto">Articles</h2>
-		<Button on:click={updateArticles} disabled={!coords || coords.length < 2} pill class="!p-2"
-			><RefreshOutline /></Button
-		>
+	<div>
+		<Label>Search radius ({radius}m)</Label>
+		<Range id="range1" bind:value={radius} min="100" max="10000" step="100" />
 	</div>
-	{#if articles}
-		<Listgroup items={articles} let:item>
-			<div class="flex">
-				<FileOutline class="!mr-2" />
-				<a href={`https://${lang}.wikipedia.org/?curid=${item?.pageid}`} target="_blank"
-					>{item?.title}
-				</a>
-			</div>
-		</Listgroup>
+	<hr class="m-4" />
+	<div class="mb-2 flex">
+		<h2 class="flex-auto text-lg">Relevant Places</h2>
+		{#if places}
+			<p class="flex-none text-sm">
+				{places.length}{places.length === nArticles ? '+' : ''} place{places.length > 1 ||
+				places.length === 0
+					? 's'
+					: ''} found
+			</p>
+		{/if}
+	</div>
+	{#if loading}
+		<div class="m-6 flex justify-center">
+			<Spinner />
+		</div>
+	{:else if places}
+		{#if places.length === 0}
+			<Alert color="primary">Found none&mdash;maybe walk a bit and refresh?</Alert>
+		{:else}
+			<Listgroup items={places} let:item>
+				<div class="flex">
+					<a
+						href={`https://${lang}.m.wikipedia.org/?curid=${item?.pageid}`}
+						target="_blank"
+						class="flex flex-auto"
+					>
+						<FileOutline class="!mr-2" />{item?.title}
+					</a>
+					<a href={`https://www.google.com/maps/search/?api=1&query=${item.title}`} target="_blank">
+						<MapPinAltOutline />
+					</a>
+				</div>
+			</Listgroup>
+		{/if}
 	{/if}
 </main>
