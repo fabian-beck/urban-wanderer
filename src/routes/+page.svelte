@@ -35,6 +35,9 @@
 	// load articles
 	const updateArticles = async () => {
 		try {
+			if (!coordinates) {
+				return;
+			}
 			const response = await fetch(
 				`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.coords.latitude}|${coordinates.coords.longitude}&gsradius=${radius}&gslimit=${nArticles}&format=json&origin=*`
 			);
@@ -82,7 +85,7 @@
 									href={`https://www.google.com/maps/search/?api=1&query=${coordinates.coords.latitude},${coordinates.coords.longitude}`}
 									target="_blank"
 									class="flex"
-									><MapPinAltOutline size="sm" class="mr-2" />Lat.: {coordinates.coords.latitude};
+									><MapPinAltOutline size="sm" class="mr-1" />Lat.: {coordinates.coords.latitude};
 									Long.: {coordinates.coords.longitude}</a
 								>
 							</div>
@@ -97,8 +100,15 @@
 	</div>
 	<hr class="m-4" />
 	<div>
-		<Label>Search radius ({radius}m)</Label>
-		<Range id="range1" bind:value={radius} min="100" max="10000" step="100" />
+		<Label>Search radius ({radius}&nbsp;m)</Label>
+		<Range
+			id="range1"
+			bind:value={radius}
+			min="100"
+			max="10000"
+			step="100"
+			on:change={updateArticles}
+		/>
 	</div>
 	<hr class="m-4" />
 	<div class="mb-2 flex">
@@ -118,7 +128,7 @@
 		</div>
 	{:else if places}
 		{#if places.length === 0}
-			<Alert color="primary">Found none&mdash;maybe walk a bit and refresh?</Alert>
+			<Alert color="primary">Found none&mdash;maybe, walk a bit and refresh?</Alert>
 		{:else}
 			<Listgroup items={places} let:item>
 				<div class="flex">
@@ -129,7 +139,18 @@
 					>
 						<FileOutline class="!mr-2" />{item?.title}
 					</a>
-					<a href={`https://www.google.com/maps/search/?api=1&query=${item.title}`} target="_blank">
+					<a
+						href={`https://www.google.com/maps/search/?api=1&query=${item.title}`}
+						target="_blank"
+						class="flex"
+					>
+						<span class="text-xs">
+							{#if item.dist >= 50}
+								{Math.floor(item.dist / 50) * 50}&nbsp;m
+							{:else}
+								here
+							{/if}
+						</span>
 						<MapPinAltOutline />
 					</a>
 				</div>
