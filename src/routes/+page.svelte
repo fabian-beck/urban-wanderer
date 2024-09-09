@@ -1,45 +1,30 @@
 <script>
-	// // Geolocation
-	// import Geolocation from 'svelte-geolocation';
-	import { Geolocation } from '@capacitor/geolocation';
+	// Stores
+	import { coordinates, updateCoordinates } from '../stores.js';
 
-	// UI components
-	import {
-		Navbar,
-		NavBrand,
-		Listgroup,
-		Button,
-		Spinner,
-		Alert,
-		Label,
-		Range
-	} from 'flowbite-svelte';
+	// Constants
+	import { lang, appName, nArticles } from '../constants.js';
+
+	// Components
+	import { Navbar, NavBrand, Button, Spinner, Label, Range } from 'flowbite-svelte';
 
 	// Icons
-	import {
-		MapPinAltOutline,
-		RefreshOutline,
-		FileOutline,
-		BuildingOutline
-	} from 'flowbite-svelte-icons';
+	import { MapPinAltOutline, RefreshOutline, BuildingOutline } from 'flowbite-svelte-icons';
+	import PlacesList from '../PlacesList.svelte';
 
-	const nArticles = 20;
 	let radius = 1000;
 
-	let appName = 'City Wanderer';
-	let lang = 'de';
 	let places = null;
-	let coordinates;
 	let loading = false;
 
 	// load articles
 	const updateArticles = async () => {
 		try {
-			if (!coordinates) {
+			if (!$coordinates) {
 				return;
 			}
 			const response = await fetch(
-				`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.coords.latitude}|${coordinates.coords.longitude}&gsradius=${radius}&gslimit=${nArticles}&format=json&origin=*`
+				`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${$coordinates.latitude}|${$coordinates.longitude}&gsradius=${radius}&gslimit=${nArticles}&format=json&origin=*`
 			);
 			const data = await response.json();
 			places = data.query.geosearch;
@@ -48,12 +33,12 @@
 		}
 	};
 
-	const updatePosition = async () => {
+	const update = async () => {
 		try {
 			loading = true;
 			places = null;
-			coordinates = null;
-			coordinates = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+			$coordinates = null;
+			await updateCoordinates();
 			await updateArticles();
 			loading = false;
 		} catch (error) {
@@ -73,20 +58,19 @@
 		<div class="flex-auto">
 			<h2 class="text-lg">My Position</h2>
 			<div class="h-4">
-				{#if loading && !coordinates}
+				{#if loading && !$coordinates}
 					<Spinner size="3" />
 				{:else}
 					<div class="text-xs">
-						{#if !coordinates}
+						{#if !$coordinates}
 							<p>Click the refresh button to get your current position</p>
 						{:else}
 							<div>
 								<a
-									href={`https://www.google.com/maps/search/?api=1&query=${coordinates.coords.latitude},${coordinates.coords.longitude}`}
+									href={`https://www.google.com/maps/search/?api=1&query=${$coordinates.latitude},${$coordinates.longitude}`}
 									target="_blank"
 									class="flex"
-									><MapPinAltOutline size="sm" class="mr-1" />Lat.: {coordinates.coords.latitude};
-									Long.: {coordinates.coords.longitude}</a
+									><MapPinAltOutline size="sm" class="mr-1" />Lat.: {$coordinates.latitude}; Long.: {$coordinates.longitude}</a
 								>
 							</div>
 						{/if}
@@ -95,7 +79,7 @@
 			</div>
 		</div>
 		<div class="flex-none">
-			<Button on:click={updatePosition} pill class="!p-2"><RefreshOutline /></Button>
+			<Button on:click={update} pill class="!p-2"><RefreshOutline /></Button>
 		</div>
 	</div>
 	<hr class="m-4" />
@@ -105,56 +89,11 @@
 			id="range1"
 			bind:value={radius}
 			min="100"
-			max="10000"
+			max="3000"
 			step="100"
 			on:change={updateArticles}
 		/>
 	</div>
 	<hr class="m-4" />
-	<div class="mb-2 flex">
-		<h2 class="flex-auto text-lg">Relevant Places</h2>
-		{#if places}
-			<p class="flex-none text-sm">
-				{places.length}{places.length === nArticles ? '+' : ''} place{places.length > 1 ||
-				places.length === 0
-					? 's'
-					: ''} found
-			</p>
-		{/if}
-	</div>
-	{#if loading}
-		<div class="m-6 flex justify-center">
-			<Spinner />
-		</div>
-	{:else if places}
-		{#if places.length === 0}
-			<Alert color="primary">Found none&mdash;maybe, walk a bit and refresh?</Alert>
-		{:else}
-			<Listgroup items={places} let:item>
-				<div class="flex">
-					<a
-						href={`https://${lang}.m.wikipedia.org/?curid=${item?.pageid}`}
-						target="_blank"
-						class="flex flex-auto"
-					>
-						<FileOutline class="!mr-2" />{item?.title}
-					</a>
-					<a
-						href={`https://www.google.com/maps/search/?api=1&query=${item.title}`}
-						target="_blank"
-						class="flex"
-					>
-						<span class="text-xs">
-							{#if item.dist >= 50}
-								{Math.floor(item.dist / 50) * 50}&nbsp;m
-							{:else}
-								here
-							{/if}
-						</span>
-						<MapPinAltOutline />
-					</a>
-				</div>
-			</Listgroup>
-		{/if}
-	{/if}
+	<PlacesList {places} {loading} />
 </main>
