@@ -1,18 +1,15 @@
 <script>
 	// Stores
-	import { coordinates, updateCoordinates } from '../stores.js';
+	import { coordinates, updateCoordinates, radius } from '../stores.js';
 
 	// Constants
 	import { lang, appName, nArticles } from '../constants.js';
 
 	// Components
 	import { Navbar, NavBrand, Button, Spinner, Label, Range } from 'flowbite-svelte';
-
-	// Icons
 	import { MapPinAltOutline, RefreshOutline, BuildingOutline } from 'flowbite-svelte-icons';
+	import UserPreferences from '../UserPreferences.svelte';
 	import PlacesList from '../PlacesList.svelte';
-
-	let radius = 1000;
 
 	let places = null;
 	let loading = false;
@@ -24,7 +21,7 @@
 				return;
 			}
 			const response = await fetch(
-				`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${$coordinates.latitude}|${$coordinates.longitude}&gsradius=${radius}&gslimit=${nArticles}&format=json&origin=*`
+				`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${$coordinates.latitude}|${$coordinates.longitude}&gsradius=${$radius}&gslimit=${nArticles}&format=json&origin=*`
 			);
 			const data = await response.json();
 			places = data.query.geosearch;
@@ -83,17 +80,7 @@
 		</div>
 	</div>
 	<hr class="m-4" />
-	<div>
-		<Label>Search radius ({radius}&nbsp;m)</Label>
-		<Range
-			id="range1"
-			bind:value={radius}
-			min="100"
-			max="3000"
-			step="100"
-			on:change={updateArticles}
-		/>
-	</div>
+	<UserPreferences {updateArticles} />
 	<hr class="m-4" />
 	<PlacesList {places} {loading} />
 </main>
