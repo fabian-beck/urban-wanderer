@@ -1,8 +1,8 @@
 <script>
 	import { Listgroup, Spinner, Alert } from 'flowbite-svelte';
 	import PlaceItem from './PlaceItem.svelte';
-	import nArticles from './constants.js';
-	import { places } from './stores.js';
+	import { nArticles } from './constants.js';
+	import { places, preferences } from './stores.js';
 
 	export let loading = false;
 </script>
@@ -26,7 +26,12 @@
 	{#if $places.length === 0}
 		<Alert color="primary">Found none&mdash;maybe, walk a bit and refresh?</Alert>
 	{:else}
-		<Listgroup items={$places} let:item>
+		<Listgroup
+			items={$places.filter(
+				(item) => item.labels && item.labels.some((label) => $preferences.labels.includes(label))
+			)}
+			let:item
+		>
 			<PlaceItem {item} />
 		</Listgroup>
 	{/if}

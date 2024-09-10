@@ -1,5 +1,5 @@
 <script>
-	import lang from './constants.js';
+	import { lang } from './constants.js';
 	import { FileOutline, MapPinAltOutline } from 'flowbite-svelte-icons';
 
 	export let item;
@@ -28,5 +28,12 @@
 			</span>
 			<MapPinAltOutline />
 		</a>
+	</div>
+	<div class="text-xs">
+		{#if item.labels}
+			{item.labels.join(', ')}
+		{:else}
+			... computing labels
+		{/if}
 	</div>
 {/if}

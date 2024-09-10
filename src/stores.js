@@ -1,6 +1,7 @@
 import { writable, get } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
-import { nArticles, lang } from './constants.js';
+import { nArticles, lang, LABELS } from './constants.js';
+import { labelPlaces } from "./AI.js";
 
 // Coordinates stores
 function createCoordinates() {
@@ -19,12 +20,15 @@ function createCoordinates() {
 }
 export const coordinates = createCoordinates();
 
-// Radius store
-export const radius = writable(1000);
+// Uers preferences store
+export const preferences = writable({
+    radius: 1000,
+    labels: LABELS
+});
 
 // Places store
 function createPlaces() {
-    const { subscribe, set } = writable(null);
+    const { subscribe, set, update } = writable(null);
     return {
         subscribe,
         update: async () => {
@@ -34,13 +38,17 @@ function createPlaces() {
                     return;
                 }
                 const response = await fetch(
-                    `https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${$coordinates.latitude}|${$coordinates.longitude}&gsradius=${get(radius)}&gslimit=${nArticles}&format=json&origin=*`
+                    `https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${$coordinates.latitude}|${$coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`
                 );
                 const data = await response.json();
                 set(data.query.geosearch);
+                labelPlaces();
             } catch (error) {
                 console.error(error);
             }
+        },
+        setLabels: async (labels) => {
+            update(places => places.map((place, i) => ({ ...place, labels: labels[i] })));
         },
         reset: () => set(null)
     };
