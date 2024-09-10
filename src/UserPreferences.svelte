@@ -1,8 +1,7 @@
 <script>
 	import { Label, Range } from 'flowbite-svelte';
 	import { radius } from './stores.js';
-
-	export let updateArticles;
+	import { places } from './stores.js';
 </script>
 
 <div>
@@ -13,6 +12,6 @@
 		min="100"
 		max="3000"
 		step="100"
-		on:change={updateArticles}
+		on:change={places.update}
 	/>
 </div>
