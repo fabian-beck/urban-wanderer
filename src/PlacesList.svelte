@@ -30,4 +30,8 @@
 			<PlaceItem {item} />
 		</Listgroup>
 	{/if}
+{:else}
+	<div class="m-6 flex justify-center">
+		<img src="urban-wanderer-icon.png" alt="logo" class="w-24 opacity-50" />
+	</div>
 {/if}

@@ -1,4 +1,4 @@
-export const appName = 'City Wanderer';
+export const appName = 'Urban Wanderer';
 
 export const nArticles = 20;
 export const lang = 'de';
