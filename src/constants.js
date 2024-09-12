@@ -9,8 +9,8 @@ export const LABELS = [
     "EDUCATION",
     "GEOGRAPHY",
     "HISTORY",
-    "MUNICIPALITIES",
+    "MUNICIPALITY",
     "RELIGION",
-    "SPORTS",
+    "SPORT",
     "TRANSPORTATION"
 ];

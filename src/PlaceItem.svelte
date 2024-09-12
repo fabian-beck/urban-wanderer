@@ -1,39 +1,44 @@
 <script>
-	import { lang } from './constants.js';
-	import { FileOutline, MapPinAltOutline } from 'flowbite-svelte-icons';
+	import { MapPinAltOutline } from 'flowbite-svelte-icons';
+	import PlaceDetails from './PlaceDetails.svelte';
 
 	export let item;
+	let detailsVisible = false;
 </script>
 
 {#if item}
-	<div class="flex">
-		<a
-			href={`https://${lang}.m.wikipedia.org/?curid=${item.pageid}`}
-			target="_blank"
-			class="flex flex-auto"
-		>
-			<FileOutline class="!mr-2" />{item.title}
-		</a>
-		<a
-			href={`https://www.google.com/maps/search/?api=1&query=${item.title}`}
-			target="_blank"
-			class="flex"
-		>
-			<span class="text-xs">
-				{#if item.dist >= 50}
-					{Math.floor(item.dist / 50) * 50}&nbsp;m
-				{:else}
-					here
-				{/if}
+	<button
+		on:click={() => {
+			detailsVisible = true;
+		}}
+		class="w-full"
+	>
+		<div class="flex">
+			<span class="flex flex-auto">
+				<b>{item.title}</b>
 			</span>
-			<MapPinAltOutline />
-		</a>
-	</div>
-	<div class="text-xs">
-		{#if item.labels}
-			{item.labels.join(', ')}
-		{:else}
-			... computing labels
-		{/if}
-	</div>
+			<a
+				href={`https://www.google.com/maps/search/?api=1&query=${item.title}`}
+				target="_blank"
+				class="flex"
+			>
+				<span class="text-xs">
+					{#if item.dist >= 50}
+						{Math.floor(item.dist / 50) * 50}&nbsp;m
+					{:else}
+						here
+					{/if}
+				</span>
+				<MapPinAltOutline />
+			</a>
+		</div>
+		<div class="mt-1 text-left text-xs">
+			{#if item.labels}
+				{item.labels.join(', ')}
+			{:else}
+				... computing labels
+			{/if}
+		</div>
+	</button>
+	<PlaceDetails bind:visible={detailsVisible} {item} />
 {/if}

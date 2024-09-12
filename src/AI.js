@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { OPENAI_API_KEY } from "./.openai_api_key.js";
 import { places } from "./stores.js";
 import { get } from "svelte/store";
-import { LABELS } from "./constants.js";
+import { LABELS, lang } from "./constants.js";
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
@@ -57,4 +57,22 @@ export async function labelPlaces() {
     // update places
     const labels = get(places).map(place => labelsCache[place.pageid]);
     places.setLabels(labels);
+}
+
+// summarize article
+export async function summarizeArticle(article) {
+    const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+            {
+                role: "system", content: `You are a chat assistant summarizing an article.
+                
+                Summarize the following article in one sentence. Answer in language '${lang}'.
+                
+                ${article}`,
+            },
+        ]
+    });
+
+    return completion.choices[0].message.content;
 }

@@ -5,10 +5,14 @@
 	import { places, preferences } from './stores.js';
 
 	export let loading = false;
+
+	$: placesFiltered = $places?.filter(
+		(item) => item.labels && item.labels.some((label) => $preferences.labels.includes(label))
+	);
 </script>
 
 <div class="mb-2 flex">
-	<h2 class="flex-auto text-lg">Relevant Places</h2>
+	<h2 class="flex-auto text-lg">Places</h2>
 	{#if $places}
 		<p class="flex-none text-sm">
 			{$places.length}{$places.length === nArticles ? '+' : ''} place{$places.length > 1 ||
@@ -26,14 +30,16 @@
 	{#if $places.length === 0}
 		<Alert color="primary">Found none&mdash;maybe, walk a bit and refresh?</Alert>
 	{:else}
-		<Listgroup
-			items={$places.filter(
-				(item) => item.labels && item.labels.some((label) => $preferences.labels.includes(label))
-			)}
-			let:item
-		>
+		<div class="mb-1">Most relevant</div>
+		<Listgroup items={placesFiltered} let:item>
 			<PlaceItem {item} />
 		</Listgroup>
+		{#if $places.length > placesFiltered.length}
+			<div class="mb-1 mt-2">Other places</div>
+			<Listgroup items={$places.filter((item) => !placesFiltered.includes(item))} let:item>
+				<PlaceItem {item} />
+			</Listgroup>
+		{/if}
 	{/if}
 {:else}
 	<div class="m-6 flex justify-center">
