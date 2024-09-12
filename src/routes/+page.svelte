@@ -1,7 +1,6 @@
 <script>
 	import { coordinates, places } from '../stores.js';
 	import Position from '../Position.svelte';
-	import UserPreferences from '../UserPreferences.svelte';
 	import PlacesList from '../PlacesList.svelte';
 	import Header from '../Header.svelte';
 
@@ -22,10 +21,8 @@
 </script>
 
 <Header />
-<main id="main" class="p-4">
+<main id="main" class="p-4 pt-20">
 	<Position {loading} {update} />
-	<hr class="m-4" />
-	<UserPreferences />
 	<hr class="m-4" />
 	<PlacesList {loading} />
 </main>
