@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">urban-wanderer</string>
-    <string name="title_activity_main">urban-wanderer</string>
+    <string name="app_name">Urban Wanderer</string>
+    <string name="title_activity_main">Urban Wanderer</string>
     <string name="package_name">com.fbeck.urbanwanderer</string>
     <string name="custom_url_scheme">com.fbeck.urbanwanderer</string>
 </resources>

@@ -1,22 +1,16 @@
-# create-svelte
+# Urban Wanderer
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+Urban Wanderer is a geo-based app that provides relevant information for your current location.
 
-## Creating a project
+# Run Locally in Browser
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Install Depdencies
 
 ```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
+npm install
 ```
 
 ## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
 ```bash
 npm run dev
@@ -36,3 +30,15 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+
+# Run as Android App (supported by Capacitor)
+
+After building, sync the code to the capicitor app.
+
+```bash
+
+npx cap sync
+```
+
+Use Android Studio to run or build the app (`android` directory).
+

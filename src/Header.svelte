@@ -7,8 +7,8 @@
 	let hideNavUl = true;
 </script>
 
-<Navbar class="fixed border-b" color="form">
-	<NavBrand href="/" class="text-xl text-primary-800">
+<Navbar class="fixed border-b" color="primary">
+	<NavBrand href="/" class="text-xl">
 		<h1>{appName}</h1>
 	</NavBrand>
 	<NavHamburger
@@ -16,8 +16,9 @@
 			hideNavUl = !hideNavUl;
 		}}
 	/>
-	<NavUl hidden={hideNavUl}>
+	<NavUl hidden={hideNavUl} classUl="bg-white">
 		<NavLi
+			class="bg-white"
 			on:click={() => {
 				preferencesVisible = true;
 				hideNavUl = true;

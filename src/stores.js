@@ -19,6 +19,7 @@ function createCoordinates() {
 
             } catch (error) {
                 console.error(error);
+                errorMessage.set(error);
             }
         },
         reset: () => set(null)
@@ -48,9 +49,10 @@ function createPlaces() {
                 );
                 const data = await response.json();
                 set(data.query.geosearch);
-                labelPlaces();
+                await labelPlaces();
             } catch (error) {
                 console.error(error);
+                errorMessage.set(error);
             }
         },
         setLabels: async (labels) => {
@@ -60,3 +62,6 @@ function createPlaces() {
     };
 }
 export const places = createPlaces();
+
+// error store
+export const errorMessage = writable(null);

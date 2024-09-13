@@ -1,8 +1,9 @@
 <script>
-	import { coordinates, places } from '../stores.js';
+	import { coordinates, places, errorMessage } from '../stores.js';
 	import Position from '../Position.svelte';
 	import PlacesList from '../PlacesList.svelte';
 	import Header from '../Header.svelte';
+	import { Alert, CloseButton } from 'flowbite-svelte';
 
 	let loading = false;
 
@@ -22,6 +23,15 @@
 
 <Header />
 <main id="main" class="p-4 pt-20">
+	{#if $errorMessage}
+		<Alert type="danger" class="mb-4 flex text-xs">
+			<div class="flex-auto overflow-hidden">
+				{$errorMessage}
+			</div>
+			/>
+			<CloseButton on:click={() => errorMessage.set(null)} class="flex-none" />
+		</Alert>
+	{/if}
 	<Position {loading} {update} />
 	<hr class="m-4" />
 	<PlacesList {loading} />
