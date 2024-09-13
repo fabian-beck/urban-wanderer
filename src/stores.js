@@ -5,12 +5,18 @@ import { labelPlaces } from "./AI.js";
 
 // Coordinates stores
 function createCoordinates() {
-    const { subscribe, set } = writable(null);
+    const { subscribe, set, } = writable(null);
     return {
         subscribe,
         update: async () => {
             try {
-                set((await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords);
+                const coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
+                // translate coordinate into city district via Overpass API
+                set({ latitude: coords.latitude, longitude: coords.longitude });
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${get(coordinates).latitude}&lon=${get(coordinates).longitude}&zoom=18&addressdetails=1`);
+                const data = await response.json();
+                set({ latitude: coords.latitude, longitude: coords.longitude, address: data.display_name });
+
             } catch (error) {
                 console.error(error);
             }
