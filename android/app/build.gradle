@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.fbeck.citywanderer"
+    namespace "com.fbeck.urbanwanderer"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.fbeck.citywanderer"
+        applicationId "com.fbeck.urbanwanderer"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

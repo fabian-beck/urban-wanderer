@@ -1,4 +1,4 @@
-package com.fbeck.citywanderer;
+package com.fbeck.urbanwanderer;
 
 import com.getcapacitor.BridgeActivity;
 
