@@ -1,8 +1,8 @@
 import OpenAI from "openai";
-import { OPENAI_API_KEY } from "./.openai_api_key.js";
-import { places } from "./stores.js";
+import { OPENAI_API_KEY } from "../.openai_api_key.js";
+import { places, coordinates, preferences } from "../stores.js";
 import { get } from "svelte/store";
-import { LABELS, lang } from "./constants.js";
+import { LABELS, lang } from "../constants.js";
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
@@ -74,5 +74,39 @@ export async function summarizeArticle(article) {
         ]
     });
 
+    return completion.choices[0].message.content;
+}
+
+// generate story about the user position
+export async function generateStory() {
+    const message = {
+        role: "system", content: `
+You are a city guide.
+
+Generate a story about the user's current position. Answer in language '${lang}'.
+
+User's current position is:
+${get(coordinates).address}
+
+Nearby places are:
+
+${get(places).map(place =>
+            `
+# ${place.title} (${place.dist}m): ${place.labels.join(", ")}
+    
+${place.article}
+`).join("\n")}}
+
+User's preferences are the following topics:
+${get(preferences).labels.map(label => `- ${label}`).join("\n")}
+
+The story should be one short paragraph long and focus on the most closest places. Keep the language concise and factual. Avoid giving precise directions or distances.
+`,
+    };
+    console.log(message.content);
+    const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [message],
+    });
     return completion.choices[0].message.content;
 }

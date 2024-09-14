@@ -3,12 +3,11 @@
 	import { lang } from './constants.js';
 	import { Modal } from 'flowbite-svelte';
 	import { FileOutline, MapPinAltOutline } from 'flowbite-svelte-icons';
-	import { summarizeArticle } from './AI.js';
+	import { summarizeArticle } from './util/ai.js';
 
 	export let visible = false;
 	export let item;
 
-	// Load Wikipedia article text
 	onMount(async () => {
 		const response = await fetch(
 			`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`

@@ -1,11 +1,12 @@
 import { writable, get } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
-import { nArticles, lang, LABELS } from './constants.js';
-import { labelPlaces } from "./AI.js";
+import { LABELS } from './constants.js';
+import { labelPlaces } from "./util/ai.js";
+import { loadPlaces } from "./util/geo.js";
 
 // Coordinates stores
 function createCoordinates() {
-    const { subscribe, set, } = writable(null);
+    const { subscribe, set } = writable(null);
     return {
         subscribe,
         update: async () => {
@@ -40,15 +41,7 @@ function createPlaces() {
         subscribe,
         update: async () => {
             try {
-                const $coordinates = get(coordinates);
-                if (!$coordinates) {
-                    return;
-                }
-                const response = await fetch(
-                    `https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${$coordinates.latitude}|${$coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`
-                );
-                const data = await response.json();
-                set(data.query.geosearch);
+                set(await loadPlaces());
                 await labelPlaces();
             } catch (error) {
                 console.error(error);
