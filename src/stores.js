@@ -45,16 +45,19 @@ function createPlaces() {
                 await labelPlaces();
             } catch (error) {
                 console.error(error);
-                errorMessage.set(error);
+                errorMessage.set("Could not load places: " + error);
             }
         },
-        setLabels: async (labels) => {
+        setLabels: (labels) => {
             update(places => places.map((place, i) => ({ ...place, labels: labels[i] })));
         },
         reset: () => set(null)
     };
 }
 export const places = createPlaces();
+
+// story
+export const storyText = writable(null);
 
 // error store
 export const errorMessage = writable(null);

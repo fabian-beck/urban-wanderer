@@ -4,15 +4,13 @@
 	import { nArticles } from './constants.js';
 	import { places, preferences } from './stores.js';
 
-	export let loading = false;
-
 	$: placesFiltered = $places?.filter(
 		(item) => item.labels && item.labels.some((label) => $preferences.labels.includes(label))
 	);
 </script>
 
 <div class="mb-2 flex">
-	<h2 class="flex-auto text-lg">Places</h2>
+	<h2 class="flex-auto text-lg">Nearby</h2>
 	{#if $places}
 		<p class="flex-none text-sm">
 			{$places.length}{$places.length === nArticles ? '+' : ''} place{$places.length > 1 ||
@@ -22,11 +20,7 @@
 		</p>
 	{/if}
 </div>
-{#if loading}
-	<div class="m-6 flex justify-center">
-		<Spinner />
-	</div>
-{:else if $places}
+{#if $places}
 	{#if $places.length === 0}
 		<Alert color="primary">Found none&mdash;maybe, walk a bit and refresh?</Alert>
 	{:else}
@@ -41,8 +35,4 @@
 			</Listgroup>
 		{/if}
 	{/if}
-{:else}
-	<div class="m-6 flex justify-center">
-		<img src="urban-wanderer-icon.png" alt="logo" class="w-24 opacity-50" />
-	</div>
 {/if}

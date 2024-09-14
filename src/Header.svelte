@@ -8,7 +8,7 @@
 </script>
 
 <Navbar class="fixed border-b" color="primary">
-	<NavBrand href="/" class="text-xl">
+	<NavBrand href="/" class="uw-font text-2xl">
 		<h1>{appName}</h1>
 	</NavBrand>
 	<NavHamburger
