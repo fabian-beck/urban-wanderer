@@ -78,8 +78,11 @@ export async function summarizeArticle(article) {
 }
 
 // generate story about the user position
-export async function generateStory() {
-    const message = {
+export async function generateStory(storyTexts) {
+    if (!storyTexts) {
+        storyTexts = [];
+    }
+    const initialMessage = {
         role: "system", content: `
 You are a city guide.
 
@@ -100,13 +103,20 @@ ${place.article}
 User's preferences are the following topics:
 ${get(preferences).labels.map(label => `- ${label}`).join("\n")}
 
-The story should be one short paragraph long and focus on the most closest places. Keep the language concise and factual. Avoid giving precise directions or distances.
+The story should be two to three paragraphs long and focus on the most closest places. Keep the language concise and factual. Avoid giving precise directions or distances.
+
+Return HTML formatted text. You may highlight the places in the text in bold through <b>.
 `,
     };
-    console.log(message.content);
+    let messages = [initialMessage, ...storyTexts.map(text => ({ role: "system", content: text }))];
+    if (storyTexts.length > 0) {
+        messages.push({ role: "user", content: "Tell me more about something different. You may focus on a certain aspect." });
+    }
+    console.log(messages);
     const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
-        messages: [message],
+        messages: messages,
     });
+    console.log(completion);
     return completion.choices[0].message.content;
 }

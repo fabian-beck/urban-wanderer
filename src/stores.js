@@ -57,7 +57,8 @@ function createPlaces() {
 export const places = createPlaces();
 
 // story
-export const storyText = writable(null);
+// export const storyText = writable(null);
+export const storyTexts = writable([]);
 
 // error store
 export const errorMessage = writable(null);

@@ -1,5 +1,5 @@
 <script>
-	import { coordinates, places, errorMessage, storyText } from '../stores.js';
+	import { coordinates, places, errorMessage, storyTexts } from '../stores.js';
 	import Header from '../Header.svelte';
 	import Location from '../Location.svelte';
 	import PlacesList from '../PlacesList.svelte';
@@ -15,7 +15,7 @@
 			loading = true;
 			places.reset();
 			coordinates.reset();
-			$storyText = null;
+			$storyTexts = [];
 			await coordinates.update();
 			await places.update();
 			loading = false;
