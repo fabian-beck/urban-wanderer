@@ -1,5 +1,5 @@
 <script>
-	import { appName } from './constants.js';
+	import { appName } from '../constants.js';
 	import { Navbar, NavBrand, NavHamburger, NavUl, NavLi } from 'flowbite-svelte';
 	import UserPreferences from './UserPreferences.svelte';
 

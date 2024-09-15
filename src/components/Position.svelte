@@ -1,7 +1,7 @@
 <script>
-	import { Button, Spinner } from 'flowbite-svelte';
+	import { Button } from 'flowbite-svelte';
 	import { RefreshOutline, MapPinAltOutline } from 'flowbite-svelte-icons';
-	import { coordinates } from './stores.js';
+	import { coordinates } from '../stores.js';
 
 	export let loading = false;
 	export let update;

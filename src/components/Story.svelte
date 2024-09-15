@@ -1,7 +1,7 @@
 <script>
 	import { Button, Spinner } from 'flowbite-svelte';
-	import { generateStory } from './util/ai.js';
-	import { errorMessage, storyTexts } from './stores.js';
+	import { generateStory } from '../util/ai.js';
+	import { errorMessage, storyTexts } from '../stores.js';
 	import { ArrowRightOutline } from 'flowbite-svelte-icons';
 
 	let loading = false;

@@ -1,8 +1,8 @@
 <script>
 	import { Label, Range, Checkbox, Modal } from 'flowbite-svelte';
-	import { preferences } from './stores.js';
-	import { places } from './stores.js';
-	import { LABELS } from './constants.js';
+	import { preferences } from '../stores.js';
+	import { places } from '../stores.js';
+	import { LABELS } from '../constants.js';
 
 	export let visible = false;
 </script>

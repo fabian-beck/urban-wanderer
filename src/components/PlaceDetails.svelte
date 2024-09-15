@@ -1,9 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
-	import { lang } from './constants.js';
+	import { lang } from '../constants.js';
 	import { Modal } from 'flowbite-svelte';
 	import { FileOutline, MapPinAltOutline } from 'flowbite-svelte-icons';
-	import { summarizeArticle } from './util/ai.js';
+	import { summarizeArticle } from '../util/ai.js';
 
 	export let visible = false;
 	export let item;

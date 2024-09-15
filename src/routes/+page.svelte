@@ -1,12 +1,12 @@
 <script>
 	import { coordinates, places, errorMessage, storyTexts } from '../stores.js';
-	import Header from '../Header.svelte';
-	import Location from '../Location.svelte';
-	import PlacesList from '../PlacesList.svelte';
-	import Story from '../Story.svelte';
+	import Header from '../components/Header.svelte';
+	import Location from '../components/Position.svelte';
+	import Nearby from '../components/Nearby.svelte';
+	import Story from '../components/Story.svelte';
 	import { Alert, CloseButton, Spinner } from 'flowbite-svelte';
 	import { appName } from '../constants.js';
-	import { writable } from 'svelte/store';
+	import Here from '../components/Here.svelte';
 
 	let loading = false;
 
@@ -36,7 +36,9 @@
 		</Alert>
 	{/if}
 	{#if !loading && $coordinates}
-		<PlacesList {loading} />
+		<Here />
+		<hr class="m-4" />
+		<Nearby />
 		<hr class="m-4" />
 		<Story />
 	{:else}

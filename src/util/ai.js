@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { places, coordinates, preferences } from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences } from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, lang } from "../constants.js";
 
@@ -9,9 +9,9 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: tru
 const labelsCache = {};
 
 // label places
-export async function labelPlaces() {
+export async function labelPlaces(places) {
     // get places with cached labels (labelsCache)
-    const placesWithoutCachedLabels = get(places).filter(place => !labelsCache[place.pageid]);
+    const placesWithoutCachedLabels = places.filter(place => !labelsCache[place.pageid]);
 
     if (placesWithoutCachedLabels.length > 0) {
         const completion = await openai.chat.completions.create({
@@ -46,17 +46,14 @@ export async function labelPlaces() {
 
         // update cache
         Object.entries(json).forEach(([title, labels]) => {
-            const place = get(places).find(place => place.title === title);
+            const place = places.find(place => place.title === title);
             if (!place) {
                 return;
             }
             labelsCache[place.pageid] = labels;
         });
     }
-
-    // update places
-    const labels = get(places).map(place => labelsCache[place.pageid]);
-    places.setLabels(labels);
+    return places.map(place => labelsCache[place.pageid]);
 }
 
 // summarize article
@@ -91,32 +88,47 @@ Generate a story about the user's current position. Answer in language '${lang}'
 User's current position is:
 ${get(coordinates).address}
 
-Nearby places are:
+The position is close to/in (most important!):
 
-${get(places).map(place =>
-            `
+${get(placesHere).map(place =>
+            `# ${place.title}: ${place.labels.join(", ")}    	    
+
+${place.article}
+`).join("\n")}
+
+Nearby places are (less important!):
+
+${get(placesNearby).map(place =>
+                `
 # ${place.title} (${place.dist}m): ${place.labels.join(", ")}
     
 ${place.article}
 `).join("\n")}}
 
+----------------------------------------------
+
+IMPORTANT:
+
 User's preferences are the following topics:
 ${get(preferences).labels.map(label => `- ${label}`).join("\n")}
 
-The story should be two to three paragraphs long and focus on the most closest places. Keep the language concise and factual. Avoid giving precise directions or distances.
+The story should be two to three paragraphs long and focus on the position of the user and the most closest places. Avoid giving precise directions or distances.
 
-Return HTML formatted text. You may highlight the places in the text in bold through <b>.
+Keep the languae concise and factual. You may use an informal tone, but do not exaggerate the importance of places. Avoid assessing the quality of the places.
+
+Just give summary of the most important information, but do not reply to the user's questions.
+
+Return HTML formatted text. You may highlight the places in the text in bold (through "<b>PLACE</b>").
 `,
     };
+    console.log(initialMessage.content);
     let messages = [initialMessage, ...storyTexts.map(text => ({ role: "system", content: text }))];
     if (storyTexts.length > 0) {
         messages.push({ role: "user", content: "Tell me more about something different. You may focus on a certain aspect." });
     }
-    console.log(messages);
     const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: messages,
     });
-    console.log(completion);
     return completion.choices[0].message.content;
 }

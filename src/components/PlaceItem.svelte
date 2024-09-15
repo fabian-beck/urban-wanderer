@@ -2,6 +2,7 @@
 	import PlaceDetails from './PlaceDetails.svelte';
 
 	export let item;
+	export let showDistance = false;
 	let detailsVisible = false;
 </script>
 
@@ -16,13 +17,15 @@
 			<span class="flex flex-auto overflow-hidden text-left">
 				<b>{item.title}</b>
 			</span>
-			<span class="ml-2 text-xs">
-				{#if item.dist >= 50}
-					{Math.floor(item.dist / 50) * 50}&nbsp;m
-				{:else}
-					here
-				{/if}
-			</span>
+			{#if showDistance}
+				<span class="text-right text-xs">
+					{#if item.dist >= 50}
+						{Math.floor(item.dist / 50) * 50}&nbsp;m
+					{:else}
+						here
+					{/if}
+				</span>
+			{/if}
 		</div>
 		<div class="mt-1 text-left text-xs">
 			{#if item.labels}

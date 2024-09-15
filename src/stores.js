@@ -12,12 +12,9 @@ function createCoordinates() {
         update: async () => {
             try {
                 const coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
-                // translate coordinate into city district via Overpass API
-                set({ latitude: coords.latitude, longitude: coords.longitude });
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${get(coordinates).latitude}&lon=${get(coordinates).longitude}&zoom=18&addressdetails=1`);
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1`);
                 const data = await response.json();
-                set({ latitude: coords.latitude, longitude: coords.longitude, address: data.display_name });
-
+                set({ latitude: coords.latitude, longitude: coords.longitude, address: data.display_name, town: data.address.town, village: data.address.village });
             } catch (error) {
                 console.error(error);
                 errorMessage.set(error);
@@ -36,28 +33,34 @@ export const preferences = writable({
 
 // Places store
 function createPlaces() {
-    const { subscribe, set, update } = writable(null);
+    const { subscribe, set } = writable(null);
     return {
         subscribe,
         update: async () => {
             try {
-                set(await loadPlaces());
-                await labelPlaces();
+                let placesTmp = await loadPlaces();
+                const labels = await labelPlaces(placesTmp);
+                placesTmp = placesTmp.map((place, i) => ({ ...place, labels: labels[i] }));
+                placesHere.set(placesTmp.filter(place => place.dist < 100 || get(coordinates).address.includes(place.title)));
+                placesNearby.set(placesTmp.filter(place => !get(placesHere).includes(place)));
+                set(placesTmp);
             } catch (error) {
                 console.error(error);
                 errorMessage.set("Could not load places: " + error);
             }
-        },
-        setLabels: (labels) => {
-            update(places => places.map((place, i) => ({ ...place, labels: labels[i] })));
         },
         reset: () => set(null)
     };
 }
 export const places = createPlaces();
 
+// places (here) store
+export const placesHere = writable([]);
+
+// places (nearby) store
+export const placesNearby = writable([]);
+
 // story
-// export const storyText = writable(null);
 export const storyTexts = writable([]);
 
 // error store
