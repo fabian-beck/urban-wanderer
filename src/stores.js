@@ -2,7 +2,7 @@ import { writable, get } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { LABELS } from './constants.js';
 import { labelPlaces } from "./util/ai.js";
-import { loadPlaces } from "./util/geo.js";
+import { loadPlaces, loadArticleTexts, loadExtracts } from "./util/geo.js";
 
 // Coordinates stores
 function createCoordinates() {
@@ -42,7 +42,9 @@ function createPlaces() {
                 const labels = await labelPlaces(placesTmp);
                 placesTmp = placesTmp.map((place, i) => ({ ...place, labels: labels[i] }));
                 placesHere.set(placesTmp.filter(place => place.dist < 100 || get(coordinates).address.includes(place.title)));
+                await loadArticleTexts(get(placesHere));
                 placesNearby.set(placesTmp.filter(place => !get(placesHere).includes(place)));
+                await loadExtracts(get(placesNearby));
                 set(placesTmp);
             } catch (error) {
                 console.error(error);

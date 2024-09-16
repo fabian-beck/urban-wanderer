@@ -124,7 +124,18 @@ Return HTML formatted text. You may highlight the places in the text in bold (th
     console.log(initialMessage.content);
     let messages = [initialMessage, ...storyTexts.map(text => ({ role: "system", content: text }))];
     if (storyTexts.length > 0) {
-        messages.push({ role: "user", content: "Tell me more about something different. You may focus on a certain aspect." });
+        messages.push({
+            role: "user", content: `Tell me more about something different. You may focus on a certain aspect.
+
+Remember to connect the story to the user's current position:
+${get(coordinates).address}
+
+The position is close to/in:
+${get(placesHere).map(place =>
+                `* ${place.title}: ${place.labels.join(", ")}`
+            ).join("\n")}
+` });
+        console.log(messages[messages.length - 1]);
     }
     const completion = await openai.chat.completions.create({
         model: "gpt-4o",
