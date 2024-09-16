@@ -138,7 +138,7 @@ ${get(placesHere).map(place =>
         console.log(messages[messages.length - 1]);
     }
     const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: messages,
     });
     return completion.choices[0].message.content;
