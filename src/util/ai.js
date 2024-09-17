@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { placesHere, placesNearby, coordinates, preferences } from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences, osmPlaces } from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, lang } from "../constants.js";
 
@@ -96,14 +96,20 @@ ${get(placesHere).map(place =>
 ${place.article}
 `).join("\n")}
 
-Nearby places are (less important!):
+Further places that are close are:
+${get(osmPlaces).map(place =>
+                `* ${place.title}`)
+                .join("\n")}
 
-${get(placesNearby).map(place =>
-                `
+Nearby places are(less important!):
+
+                ${get(placesNearby).map(place =>
+                    `
 # ${place.title} (${place.dist}m): ${place.labels.join(", ")}
     
 ${place.article}
-`).join("\n")}}
+`).join("\n")
+            }}
 
 ----------------------------------------------
 
@@ -125,15 +131,17 @@ Return HTML formatted text. You may highlight the places in the text in bold (th
     let messages = [initialMessage, ...storyTexts.map(text => ({ role: "system", content: text }))];
     if (storyTexts.length > 0) {
         messages.push({
-            role: "user", content: `Tell me more about something different. You may focus on a certain aspect.
+            role: "user", content: `Tell me more about something different.You may focus on a certain aspect.
 
 Remember to connect the story to the user's current position:
-${get(coordinates).address}
+${get(coordinates).address
+                }
 
-The position is close to/in:
+The position is close to /in:
 ${get(placesHere).map(place =>
-                `* ${place.title}: ${place.labels.join(", ")}`
-            ).join("\n")}
+                    `* ${place.title}: ${place.labels.join(", ")}`
+                ).join("\n")
+                }
 ` });
         console.log(messages[messages.length - 1]);
     }

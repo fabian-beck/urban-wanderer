@@ -7,12 +7,12 @@ export async function loadPlaces() {
     if (!$coordinates) {
         return;
     }
-    const places = await geoSearchForPlaces($coordinates);
+    const places = await wikipediaGeoSearchForPlaces($coordinates);
     if ($coordinates.village && !places.find(place => place.title === $coordinates.village)) {
-        places.push(await nameSearchForPlace($coordinates.village));
+        places.push(await wikipediaNameSearchForPlace($coordinates.village));
     }
     if ($coordinates.town && !places.find(place => place.title === $coordinates.town)) {
-        places.push(await nameSearchForPlace($coordinates.town));
+        places.push(await wikipediaNameSearchForPlace($coordinates.town));
     }
     return places;
 }
@@ -50,7 +50,74 @@ export async function loadExtracts(places) {
     );
 }
 
-async function geoSearchForPlaces(coordinates) {
+export async function loadOSMData() {
+    const $coordinates = get(coordinates);
+    const radius = 100;
+    const amenities = "museum|school|college|university|library|place_of_worship";
+    const tourism = "viewpoint|attraction|mall|zoo|theme_park|aquarium|gallery|artwork|memorial|museum|theatre|cinema";
+    const historic = "monument|memorial|monument|memorial|ruins|castle|church|tomb|battlefield|fort|city_gate|citywalls|gate|archaeological_site";
+    const man_made = "statue|sculpture|obelisk|stone|cross|wayside_cross|wayside_shrine|shelter|tower|water_tower|chimney|bridge|tunnel|mine|adit|bunker|silo|tank|reservoir|water_tank|water_reservoir|storage_tank|storage_reservoir|water_storage_tank|water_storage_reservoir|storage|container";
+    const leisure = "park|nature_reserve|sports_centre|stadium";
+
+    const overpassQuery = `
+[out:json];
+(
+    // Search for amenities
+    node[amenity~"${amenities}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    way[amenity~"${amenities}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    relation[amenity~"${amenities}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+
+    // Search for tourism-related points of interest
+    node[tourism~"${tourism}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    way[tourism~"${tourism}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    relation[tourism~"${tourism}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+
+    // Search for historic landmarks such as monuments and memorials
+    node[historic~"${historic}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    way[historic~"${historic}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    relation[historic~"${historic}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+
+    // Search for man-made structures such as statues
+    node[man_made~"${man_made}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    way[man_made~"${man_made}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    relation[man_made~"${man_made}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+
+    // Search for leisure facilities such as parks and gardens
+    node[leisure~"${leisure}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    way[leisure~"${leisure}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    relation[leisure~"${leisure}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+);
+out body;
+>;
+out skel qt;
+`;
+    console.log(overpassQuery);
+    const response = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `data=${encodeURIComponent(overpassQuery)}`
+    });
+    const data = await response.json();
+    const places = data.elements.filter(element => element.tags?.name).map(
+        element => {
+            const tags = element.tags;
+            return {
+                title: tags.name,
+                description: tags.description,
+                type: tags.amenity || tags.tourism || tags.historic || tags.man_made || tags.leisure,
+                url: tags["contact:website"] || tags.website || tags.wikipedia,
+                lat: element.lat,
+                lon: element.lon
+            };
+        }
+    );
+    console.log(places);
+    return places;
+}
+
+async function wikipediaGeoSearchForPlaces(coordinates) {
     const response = await fetch(
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.latitude}|${coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`
     );
@@ -58,8 +125,7 @@ async function geoSearchForPlaces(coordinates) {
     return data.query.geosearch;
 }
 
-async function nameSearchForPlace(name) {
-    console.log("searchPlace", name);
+async function wikipediaNameSearchForPlace(name) {
     const response2 = await fetch(
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${name}&srlimit=1&format=json&origin=*`
     );

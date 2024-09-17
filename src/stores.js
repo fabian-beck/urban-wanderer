@@ -2,7 +2,7 @@ import { writable, get } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { LABELS } from './constants.js';
 import { labelPlaces } from "./util/ai.js";
-import { loadPlaces, loadArticleTexts, loadExtracts } from "./util/geo.js";
+import { loadPlaces, loadArticleTexts, loadExtracts, loadOSMData as loadOsmData } from "./util/geo.js";
 
 // Coordinates stores
 function createCoordinates() {
@@ -61,6 +61,24 @@ export const placesHere = writable([]);
 
 // places (nearby) store
 export const placesNearby = writable([]);
+
+// OSM places 
+function createOsmPlaces() {
+    const { subscribe, set } = writable(null);
+    return {
+        subscribe,
+        update: async () => {
+            try {
+                set(await loadOsmData());
+            } catch (error) {
+                console.error(error);
+                errorMessage.set(error);
+            }
+        },
+        reset: () => set(null)
+    };
+}
+export const osmPlaces = createOsmPlaces();
 
 // story
 export const storyTexts = writable([]);
