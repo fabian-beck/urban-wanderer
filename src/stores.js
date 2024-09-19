@@ -41,11 +41,14 @@ function createPlaces() {
                 let placesTmp = await loadPlaces();
                 const labels = await labelPlaces(placesTmp);
                 placesTmp = placesTmp.map((place, i) => ({ ...place, labels: labels[i] }));
-                placesHere.set(placesTmp.filter(place => place.dist < 100 || get(coordinates).address.includes(place.title)));
-                await loadArticleTexts(get(placesHere));
-                placesNearby.set(placesTmp.filter(place => !get(placesHere).includes(place)));
-                await loadExtracts(get(placesNearby));
+                const placesHereTmp = placesTmp.filter(place => place.dist < 100 || get(coordinates).address.includes(place.title));
+                placesHereTmp.forEach(place => place.dist = 0);
+                await loadArticleTexts(placesHereTmp);
+                const placesNearbyTmp = placesTmp.filter(place => !placesHereTmp.includes(place));
+                await loadExtracts(placesNearbyTmp);
                 set(placesTmp);
+                placesHere.set(placesHereTmp);
+                placesNearby.set(placesNearbyTmp);
             } catch (error) {
                 console.error(error);
                 errorMessage.set("Could not load places: " + error);

@@ -27,13 +27,11 @@
 				</span>
 			{/if}
 		</div>
-		<div class="mt-1 text-left text-xs">
+		<!-- <div class="mt-1 text-left text-xs">
 			{#if item.labels}
 				{item.labels.join(', ')}
-			{:else}
-				... computing labels
 			{/if}
-		</div>
+		</div> -->
 	</button>
 	<PlaceDetails bind:visible={detailsVisible} {item} />
 {/if}

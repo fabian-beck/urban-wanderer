@@ -109,7 +109,8 @@ out skel qt;
                 type: tags.amenity || tags.tourism || tags.historic || tags.man_made || tags.leisure,
                 url: tags["contact:website"] || tags.website || tags.wikipedia,
                 lat: element.lat,
-                lon: element.lon
+                lon: element.lon,
+                dist: 0
             };
         }
     );

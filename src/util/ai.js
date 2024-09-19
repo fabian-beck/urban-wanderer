@@ -62,9 +62,9 @@ export async function summarizeArticle(article) {
         model: "gpt-4o-mini",
         messages: [
             {
-                role: "system", content: `You are a chat assistant summarizing an article.
+                role: "system", content: `You are a chat assistant providing a summary description for a place.
                 
-                Summarize the following article in one sentence. Answer in language '${lang}'.
+                Describe the following place in one sentence. Answer in language '${lang}'.
                 
                 ${article}`,
             },

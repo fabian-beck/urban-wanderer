@@ -2,19 +2,34 @@
 	import { onMount } from 'svelte';
 	import { lang } from '../constants.js';
 	import { Modal } from 'flowbite-svelte';
-	import { FileOutline, MapPinAltOutline } from 'flowbite-svelte-icons';
+	import {
+		FileOutline,
+		MapPinAltOutline,
+		GlobeOutline,
+		SearchOutline
+	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai.js';
 
 	export let visible = false;
 	export let item;
 
 	onMount(async () => {
-		const response = await fetch(
-			`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
-		);
-		const data = await response.json();
-		// use summarizeArticle() to get a shorter text
-		item.extract = await summarizeArticle(data.query.pages[item.pageid].extract);
+		console.log(item);
+		// const response = await fetch(
+		// 	`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
+		// );
+		// const data = await response.json();
+		// // use summarizeArticle() to get a shorter text
+		// item.extract = await summarizeArticle(data.query.pages[item.pageid].extract);
+		if (item.pageid) {
+			const response = await fetch(
+				`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
+			);
+			const data = await response.json();
+			item.summary = await summarizeArticle(data.query.pages[item.pageid].extract);
+		} else if (item.description) {
+			item.summary = await summarizeArticle(`${item.title}. ${item.description} (${item.type})`);
+		}
 	});
 </script>
 
@@ -22,21 +37,33 @@
 	<div class="flex flex-col">
 		<!-- Load Wikipedia article text -->
 		<div class="flex flex-auto">
-			{#if item.extract}
-				{item.extract}
-			{:else}
-				Loading...
+			{#if item.summary}
+				{item.summary}
 			{/if}
 		</div>
 		<hr class="my-4" />
 		<div class="flex">
-			<a
-				href={`https://${lang}.m.wikipedia.org/?curid=${item.pageid}`}
-				target="_blank"
-				class="flex flex-auto"
-			>
-				<FileOutline class="!mr-2" />Wikipedia
-			</a>
+			{#if item.pageid}
+				<a
+					href={`https://${lang}.m.wikipedia.org/?curid=${item.pageid}`}
+					target="_blank"
+					class="flex flex-auto"
+				>
+					<FileOutline class="!mr-2" />Wikipedia
+				</a>
+			{:else if item.url}
+				<a href={item.url} target="_blank" class="flex flex-auto">
+					<GlobeOutline class="!mr-2" />Web page
+				</a>
+			{:else}
+				<a
+					href={`https://www.google.com/search?q=${item.title}`}
+					target="_blank"
+					class="flex flex-auto"
+				>
+					<SearchOutline class="!mr-2" />Web search
+				</a>
+			{/if}
 			<a
 				href={`https://www.google.com/maps/search/?api=1&query=${item.title}`}
 				target="_blank"

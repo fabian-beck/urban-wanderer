@@ -1,7 +1,7 @@
 <script>
 	import { placesHere, osmPlaces } from '../stores';
 	import PlaceItem from './PlaceItem.svelte';
-	import { Listgroup, Alert, List } from 'flowbite-svelte';
+	import { Listgroup, Alert, List, P } from 'flowbite-svelte';
 </script>
 
 <div class="mb-2 flex">
@@ -19,7 +19,7 @@
 	{#if $osmPlaces.length > 0}
 		<div class="mb-1 mt-2">Other places</div>
 		<Listgroup items={$osmPlaces} let:item>
-			{item.title}
+			<PlaceItem {item} />
 		</Listgroup>
 	{/if}
 {/if}
