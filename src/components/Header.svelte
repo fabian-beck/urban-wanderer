@@ -9,7 +9,7 @@
 
 <Navbar class="fixed border-b" color="primary">
 	<NavBrand href="/" class="uw-font text-2xl">
-		<h1>{appName}</h1>
+		<h1 class="ml-2">{appName}</h1>
 	</NavBrand>
 	<NavHamburger
 		onClick={() => {

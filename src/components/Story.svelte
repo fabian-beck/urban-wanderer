@@ -2,7 +2,7 @@
 	import { Button, Spinner } from 'flowbite-svelte';
 	import { generateStory } from '../util/ai.js';
 	import { errorMessage, storyTexts } from '../stores.js';
-	import { ArrowRightOutline } from 'flowbite-svelte-icons';
+	import { ArrowRightOutline, MessageDotsOutline } from 'flowbite-svelte-icons';
 
 	let loading = false;
 
@@ -20,8 +20,9 @@
 	};
 </script>
 
-<div class="mb-2 flex">
-	<h2 class="flex-auto text-lg">Story</h2>
+<div class="mb-2 flex flex items-center text-primary-800">
+	<MessageDotsOutline />
+	<h2 class="ml-2 flex-auto text-xl">Story</h2>
 	{#if $storyTexts.length === 0 && !loading}
 		<Button on:click={updateStory} pill size="xs" outline><ArrowRightOutline />Tell me</Button>
 	{/if}

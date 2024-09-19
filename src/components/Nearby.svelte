@@ -2,14 +2,16 @@
 	import { Listgroup, Alert } from 'flowbite-svelte';
 	import PlaceItem from './PlaceItem.svelte';
 	import { placesNearby, preferences } from '../stores.js';
+	import { LandmarkOutline } from 'flowbite-svelte-icons';
 
 	$: placesFiltered = $placesNearby?.filter(
 		(item) => item.labels && item.labels.some((label) => $preferences.labels.includes(label))
 	);
 </script>
 
-<div class="mb-2 flex">
-	<h2 class="flex-auto text-lg">Nearby</h2>
+<div class="mb-2 flex flex items-center text-primary-800">
+	<LandmarkOutline />
+	<h2 class="ml-2 flex-auto text-xl">Nearby</h2>
 </div>
 {#if $placesNearby}
 	{#if $placesNearby.length === 0}
