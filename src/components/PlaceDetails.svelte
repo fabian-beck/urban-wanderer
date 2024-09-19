@@ -15,18 +15,13 @@
 
 	onMount(async () => {
 		console.log(item);
-		// const response = await fetch(
-		// 	`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
-		// );
-		// const data = await response.json();
-		// // use summarizeArticle() to get a shorter text
-		// item.extract = await summarizeArticle(data.query.pages[item.pageid].extract);
-		if (item.pageid) {
-			const response = await fetch(
-				`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
-			);
+		if (item.pageid || item.wikipedia) {
+			const url = item.pageid
+				? `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
+				: `https://${item.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${item.wikipedia.split(':')[1]}&origin=*`;
+			const response = await fetch(url);
 			const data = await response.json();
-			item.summary = await summarizeArticle(data.query.pages[item.pageid].extract);
+			item.summary = await summarizeArticle(Object.values(data.query.pages)[0].extract);
 		} else if (item.description) {
 			item.summary = await summarizeArticle(`${item.title}. ${item.description} (${item.type})`);
 		}
@@ -35,7 +30,6 @@
 
 <Modal title={item.title} bind:open={visible} autoclose>
 	<div class="flex flex-col">
-		<!-- Load Wikipedia article text -->
 		<div class="flex flex-auto">
 			{#if item.summary}
 				{item.summary}
@@ -46,6 +40,15 @@
 			{#if item.pageid}
 				<a
 					href={`https://${lang}.m.wikipedia.org/?curid=${item.pageid}`}
+					target="_blank"
+					class="flex flex-auto"
+				>
+					<FileOutline class="!mr-2" />Wikipedia
+				</a>
+			{:else if item.wikipedia}
+				<!-- item.wikipedia="de:name" -> "https://de.wikipedia.org/wiki/name" -->
+				<a
+					href={`https://${item.wikipedia.split(':')[0]}.wikipedia.org/wiki/${item.wikipedia.split(':')[1]}`}
 					target="_blank"
 					class="flex flex-auto"
 				>

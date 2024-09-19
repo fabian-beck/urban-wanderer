@@ -53,6 +53,7 @@ export async function loadExtracts(places) {
 export async function loadOSMData() {
     const $coordinates = get(coordinates);
     const radius = 100;
+    const waterway = "river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point";
     const amenities = "museum|school|college|university|library|place_of_worship";
     const tourism = "viewpoint|attraction|mall|zoo|theme_park|aquarium|gallery|artwork|memorial|museum|theatre|cinema";
     const historic = "monument|memorial|monument|memorial|ruins|castle|church|tomb|battlefield|fort|city_gate|citywalls|gate|archaeological_site";
@@ -62,6 +63,9 @@ export async function loadOSMData() {
     const overpassQuery = `
 [out:json];
 (
+    // Search for waterways
+    relation[waterway~"${waterway}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+
     // Search for amenities
     node[amenity~"${amenities}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
     way[amenity~"${amenities}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
@@ -106,8 +110,10 @@ out skel qt;
             return {
                 title: tags.name,
                 description: tags.description,
-                type: tags.amenity || tags.tourism || tags.historic || tags.man_made || tags.leisure,
-                url: tags["contact:website"] || tags.website || tags.wikipedia,
+                type: tags.waterway || tags.amenity || tags.tourism ||
+                    tags.historic || tags.man_made || tags.leisure,
+                url: tags["contact:website"] || tags.website,
+                wikipedia: tags.wikipedia,
                 lat: element.lat,
                 lon: element.lon,
                 dist: 0
