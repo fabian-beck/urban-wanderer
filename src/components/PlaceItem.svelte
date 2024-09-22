@@ -1,8 +1,11 @@
 <script>
 	import PlaceDetails from './PlaceDetails.svelte';
+	import { StarSolid } from 'flowbite-svelte-icons';
+	import { preferences } from '../stores.js';
 
 	export let item;
 	export let showDistance = false;
+	export let hideRating = false;
 	let detailsVisible = false;
 </script>
 
@@ -27,11 +30,16 @@
 				</span>
 			{/if}
 		</div>
-		<!-- <div class="mt-1 text-left text-xs">
-			{#if item.labels}
-				{item.labels.join(', ')}
-			{/if}
-		</div> -->
+		{#if !hideRating}
+			<div class="mt-1 flex text-left text-xs">
+				{#if item.wikipedia || item.pageid}
+					<StarSolid size="xs" class="text-primary-800" />
+				{/if}
+				{#if item.labels && item.labels.some((label) => $preferences.labels.includes(label))}
+					<StarSolid size="xs" class="text-primary-800" />
+				{/if}
+			</div>
+		{/if}
 	</button>
 	<PlaceDetails bind:visible={detailsVisible} {item} />
 {/if}

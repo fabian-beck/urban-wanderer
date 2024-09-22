@@ -39,16 +39,21 @@ function createPlaces() {
         update: async () => {
             try {
                 let placesTmp = await loadPlaces();
+                const placcesOsm = await loadOsmData();
+                placesTmp = placesTmp.concat(placcesOsm.filter(osm => !placesTmp.find(place => place.title === osm.title)));
                 const labels = await labelPlaces(placesTmp);
                 placesTmp = placesTmp.map((place, i) => ({ ...place, labels: labels[i] }));
-                const placesHereTmp = placesTmp.filter(place => place.dist < 100 || get(coordinates).address.includes(place.title));
+                const placesSurroundingTmp = placesTmp.filter(place => get(coordinates).address.includes(place.title));
+                const placesHereTmp = placesTmp.filter(place => place.dist < 100 && !placesSurroundingTmp.includes(place));
                 placesHereTmp.forEach(place => place.dist = 0);
                 await loadArticleTexts(placesHereTmp);
-                const placesNearbyTmp = placesTmp.filter(place => !placesHereTmp.includes(place));
+                const placesNearbyTmp = placesTmp.filter(place => !placesHereTmp.includes(place) && !placesSurroundingTmp.includes(place));
                 await loadExtracts(placesNearbyTmp);
-                set(placesTmp);
+                // set stores
+                placesSurrounding.set(placesSurroundingTmp);
                 placesHere.set(placesHereTmp);
                 placesNearby.set(placesNearbyTmp);
+                set(placesTmp);
             } catch (error) {
                 console.error(error);
                 errorMessage.set("Could not load places: " + error);
@@ -65,23 +70,8 @@ export const placesHere = writable([]);
 // places (nearby) store
 export const placesNearby = writable([]);
 
-// OSM places 
-function createOsmPlaces() {
-    const { subscribe, set } = writable(null);
-    return {
-        subscribe,
-        update: async () => {
-            try {
-                set(await loadOsmData());
-            } catch (error) {
-                console.error(error);
-                errorMessage.set(error);
-            }
-        },
-        reset: () => set(null)
-    };
-}
-export const osmPlaces = createOsmPlaces();
+// surrounding places store
+export const placesSurrounding = writable([]);
 
 // story
 export const storyTexts = writable([]);

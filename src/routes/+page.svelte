@@ -1,5 +1,5 @@
 <script>
-	import { coordinates, places, errorMessage, storyTexts, osmPlaces } from '../stores.js';
+	import { coordinates, places, errorMessage, storyTexts } from '../stores.js';
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
 	import Nearby from '../components/Nearby.svelte';
@@ -18,7 +18,6 @@
 			$storyTexts = [];
 			await coordinates.update();
 			await places.update();
-			await osmPlaces.update();
 			loading = false;
 		} catch (error) {
 			console.error('Error getting current position', error);

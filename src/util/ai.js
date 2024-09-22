@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { placesHere, placesNearby, coordinates, preferences, osmPlaces } from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences } from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, lang } from "../constants.js";
 
@@ -96,15 +96,10 @@ ${get(placesHere).map(place =>
 ${place.article}
 `).join("\n")}
 
-Further places that are close are:
-${get(osmPlaces).map(place =>
-                `* ${place.title}`)
-                .join("\n")}
-
 Nearby places are(less important!):
 
                 ${get(placesNearby).map(place =>
-                    `
+                `
 # ${place.title} (${place.dist}m): ${place.labels.join(", ")}
     
 ${place.article}

@@ -20,6 +20,9 @@ export async function loadPlaces() {
 export async function loadArticleTexts(places) {
     await Promise.all(
         places.map(async place => {
+            if (!place.pageid) {
+                return;
+            }
             const response = await fetch(
                 `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=revisions&rvprop=content&rvslots=main`
             );
