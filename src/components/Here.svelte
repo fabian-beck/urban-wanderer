@@ -22,7 +22,7 @@
 		></Alert
 	>
 {/if}
-{#if $placesSurrounding}
+{#if $placesSurrounding.length > 0}
 	<div class="mb-1 mt-2">You are in:</div>
 	<Listgroup items={$placesSurrounding} let:item>
 		<PlaceItem {item} hideRating />

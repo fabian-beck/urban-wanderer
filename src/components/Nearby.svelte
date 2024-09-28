@@ -15,7 +15,10 @@
 </div>
 {#if $placesNearby}
 	{#if $placesNearby.length === 0}
-		<Alert color="primary">Found none&mdash;maybe, walk a bit and refresh?</Alert>
+		<Alert color="primary"
+			>No places found&mdash;you might walk a bit more or increase the search radius in the user
+			preferences.</Alert
+		>
 	{:else}
 		<div class="mb-1">Most relevant</div>
 		<Listgroup items={placesFiltered} let:item>

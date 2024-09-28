@@ -17,9 +17,24 @@
 		class="w-full"
 	>
 		<div class="flex">
-			<span class="flex flex-auto overflow-hidden text-left">
-				<b>{item.title}</b>
-			</span>
+			<div class="flex flex-auto overflow-hidden text-left">
+				<b class="mr-1">{item.title}</b>
+				{#if item.type === 'address'}🏙️
+				{:else if item.type === 'river' || item.type === 'stream'}🌊
+				{:else if item.type === 'monument' || item.type === 'memorial' || item.type === 'museu' || item.type === 'library'}🏛️
+				{:else if item.type === 'tomb'}🪦
+				{:else if item.type === 'place_of_worship'}⛪
+				{:else if item.type === 'castle'}🏰
+				{:else if item.type === 'park'}🌳
+				{:else if item.type === 'attraction'}🎡
+				{:else if item.type === 'communications_tower'}🗼
+				{:else if item.type === 'stadium'}🏟️
+				{:else if item.type === 'artwork' || item.type === 'statue'}🗽
+				{:else if item.type === 'ruins'}🏚️
+				{:else if item.type}
+					({item.type})
+				{/if}
+			</div>
 			{#if showDistance}
 				<span class="text-right text-xs">
 					{#if item.dist >= 50}

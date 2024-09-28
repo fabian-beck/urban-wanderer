@@ -10,13 +10,13 @@
 
 	let loading = false;
 
-	const update = async () => {
+	const update = async (random = false) => {
 		try {
 			loading = true;
 			places.reset();
 			coordinates.reset();
 			$storyTexts = [];
-			await coordinates.update();
+			await coordinates.update(random);
 			await places.update();
 			loading = false;
 		} catch (error) {
@@ -25,7 +25,7 @@
 	};
 </script>
 
-<Header />
+<Header updateRandom={() => update(true)} />
 <main id="main" class="mb-10 p-4 py-20">
 	{#if $errorMessage}
 		<Alert type="danger" class="mb-4 flex text-xs">
@@ -53,4 +53,4 @@
 		{/if}
 	{/if}
 </main>
-<Location {loading} {update} />
+<Location {loading} update={() => update(false)} />

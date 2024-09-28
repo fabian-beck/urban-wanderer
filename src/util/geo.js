@@ -8,10 +8,10 @@ export async function loadPlaces() {
         return;
     }
     const places = await wikipediaGeoSearchForPlaces($coordinates);
-    if ($coordinates.village && !places.find(place => place.title === $coordinates.village)) {
+    if ($coordinates.village && !places.find(place => place?.title.replace(/\s*\(.*?\)\s*/g, "") === $coordinates.village)) {
         places.push(await wikipediaNameSearchForPlace($coordinates.village));
     }
-    if ($coordinates.town && !places.find(place => place.title === $coordinates.town)) {
+    if ($coordinates.town && !places.find(place => place?.title.replace(/\s*\(.*?\)\s*/g, "") === $coordinates.town)) {
         places.push(await wikipediaNameSearchForPlace($coordinates.town));
     }
     return places;
@@ -53,7 +53,7 @@ export async function loadExtracts(places) {
     );
 }
 
-export async function loadOSMData() {
+export async function loadOsmData() {
     const $coordinates = get(coordinates);
     const radius = 100;
     const waterway = "river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point";
@@ -98,7 +98,6 @@ out body;
 >;
 out skel qt;
 `;
-    console.log(overpassQuery);
     const response = await fetch("https://overpass-api.de/api/interpreter", {
         method: "POST",
         headers: {
@@ -125,6 +124,21 @@ out skel qt;
     );
     console.log(places);
     return places;
+}
+
+export async function loadAddressData(coords) {
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1`);
+    return await response.json();
+}
+
+export async function getRandomPlaceCoordinates() {
+    while (true) {
+        const response = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/random/summary`);
+        const data = await response.json();
+        if (data.coordinates) {
+            return { latitude: data.coordinates.lat, longitude: data.coordinates.lon };
+        }
+    }
 }
 
 async function wikipediaGeoSearchForPlaces(coordinates) {

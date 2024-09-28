@@ -3,6 +3,7 @@
 	import { Navbar, NavBrand, NavHamburger, NavUl, NavLi } from 'flowbite-svelte';
 	import UserPreferences from './UserPreferences.svelte';
 
+	export let updateRandom;
 	let preferencesVisible = false;
 	let hideNavUl = true;
 </script>
@@ -22,7 +23,16 @@
 			on:click={() => {
 				preferencesVisible = true;
 				hideNavUl = true;
-			}}>Preferences</NavLi
+			}}
+		>
+			Preferences</NavLi
+		>
+		<NavLi
+			class="bg-white"
+			on:click={() => {
+				hideNavUl = true;
+				updateRandom();
+			}}>Travel to random place</NavLi
 		>
 	</NavUl>
 </Navbar>

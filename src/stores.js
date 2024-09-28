@@ -1,20 +1,25 @@
 import { writable, get } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
-import { LABELS } from './constants.js';
+import { LABELS } from "./constants.js";
 import { labelPlaces } from "./util/ai.js";
-import { loadPlaces, loadArticleTexts, loadExtracts, loadOSMData as loadOsmData } from "./util/geo.js";
+import { loadPlaces, loadArticleTexts, loadExtracts, loadOsmData, loadAddressData, getRandomPlaceCoordinates } from "./util/geo.js";
 
 // Coordinates stores
 function createCoordinates() {
     const { subscribe, set } = writable(null);
     return {
         subscribe,
-        update: async () => {
+        update: async (random = false) => {
             try {
-                const coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1`);
-                const data = await response.json();
-                set({ latitude: coords.latitude, longitude: coords.longitude, address: data.display_name, town: data.address.town, village: data.address.village });
+                let coords;
+                if (random) {
+                    coords = await getRandomPlaceCoordinates();
+                } else {
+                    coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
+                }
+                const addressData = await loadAddressData(coords);
+                console.log(addressData);
+                set({ latitude: coords.latitude, longitude: coords.longitude, address: addressData.display_name, town: addressData.address.town || addressData.address.city, village: addressData.address.village || addressData.address.city_district });
             } catch (error) {
                 console.error(error);
                 errorMessage.set(error);
@@ -40,10 +45,39 @@ function createPlaces() {
             try {
                 let placesTmp = await loadPlaces();
                 const placcesOsm = await loadOsmData();
-                placesTmp = placesTmp.concat(placcesOsm.filter(osm => !placesTmp.find(place => place.title === osm.title)));
+                // placesTmp = placesTmp.map(place => {
+                //     // ignore title text in brackets
+                //     const title = place.title.replace(/\s*\(.*?\)\s*/g, "");
+                //     const osm = placcesOsm.find(osm => osm.title.replace(/\s*\(.*?\)\s*/g, "") === title);
+                //     if (osm) {
+                //         const merged = { ...place, ...osm };
+                //         console.log(merged);
+                //         return merged;
+                //     }
+                //     return place;
+                // });
+                // go through osm placces 
+                // * add when not already in placesTmp OR
+                // * merge with existing place
+                placcesOsm.forEach(osm => {
+                    const title = osm.title.replace(/\s*\(.*?\)\s*/g, "");
+                    const place = placesTmp.find(place => place.title.replace(/\s*\(.*?\)\s*/g, "") === title);
+                    if (place) {
+                        place.type = osm.type;
+                        place.url = osm.url;
+                        place.wikipedia = osm.wikipedia;
+                    } else {
+                        placesTmp.push(osm);
+                    }
+                });
                 const labels = await labelPlaces(placesTmp);
                 placesTmp = placesTmp.map((place, i) => ({ ...place, labels: labels[i] }));
-                const placesSurroundingTmp = placesTmp.filter(place => get(coordinates).address.includes(place.title));
+                const placesSurroundingTmp = placesTmp.filter(place => {
+                    if (get(coordinates).town === place.title || get(coordinates).village === place.title) {
+                        place.type = "address";
+                        return true;
+                    }
+                });
                 const placesHereTmp = placesTmp.filter(place => place.dist < 100 && !placesSurroundingTmp.includes(place));
                 placesHereTmp.forEach(place => place.dist = 0);
                 await loadArticleTexts(placesHereTmp);

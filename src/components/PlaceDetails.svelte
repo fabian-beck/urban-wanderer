@@ -14,7 +14,6 @@
 	export let item;
 
 	onMount(async () => {
-		console.log(item);
 		if (item.pageid || item.wikipedia) {
 			const url = item.pageid
 				? `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
