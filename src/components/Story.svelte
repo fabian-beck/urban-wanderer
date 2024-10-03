@@ -20,7 +20,7 @@
 	};
 </script>
 
-<div class="mb-2 flex flex items-center text-primary-800">
+<div class="mb-2 flex flex h-8 items-center text-primary-800">
 	<MessageDotsOutline />
 	<h2 class="ml-2 flex-auto text-xl">Story</h2>
 	{#if $storyTexts.length === 0 && !loading}

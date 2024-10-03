@@ -8,10 +8,10 @@ export async function loadPlaces() {
         return;
     }
     const places = await wikipediaGeoSearchForPlaces($coordinates);
-    if ($coordinates.village && !places.find(place => place?.title.replace(/\s*\(.*?\)\s*/g, "") === $coordinates.village)) {
+    if ($coordinates.village && !places.find(place => place?.title === $coordinates.village)) {
         places.push(await wikipediaNameSearchForPlace($coordinates.village));
     }
-    if ($coordinates.town && !places.find(place => place?.title.replace(/\s*\(.*?\)\s*/g, "") === $coordinates.town)) {
+    if ($coordinates.town && !places.find(place => place?.title === $coordinates.town)) {
         places.push(await wikipediaNameSearchForPlace($coordinates.town));
     }
     return places;
@@ -128,7 +128,9 @@ out skel qt;
 
 export async function loadAddressData(coords) {
     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1`);
-    return await response.json();
+    const data = await response.json();
+    console.log(data);
+    return data;
 }
 
 export async function getRandomPlaceCoordinates() {
@@ -146,6 +148,10 @@ async function wikipediaGeoSearchForPlaces(coordinates) {
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.latitude}|${coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`
     );
     const data = await response.json();
+    // remove brackets from titles
+    data.query.geosearch.forEach(place => {
+        place.title = place.title.replace(/\s*\(.*?\)\s*/g, "");
+    });
     return data.query.geosearch;
 }
 

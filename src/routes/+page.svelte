@@ -12,6 +12,7 @@
 
 	const update = async (random = false) => {
 		try {
+			errorMessage.set(null);
 			loading = true;
 			places.reset();
 			coordinates.reset();
@@ -20,7 +21,9 @@
 			await places.update();
 			loading = false;
 		} catch (error) {
-			console.error('Error getting current position', error);
+			loading = false;
+			errorMessage.set('Error updating location: ' + error);
+			console.error('Error updating location', error);
 		}
 	};
 </script>

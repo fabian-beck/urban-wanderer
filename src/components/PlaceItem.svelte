@@ -18,22 +18,26 @@
 	>
 		<div class="flex">
 			<div class="flex flex-auto overflow-hidden text-left">
-				<b class="mr-1">{item.title}</b>
-				{#if item.type === 'address'}🏙️
-				{:else if item.type === 'river' || item.type === 'stream'}🌊
-				{:else if item.type === 'monument' || item.type === 'memorial' || item.type === 'museu' || item.type === 'library'}🏛️
-				{:else if item.type === 'tomb'}🪦
-				{:else if item.type === 'place_of_worship'}⛪
-				{:else if item.type === 'castle'}🏰
-				{:else if item.type === 'park'}🌳
-				{:else if item.type === 'attraction'}🎡
-				{:else if item.type === 'communications_tower'}🗼
-				{:else if item.type === 'stadium'}🏟️
-				{:else if item.type === 'artwork' || item.type === 'statue'}🗽
-				{:else if item.type === 'ruins'}🏚️
-				{:else if item.type}
-					({item.type})
-				{/if}
+				<span class="text-m mr-lg text-lg"
+					>{item.title}
+					{#if item.type === 'address'}🏙️
+					{:else if item.type === 'river' || item.type === 'stream'}🌊
+					{:else if item.type === 'monument' || item.type === 'memorial' || item.type === 'museum' || item.type === 'library'}🏛️
+					{:else if item.type === 'university' || item.type === 'college' || item.type === 'school'}🎓
+					{:else if item.type === 'tomb'}🪦
+					{:else if item.type === 'place_of_worship'}⛪
+					{:else if item.type === 'castle'}🏰
+					{:else if item.type === 'park' || item.type === 'nature_reserve'}🌳
+					{:else if item.type === 'attraction'}🎡
+					{:else if item.type === 'communications_tower'}🗼
+					{:else if item.type === 'stadium' || item.type === 'sports_centre'}⚽
+					{:else if item.type === 'artwork' || item.type === 'statue'}🗽
+					{:else if item.type === 'ruins'}🏚️
+					{:else if item.type === 'gallery'}🖼️
+					{:else if item.type}
+						({item.type})
+					{/if}
+				</span>
 			</div>
 			{#if showDistance}
 				<span class="text-right text-xs">
@@ -51,6 +55,12 @@
 					<StarSolid size="xs" class="text-primary-800" />
 				{/if}
 				{#if item.labels && item.labels.some((label) => $preferences.labels.includes(label))}
+					<StarSolid size="xs" class="text-primary-800" />
+				{/if}
+				{#if item.rating > 3}
+					<StarSolid size="xs" class="text-primary-800" />
+				{/if}
+				{#if item.rating > 4}
 					<StarSolid size="xs" class="text-primary-800" />
 				{/if}
 			</div>

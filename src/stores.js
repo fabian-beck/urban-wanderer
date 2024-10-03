@@ -1,7 +1,7 @@
 import { writable, get } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { LABELS } from "./constants.js";
-import { labelPlaces } from "./util/ai.js";
+import { labelPlaces, ratePlaces } from "./util/ai.js";
 import { loadPlaces, loadArticleTexts, loadExtracts, loadOsmData, loadAddressData, getRandomPlaceCoordinates } from "./util/geo.js";
 
 // Coordinates stores
@@ -32,7 +32,7 @@ export const coordinates = createCoordinates();
 
 // Uers preferences store
 export const preferences = writable({
-    radius: 1000,
+    radius: 500,
     labels: LABELS
 });
 
@@ -45,23 +45,8 @@ function createPlaces() {
             try {
                 let placesTmp = await loadPlaces();
                 const placcesOsm = await loadOsmData();
-                // placesTmp = placesTmp.map(place => {
-                //     // ignore title text in brackets
-                //     const title = place.title.replace(/\s*\(.*?\)\s*/g, "");
-                //     const osm = placcesOsm.find(osm => osm.title.replace(/\s*\(.*?\)\s*/g, "") === title);
-                //     if (osm) {
-                //         const merged = { ...place, ...osm };
-                //         console.log(merged);
-                //         return merged;
-                //     }
-                //     return place;
-                // });
-                // go through osm placces 
-                // * add when not already in placesTmp OR
-                // * merge with existing place
                 placcesOsm.forEach(osm => {
-                    const title = osm.title.replace(/\s*\(.*?\)\s*/g, "");
-                    const place = placesTmp.find(place => place.title.replace(/\s*\(.*?\)\s*/g, "") === title);
+                    const place = placesTmp.find(place => place.title === osm.title);
                     if (place) {
                         place.type = osm.type;
                         place.url = osm.url;
@@ -72,8 +57,10 @@ function createPlaces() {
                 });
                 const labels = await labelPlaces(placesTmp);
                 placesTmp = placesTmp.map((place, i) => ({ ...place, labels: labels[i] }));
+                // cut first part (unit comma) from address 
+                const addressRemainder = get(coordinates).address.split(", ").slice(1).join(", ");
                 const placesSurroundingTmp = placesTmp.filter(place => {
-                    if (get(coordinates).town === place.title || get(coordinates).village === place.title) {
+                    if (addressRemainder.includes(place.title)) {
                         place.type = "address";
                         return true;
                     }
@@ -83,6 +70,7 @@ function createPlaces() {
                 await loadArticleTexts(placesHereTmp);
                 const placesNearbyTmp = placesTmp.filter(place => !placesHereTmp.includes(place) && !placesSurroundingTmp.includes(place));
                 await loadExtracts(placesNearbyTmp);
+                await ratePlaces(placesTmp);
                 // set stores
                 placesSurrounding.set(placesSurroundingTmp);
                 placesHere.set(placesHereTmp);

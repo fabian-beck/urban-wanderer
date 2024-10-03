@@ -9,6 +9,7 @@
 		SearchOutline
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai.js';
+	import { coordinates } from '../stores.js';
 
 	export let visible = false;
 	export let item;
@@ -59,7 +60,7 @@
 				</a>
 			{:else}
 				<a
-					href={`https://www.google.com/search?q=${item.title}`}
+					href={`https://www.google.com/search?q=${item.title} ${$coordinates.town}`}
 					target="_blank"
 					class="flex flex-auto"
 				>
@@ -67,7 +68,7 @@
 				</a>
 			{/if}
 			<a
-				href={`https://www.google.com/maps/search/?api=1&query=${item.title}`}
+				href={`https://www.google.com/maps/search/?api=1&query=${item.title}&near=${$coordinates.latitude},${$coordinates.longitude}`}
 				target="_blank"
 				class="flex"
 			>
