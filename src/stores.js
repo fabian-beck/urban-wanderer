@@ -9,12 +9,11 @@ function createCoordinates() {
     const { subscribe, set } = writable(null);
     return {
         subscribe,
-        update: async (random = false) => {
+        update: async (coords) => {
             try {
-                let coords;
-                if (random) {
+                if (coords === "random") {
                     coords = await getRandomPlaceCoordinates();
-                } else {
+                } else if (!coords) {
                     coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
                 }
                 const addressData = await loadAddressData(coords);

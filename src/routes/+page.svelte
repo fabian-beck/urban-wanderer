@@ -1,4 +1,6 @@
 <script>
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { coordinates, places, errorMessage, storyTexts, loadingMessage } from '../stores.js';
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
@@ -7,10 +9,18 @@
 	import { Alert, CloseButton, Spinner } from 'flowbite-svelte';
 	import { appName } from '../constants.js';
 	import Here from '../components/Here.svelte';
+	import { onMount } from 'svelte';
 
 	let loading = false;
 
-	const update = async (random = false) => {
+	const updateUrlParamsWithCoordinates = async () => {
+		const newUrl = new URL($page.url);
+		newUrl.searchParams.set('lat', $coordinates.latitude);
+		newUrl.searchParams.set('lon', $coordinates.longitude);
+		await goto(newUrl.toString(), { replaceState: false });
+	};
+
+	const update = async (coords) => {
 		try {
 			errorMessage.set(null);
 			loading = true;
@@ -18,7 +28,8 @@
 			coordinates.reset();
 			$storyTexts = [];
 			loadingMessage.set('Updating location...');
-			await coordinates.update(random);
+			await coordinates.update(coords);
+			await updateUrlParamsWithCoordinates();
 			await places.update();
 			loading = false;
 			loadingMessage.set(null);
@@ -28,9 +39,18 @@
 			console.error('Error updating location', error);
 		}
 	};
+
+	onMount(() => {
+		const urlParams = $page.url.searchParams;
+		const lat = parseFloat(urlParams.get('lat'));
+		const lon = parseFloat(urlParams.get('lon'));
+		if (lat && lon) {
+			update({ latitude: lat, longitude: lon });
+		}
+	});
 </script>
 
-<Header updateRandom={() => update(true)} />
+<Header updateRandom={() => update('random')} />
 <main id="main" class="mb-10 p-4 py-20">
 	{#if $errorMessage}
 		<Alert type="danger" class="mb-4 flex text-xs">

@@ -127,7 +127,7 @@ out skel qt;
 }
 
 export async function loadAddressData(coords) {
-    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1`);
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1&accept-language=${lang}`);
     const data = await response.json();
     console.log(data);
     return data;
