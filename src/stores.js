@@ -43,7 +43,9 @@ function createPlaces() {
         subscribe,
         update: async () => {
             try {
+                loadingMessage.set("Loading places from Wikipedia ...");
                 let placesTmp = await loadPlaces();
+                loadingMessage.set("Loading places from OpenStreetMap ...");
                 const placcesOsm = await loadOsmData();
                 placcesOsm.forEach(osm => {
                     const place = placesTmp.find(place => place.title === osm.title);
@@ -55,6 +57,7 @@ function createPlaces() {
                         placesTmp.push(osm);
                     }
                 });
+                loadingMessage.set("Labeling places ...");
                 const labels = await labelPlaces(placesTmp);
                 placesTmp = placesTmp.map((place, i) => ({ ...place, labels: labels[i] }));
                 // cut first part (unit comma) from address 
@@ -67,9 +70,12 @@ function createPlaces() {
                 });
                 const placesHereTmp = placesTmp.filter(place => place.dist < 100 && !placesSurroundingTmp.includes(place));
                 placesHereTmp.forEach(place => place.dist = 0);
+                loadingMessage.set("Loading article texts ...");
                 await loadArticleTexts(placesHereTmp);
                 const placesNearbyTmp = placesTmp.filter(place => !placesHereTmp.includes(place) && !placesSurroundingTmp.includes(place));
+                loadingMessage.set("Loading extracts ...");
                 await loadExtracts(placesNearbyTmp);
+                loadingMessage.set("Rating places ...");
                 await ratePlaces(placesTmp);
                 // set stores
                 placesSurrounding.set(placesSurroundingTmp);
@@ -100,3 +106,6 @@ export const storyTexts = writable([]);
 
 // error store
 export const errorMessage = writable(null);
+
+// loading message store
+export const loadingMessage = writable(null);

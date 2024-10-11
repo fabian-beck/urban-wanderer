@@ -1,5 +1,5 @@
 <script>
-	import { coordinates, places, errorMessage, storyTexts } from '../stores.js';
+	import { coordinates, places, errorMessage, storyTexts, loadingMessage } from '../stores.js';
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
 	import Nearby from '../components/Nearby.svelte';
@@ -17,9 +17,11 @@
 			places.reset();
 			coordinates.reset();
 			$storyTexts = [];
+			loadingMessage.set('Updating location...');
 			await coordinates.update(random);
 			await places.update();
 			loading = false;
+			loadingMessage.set(null);
 		} catch (error) {
 			loading = false;
 			errorMessage.set('Error updating location: ' + error);
@@ -50,8 +52,11 @@
 		</div>
 		<h1 class="uw-font text-center text-3xl text-primary-800">{appName}</h1>
 		{#if loading}
-			<div class="m-6 flex justify-center">
-				<Spinner />
+			<div class="m-6 text-center">
+				<p><Spinner /></p>
+				{#if $loadingMessage}
+					<p class="mt-2 text-xs text-gray-600">{$loadingMessage}</p>
+				{/if}
 			</div>
 		{/if}
 	{/if}
