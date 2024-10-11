@@ -30,6 +30,9 @@
 
 <Modal title={item.title} bind:open={visible} autoclose>
 	<div class="flex flex-col">
+		{#if item.image}
+			<img src={item.image} alt={item.title} class="mb-2 h-64 w-full object-cover" />
+		{/if}
 		<div class="flex flex-auto">
 			{#if item.summary}
 				{item.summary}
@@ -56,17 +59,16 @@
 				</a>
 			{:else if item.url}
 				<a href={item.url} target="_blank" class="flex flex-auto">
-					<GlobeOutline class="!mr-2" />Web page
-				</a>
-			{:else}
-				<a
-					href={`https://www.google.com/search?q=${item.title} ${$coordinates.town}`}
-					target="_blank"
-					class="flex flex-auto"
-				>
-					<SearchOutline class="!mr-2" />Web search
+					<GlobeOutline class="!mr-2" />Page
 				</a>
 			{/if}
+			<a
+				href={`https://www.google.com/search?q=${item.title} ${$coordinates.town}`}
+				target="_blank"
+				class="flex flex-auto"
+			>
+				<SearchOutline class="!mr-2" />Search
+			</a>
 			<a
 				href={`https://www.google.com/maps/search/?api=1&query=${item.title}&near=${$coordinates.latitude},${$coordinates.longitude}`}
 				target="_blank"

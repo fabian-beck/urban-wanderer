@@ -53,6 +53,31 @@ export async function loadExtracts(places) {
     );
 }
 
+export async function loadWikipediaImageUrls(places) {
+    await Promise.all(
+        places.map(async place => {
+            let response;
+            if (place.wikipedia) {
+                const placeLang = place.wikipedia.split(":")[0];
+                const placeTitle = place.wikipedia.split(":")[1];
+                response = await fetch(
+                    `https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${placeTitle}&origin=*&pithumbsize=500`
+                );
+            } else if (place.pageid) {
+                response = await fetch(
+                    `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=500`
+                );
+            }
+            if (!response) {
+                return;
+            }
+            const data = await response.json();
+            const pageid = Object.keys(data.query.pages)[0];
+            place.image = data.query.pages[pageid].thumbnail?.source;
+        })
+    );
+}
+
 export async function loadOsmData() {
     const $coordinates = get(coordinates);
     const radius = 100;
@@ -109,8 +134,10 @@ out skel qt;
     const places = data.elements.filter(element => element.tags?.name).map(
         element => {
             const tags = element.tags;
+            let title = tags.name.replace(/\s*\(.*?\)\s*/g, "");
+            title = title.split(",")[0];
             return {
-                title: tags.name,
+                title: title,
                 description: tags.description,
                 type: tags.waterway || tags.amenity || tags.tourism ||
                     tags.historic || tags.man_made || tags.leisure,
@@ -148,9 +175,11 @@ async function wikipediaGeoSearchForPlaces(coordinates) {
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.latitude}|${coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`
     );
     const data = await response.json();
-    // remove brackets from titles
     data.query.geosearch.forEach(place => {
+        // remove brackets from titles
         place.title = place.title.replace(/\s*\(.*?\)\s*/g, "");
+        // remove text after comma
+        place.title = place.title.split(",")[0];
     });
     return data.query.geosearch;
 }
@@ -160,5 +189,9 @@ async function wikipediaNameSearchForPlace(name) {
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${name}&srlimit=1&format=json&origin=*`
     );
     const data2 = await response2.json();
-    return data2.query.search[0];
+    const place = data2.query.search[0];
+    place.title.replace(/\s*\(.*?\)\s*/g, "");
+    place.title = place.title.split(",")[0];
+    return place;
 }
+

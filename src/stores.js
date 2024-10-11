@@ -2,7 +2,7 @@ import { writable, get } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { LABELS } from "./constants.js";
 import { labelPlaces, ratePlaces } from "./util/ai.js";
-import { loadPlaces, loadArticleTexts, loadExtracts, loadOsmData, loadAddressData, getRandomPlaceCoordinates } from "./util/geo.js";
+import { loadPlaces, loadArticleTexts, loadExtracts, loadOsmData, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
 
 // Coordinates stores
 function createCoordinates() {
@@ -74,6 +74,8 @@ function createPlaces() {
                 const placesNearbyTmp = placesTmp.filter(place => !placesHereTmp.includes(place) && !placesSurroundingTmp.includes(place));
                 loadingMessage.set("Loading extracts ...");
                 await loadExtracts(placesNearbyTmp);
+                loadingMessage.set("Loading images ...");
+                await loadWikipediaImageUrls(placesTmp);
                 loadingMessage.set("Rating places ...");
                 await ratePlaces(placesTmp);
                 // set stores
