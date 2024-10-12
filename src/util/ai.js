@@ -24,14 +24,14 @@ export async function labelPlaces() {
                 Available labels are:
                 ${LABELS.map(label => `- ${label}`).join("\n")}
 
-                Answer with up to three labels that best describes the place, but if possible you better answer with less than three labels.
+                Answer with up to three labels that best describes the place.
                 
                 For a list of places [A, B, C] output a JSON object like this:
             
                 {
                     "A": ["LABEL1", "LABEL2"],
                     "B": ["LABEL1"],
-                    "C": ["LABEL2"]
+                    "C": ["LABEL2", "LABEL3", "LABEL4"]
                 }`,
 
                 },

@@ -45,8 +45,8 @@ function createPlaces() {
             try {
                 let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
                 set(mergePlaces(placesTmp, placesOsm));
+                await labelPlaces();
                 // load metadata (but not waiting for it)
-                labelPlaces();
                 loadMetadataAndRate();
             } catch (error) {
                 console.error(error);
