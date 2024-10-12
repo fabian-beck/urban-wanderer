@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { placesHere, placesNearby, coordinates, preferences } from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences, places, placesSurrounding } from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, lang } from "../constants.js";
 
@@ -9,9 +9,10 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: tru
 const labelsCache = {};
 
 // label places
-export async function labelPlaces(places) {
+export async function labelPlaces() {
+    const $places = get(places);
     // get places with cached labels (labelsCache)
-    const placesWithoutCachedLabels = places.filter(place => !labelsCache[place.pageid]);
+    const placesWithoutCachedLabels = $places.filter(place => !labelsCache[place.pageid]);
 
     if (placesWithoutCachedLabels.length > 0) {
         const completion = await openai.chat.completions.create({
@@ -46,19 +47,20 @@ export async function labelPlaces(places) {
 
         // update cache
         Object.entries(json).forEach(([title, labels]) => {
-            const place = places.find(place => place.title === title);
+            const place = $places.find(place => place.title === title);
             if (!place) {
                 return;
             }
             labelsCache[place.pageid] = labels;
         });
     }
-    return places.map(place => labelsCache[place.pageid]);
+    places.set($places.map(place => ({ ...place, labels: labelsCache[place.pageid] })));
 }
 
 // rate places based on their impact and importance to the user's environment 
 // return a list of places with their ratings
-export async function ratePlaces(places) {
+export async function ratePlaces() {
+    const $places = get(places);
     const instructions = `You are a chat assistant helping a user rate places based on their impact and importance to the user's environment.
 
 Rate the following places based on their impact and importance for its immediate geographic environment. For instance:
@@ -72,10 +74,10 @@ Rate the following places based on their impact and importance for its immediate
 
 Assign each place a rating from 1 to 5, where 1 is the lowest and 5 is the highest. If you are unsure, you can skip the place.
 
-${places.map(place => `# ${place.title}: ${place.labels?.join(", ")}\n`).join("\n")}
+${$places.map(place => `# ${place.title}: ${place.labels?.join(", ")}\n`).join("\n")}
 
 Background information on the places:
-${places.map(place => `${place.article}\n`).join("\n")}
+${$places.map(place => `${place.article}\n`).join("\n")}
 
 Return a JSON object, for instance, like this for a list of places [A, B, C]:
     {
@@ -97,12 +99,8 @@ Return a JSON object, for instance, like this for a list of places [A, B, C]:
     });
 
     console.log(completion.choices[0].message.content);
-
-    // assign ratings to places
     const json = JSON.parse(completion.choices[0].message.content);
-    places.forEach(place => {
-        place.rating = json[place.title];
-    });
+    places.set($places.map(place => ({ ...place, rating: json[place.title] })));
 }
 
 // summarize article

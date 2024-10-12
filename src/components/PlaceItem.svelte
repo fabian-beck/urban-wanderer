@@ -51,17 +51,21 @@
 		</div>
 		{#if !hideRating}
 			<div class="mt-1 flex text-left text-xs">
-				{#if item.wikipedia || item.pageid}
-					<StarSolid size="xs" class="text-primary-800" />
-				{/if}
-				{#if item.labels && item.labels.some((label) => $preferences.labels.includes(label))}
-					<StarSolid size="xs" class="text-primary-800" />
-				{/if}
-				{#if item.rating > 3}
-					<StarSolid size="xs" class="text-primary-800" />
-				{/if}
-				{#if item.rating > 4}
-					<StarSolid size="xs" class="text-primary-800" />
+				{#if item.rating}
+					{#if item.wikipedia || item.pageid}
+						<StarSolid size="xs" class="text-primary-800" />
+					{/if}
+					{#if item.labels && item.labels.some((label) => $preferences.labels.includes(label))}
+						<StarSolid size="xs" class="text-primary-800" />
+					{/if}
+					{#if item.rating > 3}
+						<StarSolid size="xs" class="text-primary-800" />
+					{/if}
+					{#if item.rating > 4}
+						<StarSolid size="xs" class="text-primary-800" />
+					{/if}
+				{:else}
+					...
 				{/if}
 			</div>
 		{/if}

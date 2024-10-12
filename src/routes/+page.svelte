@@ -22,19 +22,21 @@
 
 	const update = async (coords) => {
 		try {
-			errorMessage.set(null);
 			loading = true;
+			errorMessage.set(null);
 			places.reset();
 			coordinates.reset();
 			$storyTexts = [];
 			loadingMessage.set('Updating location...');
 			await coordinates.update(coords);
 			await updateUrlParamsWithCoordinates();
+			loadingMessage.set('Loading places ...');
 			await places.update();
 			loading = false;
 			loadingMessage.set(null);
 		} catch (error) {
 			loading = false;
+			loadingMessage.set(null);
 			errorMessage.set('Error updating location: ' + error);
 			console.error('Error updating location', error);
 		}
