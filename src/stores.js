@@ -2,7 +2,7 @@ import { writable, get, derived } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { LABELS } from "./constants.js";
 import { labelPlaces, ratePlaces } from "./util/ai.js";
-import { loadPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmData as loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
+import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmData as loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
 
 // Coordinates stores
 function createCoordinates() {
@@ -17,7 +17,6 @@ function createCoordinates() {
                     coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
                 }
                 const addressData = await loadAddressData(coords);
-                console.log(addressData);
                 set({ latitude: coords.latitude, longitude: coords.longitude, address: addressData.display_name, town: addressData.address.town || addressData.address.city, village: addressData.address.village || addressData.address.city_district });
             } catch (error) {
                 console.error(error);
@@ -45,6 +44,7 @@ function createPlaces() {
             try {
                 let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
                 set(mergePlaces(placesTmp, placesOsm));
+                loadingMessage.set("Labeling places...");
                 await labelPlaces();
                 console.log('Places after labeling:', get(places));
                 loadMetadataAndRate();

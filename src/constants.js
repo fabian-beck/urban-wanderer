@@ -3,6 +3,103 @@ export const appName = 'Urban Wanderer';
 export const nArticles = 30;
 export const lang = 'en';
 
+export const CLASSES = {
+    'AIRPORT': {
+        emoji: '✈️',
+        description: 'Airport'
+    },
+    'ARCHEOLOGICAL_SITE': {
+        emoji: '⛏️',
+        description: 'Archeological Site'
+    },
+    'AREA/DISTRICT': {
+        emoji: '🏘️',
+        description: 'Area or district of a city (e.g., a specific neighborhood, a harbor, a business district)'
+    },
+    'BRIDGE': {
+        emoji: '🌉',
+        description: 'Bridge'
+    },
+    'BUILDING': {
+        emoji: '🏢',
+        description: 'Building of any kind (e.g., a house, a skyscraper, a factory)'
+    },
+    'CITY': {
+        emoji: '🏙️',
+        description: 'City or village'
+    },
+    'BUSINESS': {
+        emoji: '💼',
+        description: 'Business (e.g., a shop, a restaurant, a hotel)'
+    },
+    'EVENT': {
+        emoji: '🎉',
+        description: 'Event that happend at this place',
+        nonGeo: true
+    },
+    'INSTITUTION': {
+        emoji: '🏛️',
+        description: 'Institution (e.g., a school, a hospital, a government building)'
+    },
+    'LANDMARK': {
+        emoji: '📍 ',
+        description: 'Landmark'
+    },
+    'HOSPITAL': {
+        emoji: '🏥',
+        description: 'Medical facility (e.g., a hospital, a clinic)'
+    },
+    'MONUMENT': {
+        emoji: '🗿',
+        description: 'Monument'
+    },
+    'MOUNTAIN': {
+        emoji: '⛰️',
+        description: 'Mountain'
+    },
+    'MUSEUM': {
+        emoji: '🖼️',
+        description: 'Museum'
+    },
+    'PARK': {
+        emoji: '🌳',
+        description: 'Park'
+    },
+    'PERSON': {
+        emoji: '👤',
+        description: 'Person',
+        nonGeo: true
+    },
+    'PLACE_OF_WORSHIP': {
+        emoji: '🛐',
+        description: 'Place of worship'
+    },
+    'STATE/COUNTRY': {
+        emoji: '🌍',
+        description: 'State or country'
+    },
+    'STATUE': {
+        emoji: '🗽',
+        description: 'Statue'
+    },
+    'STATION': {
+        emoji: '🚉',
+        description: 'Station (e.g., a train station, a bus station)'
+    },
+    'STREET/SQUARE': {
+        emoji: '🛣️',
+        description: 'Street or square'
+    },
+    'UNIVERSITY/SCHOOL': {
+        emoji: '🎓',
+        description: 'University, college, or school'
+    },
+    'WATERBODY': {
+        emoji: '🌊',
+        description: 'Waterbody (e.g., a river, a lake, an ocean)'
+    }
+};
+
 export const LABELS = [
     "ARCHITECTURE",
     "CULTURE",

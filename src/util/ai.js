@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { placesHere, placesNearby, coordinates, preferences, places, placesSurrounding } from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences, places, } from "../stores.js";
 import { get } from "svelte/store";
-import { LABELS, lang } from "../constants.js";
+import { LABELS, CLASSES, lang } from "../constants.js";
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
@@ -12,50 +12,74 @@ const labelsCache = {};
 // TODO: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
 export async function labelPlaces() {
     const $places = get(places);
+    console.log('Places before labeling:', $places);
     // get places with cached labels (labelsCache)
-    const placesWithoutCachedLabels = $places.filter(place => !labelsCache[place.pageid]);
+    const placesWithoutCachedLabels = $places.filter(place => !labelsCache[place.title]);
 
     if (placesWithoutCachedLabels.length > 0) {
+        const instructions =  `You are a chat assistant helping a user classify and label places.
+
+Available CLASSES are:
+${Object.keys(CLASSES).map(label => `- ${label}`).join("\n")}
+        
+Available LABELS are:
+${LABELS.map(label => `- ${label}`).join("\n")}
+
+To best best characterize the place answer with 
+* exactly one class and
+* up to three labels.
+
+For a list of places [A, B, C] and their descriptions output a JSON object like this:
+
+{
+    "A": {
+        class: "CLASS1",
+        labels: ["LABEL1", "LABEL2"]
+    },
+    "B": {
+        class: "CLASS2",
+        labels: ["LABEL3"]
+    },
+    "C": {
+        class: "CLASS31,
+        labels: ["LABEL1", "LABEL2", "LABEL3"]
+    }
+}`;
+        const dataString = `[${placesWithoutCachedLabels.map(place => place.title).join(", ")}]
+        
+DESCRIPTIONS:
+
+${placesWithoutCachedLabels.map(place => `* ${place.title}: ${place.snippet || place.description || place.type || ""}`).join("\n\n")}
+`;
+        console.log(instructions);
+        console.log(dataString);
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
                 {
-                    role: "system", content: `You are a chat assistant helping a user label places.
-                
-                Available labels are:
-                ${LABELS.map(label => `- ${label}`).join("\n")}
-
-                Answer with up to three labels that best describes the place.
-                
-                For a list of places [A, B, C] output a JSON object like this:
-            
-                {
-                    "A": ["LABEL1", "LABEL2"],
-                    "B": ["LABEL1"],
-                    "C": ["LABEL2", "LABEL3", "LABEL4"]
-                }`,
-
+                    role: "system", content: instructions,
                 },
                 {
                     role: "user",
-                    content: placesWithoutCachedLabels.map(place => place.title).join(","),
+                    content: dataString,
                 },
             ],
             response_format: { "type": "json_object" }
         });
-
         const json = JSON.parse(completion.choices[0].message.content);
-
+        console.log(json);
         // update cache
         Object.entries(json).forEach(([title, labels]) => {
             const place = $places.find(place => place.title === title);
             if (!place) {
                 return;
             }
-            labelsCache[place.pageid] = labels;
+            labelsCache[place.title] = labels;
         });
     }
-    places.set($places.map(place => ({ ...place, labels: labelsCache[place.pageid] })));
+    const newPlaces = $places.map(place => ({ ...place, labels: labelsCache[place.title]?.labels, class: labelsCache[place.title]?.class }));
+    const nonGeoClasses = Object.keys(CLASSES).filter(classLabel => CLASSES[classLabel]?.nonGeo);
+    places.set(newPlaces.filter(place => !nonGeoClasses.includes(place.class)));
 }
 
 // rate places based on their impact and importance to the user's environment 

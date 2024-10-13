@@ -1,6 +1,7 @@
 <script>
 	import PlaceDetails from './PlaceDetails.svelte';
 	import PlaceStars from './PlaceStars.svelte';
+	import PlaceTitle from './PlaceTitle.svelte';
 
 	export let item;
 	export let showDistance = false;
@@ -18,7 +19,9 @@
 		<div class="flex">
 			<div class="flex flex-auto overflow-hidden text-left">
 				<span class="text-m mr-lg text-lg"
-					>{item.title}
+					>
+					<PlaceTitle {item} />
+					<!-- {item.title}
 					{#if item.type === 'address'}🏙️
 					{:else if item.type === 'river' || item.type === 'stream'}🌊
 					{:else if item.type === 'monument' || item.type === 'memorial' || item.type === 'museum' || item.type === 'library'}🏛️
@@ -36,6 +39,7 @@
 					{:else if item.type}
 						({item.type})
 					{/if}
+					<span class="text-xs text-gray-500">{item.class}</span> -->
 				</span>
 			</div>
 			{#if showDistance}

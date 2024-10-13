@@ -2,7 +2,7 @@ import { coordinates, preferences } from "../stores.js";
 import { nArticles, lang } from "../constants.js";
 import { get } from "svelte/store";
 
-export async function loadPlaces() {
+export async function loadWikipediaPlaces() {
     const $coordinates = get(coordinates);
     if (!$coordinates) {
         return;
@@ -14,6 +14,7 @@ export async function loadPlaces() {
     if ($coordinates.town && !places.find(place => place?.title === $coordinates.town)) {
         places.push(await wikipediaNameSearchForPlace($coordinates.town));
     }
+    console.log('Wikipedia places:', places);
     return places;
 }
 
@@ -156,7 +157,6 @@ out skel qt;
 export async function loadAddressData(coords) {
     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1&accept-language=${lang}`);
     const data = await response.json();
-    console.log(data);
     return data;
 }
 

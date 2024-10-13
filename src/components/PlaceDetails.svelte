@@ -11,6 +11,7 @@
 	import { summarizeArticle } from '../util/ai.js';
 	import { coordinates, placesSurrounding } from '../stores.js';
 	import PlaceStars from './PlaceStars.svelte';
+	import PlaceTitle from './PlaceTitle.svelte';
 
 	export let visible = false;
 	export let item;
@@ -38,6 +39,9 @@
 	classBody="p-0 overscroll-none"
 	classDialog=""
 >
+	<svelte:fragment slot="header">
+		<span class="text-xl"><PlaceTitle {item}/></span>
+	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
 		{#if item.image}
 			<img src={item.image} alt={item.title} class="mb-2 max-h-64 object-cover" />
