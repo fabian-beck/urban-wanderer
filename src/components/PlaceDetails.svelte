@@ -35,9 +35,10 @@
 	title={item.title}
 	bind:open={visible}
 	autoclose
-	bodyClass="p-0 md:p-5 space-y-4 flex-1 overflow-y-auto overscroll-contain"
+	classBody="p-0 overscroll-none"
+	classDialog=""
 >
-	<div class="flex flex-col">
+	<div class="flex min-h-screen flex-col">
 		{#if item.image}
 			<img src={item.image} alt={item.title} class="mb-2 max-h-64 object-cover" />
 		{/if}

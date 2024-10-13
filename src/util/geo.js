@@ -149,7 +149,7 @@ out skel qt;
             };
         }
     );
-    console.log(places);
+    console.log('OSM places:', places);
     return places;
 }
 

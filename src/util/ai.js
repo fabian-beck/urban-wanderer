@@ -9,6 +9,7 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: tru
 const labelsCache = {};
 
 // label places
+// TODO: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
 export async function labelPlaces() {
     const $places = get(places);
     // get places with cached labels (labelsCache)

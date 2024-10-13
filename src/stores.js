@@ -46,7 +46,7 @@ function createPlaces() {
                 let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
                 set(mergePlaces(placesTmp, placesOsm));
                 await labelPlaces();
-                // load metadata (but not waiting for it)
+                console.log('Places after labeling:', get(places));
                 loadMetadataAndRate();
             } catch (error) {
                 console.error(error);
@@ -120,7 +120,7 @@ async function loadMetadataAndRate() {
 }
 
 function mergePlaces(placesTmp, placesOsm) {
-    return placesTmp.map(place => {
+    placesTmp = placesTmp.map(place => {
         const osm = placesOsm.find(osm => osm.title === place.title);
         if (osm) {
             place.type = osm.type;
@@ -132,4 +132,11 @@ function mergePlaces(placesTmp, placesOsm) {
         }
         return place;
     });
+    // add OSM places that are not in Wikipedia
+    placesOsm.forEach(osm => {
+        if (!placesTmp.find(place => place.title === osm.title)) {
+            placesTmp.push(osm);
+        }
+    });
+    return placesTmp;
 }
