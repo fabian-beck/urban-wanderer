@@ -6,15 +6,16 @@ export const lang = 'en';
 export const CLASSES = {
     'AIRPORT': {
         emoji: '✈️',
-        description: 'Airport'
+        description: 'Airport',
+    },
+    'ABSTRACT_ENTITY': {
+        emoji: '?',
+        description: 'Abstract entity (e.g., a concept, a non-physical object)',
+        nonGeo: true
     },
     'ARCHEOLOGICAL_SITE': {
         emoji: '⛏️',
         description: 'Archeological Site'
-    },
-    'AREA/DISTRICT': {
-        emoji: '🏘️',
-        description: 'Area or district of a city (e.g., a specific neighborhood, a harbor, a business district)'
     },
     'BRIDGE': {
         emoji: '🌉',
@@ -24,9 +25,18 @@ export const CLASSES = {
         emoji: '🏢',
         description: 'Building of any kind (e.g., a house, a skyscraper, a factory)'
     },
-    'CITY': {
+    'CASTLE': {
+        emoji: '🏰',
+        description: 'Castle or fortress'
+    },
+    'CEMETERY': {
+        emoji: '⚰️',
+        description: 'Cemetery or tomb'
+    },
+    'CITY/DISTRICT': {
         emoji: '🏙️',
-        description: 'City or village'
+        description: 'City, village, or district',
+        isSurrounding: true
     },
     'BUSINESS': {
         emoji: '💼',
@@ -72,11 +82,16 @@ export const CLASSES = {
     },
     'PLACE_OF_WORSHIP': {
         emoji: '🛐',
-        description: 'Place of worship'
+        description: 'Place of worship (e.g., a church, a mosque, a temple)'
+    },
+    'SPORTS_FACILITY': {
+        emoji: '🏟️',
+        description: 'Sports facility (e.g., a stadium, a gym)'
     },
     'STATE/COUNTRY': {
         emoji: '🌍',
-        description: 'State or country'
+        description: 'State or country',
+        isSurrounding: true
     },
     'STATUE': {
         emoji: '🗽',

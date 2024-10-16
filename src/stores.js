@@ -1,7 +1,7 @@
 import { writable, get, derived } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
-import { LABELS } from "./constants.js";
-import { labelPlaces, ratePlaces } from "./util/ai.js";
+import { CLASSES, LABELS } from "./constants.js";
+import { analyzePlaces } from "./util/ai.js";
 import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmData as loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
 
 // Coordinates stores
@@ -44,9 +44,11 @@ function createPlaces() {
             try {
                 let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
                 set(mergePlaces(placesTmp, placesOsm));
-                loadingMessage.set("Labeling places...");
-                await labelPlaces();
-                console.log('Places after labeling:', get(places));
+                loadingMessage.set("Loading article extracts ...");
+                await loadExtracts(get(places));
+                loadingMessage.set("Analyzing places ...");
+                await analyzePlaces();
+                console.log('Places after analysis:', get(places));
                 loadMetadataAndRate();
             } catch (error) {
                 console.error(error);
@@ -66,6 +68,9 @@ export const placesSurrounding = derived([coordinates, places], ([$coordinates, 
     return $places.filter(place => {
         if (addressRemainder.includes(place.title)) {
             place.type = "address";
+            return true;
+        }
+        if (CLASSES[place.class]?.isSurrounding) {
             return true;
         }
     });
@@ -114,9 +119,7 @@ export const loadingMessage = createLoadingMessage();
 
 async function loadMetadataAndRate() {
     await loadArticleTexts(get(placesHere));
-    await loadExtracts(get(placesNearby));
     await loadWikipediaImageUrls(get(places));
-    await ratePlaces();
 }
 
 function mergePlaces(placesTmp, placesOsm) {

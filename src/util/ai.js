@@ -6,28 +6,38 @@ import { LABELS, CLASSES, lang } from "../constants.js";
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
-const labelsCache = {};
+const analysisCache = {};
 
-// label places
 // TODO: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
-export async function labelPlaces() {
+export async function analyzePlaces() {
     const $places = get(places);
-    console.log('Places before labeling:', $places);
+    console.log('Places before analysis:', $places);
     // get places with cached labels (labelsCache)
-    const placesWithoutCachedLabels = $places.filter(place => !labelsCache[place.title]);
+    const placesWithoutCachedAnalysis = $places.filter(place => !analysisCache[place.title]);
 
-    if (placesWithoutCachedLabels.length > 0) {
-        const instructions =  `You are a chat assistant helping a user classify and label places.
+    if (placesWithoutCachedAnalysis.length > 0) {
+        const instructions = `You are a chat assistant helping a user analyze places:
+(1) To classify them
+(2) To assign labels to them
+(3) To rate them based on their impact and importance to the user's environment
 
 Available CLASSES are:
-${Object.keys(CLASSES).map(label => `- ${label}`).join("\n")}
+${Object.keys(CLASSES).map(classLabel => `- ${classLabel}: ${CLASSES[classLabel].description}`).join("\n")}
         
 Available LABELS are:
 ${LABELS.map(label => `- ${label}`).join("\n")}
 
+Available IMPORTANCE values are:
+1: very low
+2: low
+3: medium
+4: high
+5: very high
+
 To best best characterize the place answer with 
 * exactly one class and
 * up to three labels.
+* one importance value.
 
 For a list of places [A, B, C] and their descriptions output a JSON object like this:
 
@@ -35,21 +45,24 @@ For a list of places [A, B, C] and their descriptions output a JSON object like 
     "A": {
         class: "CLASS1",
         labels: ["LABEL1", "LABEL2"]
+        importance: 5
     },
     "B": {
         class: "CLASS2",
         labels: ["LABEL3"]
+        importance: 3
     },
     "C": {
         class: "CLASS31,
         labels: ["LABEL1", "LABEL2", "LABEL3"]
+        importance: 2
     }
 }`;
-        const dataString = `[${placesWithoutCachedLabels.map(place => place.title).join(", ")}]
+        const dataString = `[${placesWithoutCachedAnalysis.map(place => place.title).join(", ")}]
         
 DESCRIPTIONS:
 
-${placesWithoutCachedLabels.map(place => `* ${place.title}: ${place.snippet || place.description || place.type || ""}`).join("\n\n")}
+${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet || place.description || place.type || ""}`).join("\n\n")}
 `;
         console.log(instructions);
         console.log(dataString);
@@ -67,65 +80,24 @@ ${placesWithoutCachedLabels.map(place => `* ${place.title}: ${place.snippet || p
             response_format: { "type": "json_object" }
         });
         const json = JSON.parse(completion.choices[0].message.content);
-        console.log(json);
+        console.log('Analysis result:', json);
         // update cache
         Object.entries(json).forEach(([title, labels]) => {
             const place = $places.find(place => place.title === title);
             if (!place) {
                 return;
             }
-            labelsCache[place.title] = labels;
+            analysisCache[place.title] = labels;
         });
     }
-    const newPlaces = $places.map(place => ({ ...place, labels: labelsCache[place.title]?.labels, class: labelsCache[place.title]?.class }));
+    const newPlaces = $places.map(place => ({
+        ...place,
+        labels: analysisCache[place.title]?.labels,
+        class: analysisCache[place.title]?.class,
+        importance: analysisCache[place.title]?.importance
+    }));
     const nonGeoClasses = Object.keys(CLASSES).filter(classLabel => CLASSES[classLabel]?.nonGeo);
     places.set(newPlaces.filter(place => !nonGeoClasses.includes(place.class)));
-}
-
-// rate places based on their impact and importance to the user's environment 
-// return a list of places with their ratings
-export async function ratePlaces() {
-    const $places = get(places);
-    const instructions = `You are a chat assistant helping a user rate places based on their impact and importance to the user's environment.
-
-Rate the following places based on their impact and importance for its immediate geographic environment. For instance:
-* a bigger river is more important than a smaller one
-* a university is more important than a school
-* a bigger building is more important than a smaller one
-* a church is more important than a chapel
-* a big factory is more important than a small office building
-* a historic building is more important than a modern one
-* a park or harbor covers an area, hence more important than a single building
-
-Assign each place a rating from 1 to 5, where 1 is the lowest and 5 is the highest. If you are unsure, you can skip the place.
-
-${$places.map(place => `# ${place.title}: ${place.labels?.join(", ")}\n`).join("\n")}
-
-Background information on the places:
-${$places.map(place => `${place.article}\n`).join("\n")}
-
-Return a JSON object, for instance, like this for a list of places [A, B, C]:
-    {
-        "A": 4,
-        "B": 3,
-        "C": 5
-    }`;
-
-    console.log(instructions);
-
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-            {
-                role: "system", content: instructions,
-            },
-        ],
-        response_format: { "type": "json_object" }
-    });
-
-    console.log(completion.choices[0].message.content);
-    const json = JSON.parse(completion.choices[0].message.content);
-    places.set($places.map(place => ({ ...place, rating: json[place.title] })));
 }
 
 // summarize article
@@ -153,9 +125,9 @@ export async function generateStory(storyTexts) {
     }
     const initialMessage = {
         role: "system", content: `
-You are a city guide.
+You are a city guide: friendly and helpful, concise and factual.
 
-Generate a story about the user's current position. Answer in language '${lang} '.
+Tell something interesting about the user's current position. Answer in language '${lang} '.
 
 User's current position is:
 ${get(coordinates).address}
@@ -166,7 +138,7 @@ ${get(placesHere).map(place =>
             `# ${place.title}: ${place.labels?.join(", ")}    	    
 Rating: ${place.rating}
 
-${place.article}
+${place.article || place.description || place.snippet || place.type || ""}
 `).join("\n")
             }
 
@@ -177,7 +149,7 @@ Nearby places are (less important!):
 # ${place.title} (${place.dist}m): ${place.labels?.join(", ")}
 Rating: ${place.rating}
     
-${place.article}
+${place.article || place.description || place.snippet || place.type || ""}
 `).join("\n")
             }}
 
@@ -190,7 +162,7 @@ ${get(preferences).labels?.map(label => `- ${label}`).join("\n")}
 
 The story should be two to three paragraphs long and focus on the position of the user and the most closest places. Avoid giving precise directions or distances.
 
-Keep the language concise and factual. You may use an informal tone, but do not exaggerate the importance of places. Avoid assessing the quality of the places.
+Keep the language concise and factual. You may use an informal tone, but use a moderate language. Try to realisticially describe the relevance of places. 
 
 Just give summary of the most important information, but do not reply to the user's questions. Do not welcome the user or ask for feedback.
 
@@ -216,7 +188,7 @@ ${get(placesHere).map(place =>
         console.log(messages[messages.length - 1]);
     }
     const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: messages,
     });
     return completion.choices[0].message.content;

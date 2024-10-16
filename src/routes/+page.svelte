@@ -27,16 +27,16 @@
 			places.reset();
 			coordinates.reset();
 			$storyTexts = [];
-			loadingMessage.set('Updating location...');
+			loadingMessage.set('Updating location ...');
 			await coordinates.update(coords);
 			await updateUrlParamsWithCoordinates();
 			loadingMessage.set('Loading places ...');
 			await places.update();
 			loading = false;
-			loadingMessage.set(null);
+			loadingMessage.reset();
 		} catch (error) {
 			loading = false;
-			loadingMessage.set(null);
+			loadingMessage.reset();
 			errorMessage.set('Error updating location: ' + error);
 			console.error('Error updating location', error);
 		}

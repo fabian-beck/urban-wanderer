@@ -9,10 +9,16 @@ export async function loadWikipediaPlaces() {
     }
     const places = await wikipediaGeoSearchForPlaces($coordinates);
     if ($coordinates.village && !places.find(place => place?.title === $coordinates.village)) {
-        places.push(await wikipediaNameSearchForPlace($coordinates.village));
+        const place = await wikipediaNameSearchForPlace($coordinates.village);
+        if (place) {
+            places.push(place);
+        }
     }
     if ($coordinates.town && !places.find(place => place?.title === $coordinates.town)) {
-        places.push(await wikipediaNameSearchForPlace($coordinates.town));
+        const place = await wikipediaNameSearchForPlace($coordinates.town);
+        if (place) {
+            places.push(place);
+        }
     }
     console.log('Wikipedia places:', places);
     return places;
@@ -45,11 +51,24 @@ export async function loadArticleTexts(places) {
 export async function loadExtracts(places) {
     await Promise.all(
         places.map(async place => {
-            const response = await fetch(
-                `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
-            );
+            if (!place.pageid && !place.wikipedia) {
+                return;
+            }
+            let response;
+            if (place.pageid) {
+                response = await fetch(
+                    `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
+                );
+            } else if (place.wikipedia) {
+                const placeLang = place.wikipedia.split(":")[0];
+                const placeTitle = place.wikipedia.split(":")[1];
+                response = await fetch(
+                    `https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&titles=${placeTitle}&origin=*&prop=extracts&exintro=1&explaintext=1`
+                );
+            }
             const data = await response.json();
-            place.article = data.query.pages[place.pageid].extract;
+            const pageid = Object.keys(data.query.pages)[0];
+            place.description = data.query.pages[pageid].extract;
         })
     );
 }
@@ -190,6 +209,10 @@ async function wikipediaNameSearchForPlace(name) {
     );
     const data2 = await response2.json();
     const place = data2.query.search[0];
+    if (!place) {
+        console.error(`Could not find Wikipedia article for ${name}.`);
+        return;
+    }
     place.title.replace(/\s*\(.*?\)\s*/g, "");
     place.title = place.title.split(",")[0];
     return place;

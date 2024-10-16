@@ -12,7 +12,7 @@
 </script>
 
 <div class="mt-1 flex text-left text-xs {detail ? 'flex-col' : 'h-5'}">
-	{#if item.rating}
+	{#if item.importance}
 		{#if item.wikipedia || item.pageid}
 			<div class="flex">
 				<StarSolid size="xs" class="text-primary-800" />
@@ -34,15 +34,15 @@
 				{/if}
 			</div>
 		{/if}
-		{#if item.rating > 3}
+		{#if item.importance > 3}
 			<div class="flex">
 				<StarSolid size="xs" class="text-primary-800" />
-				{#if item.rating > 4}
+				{#if item.importance > 4}
 					<StarSolid size="xs" class="text-primary-800" />
 				{/if}
 				{#if detail}
 					<div class="ml-2">
-						has a {item.rating > 4 ? 'very ' : ' '}high relevance for your location
+						has a {item.importance > 4 ? 'very ' : ' '}high importance for the location
 					</div>
 				{/if}
 			</div>
