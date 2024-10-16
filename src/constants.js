@@ -13,9 +13,9 @@ export const CLASSES = {
         description: 'Abstract entity (e.g., a concept, a non-physical object)',
         nonGeo: true
     },
-    'ARCHEOLOGICAL_SITE': {
+    'ARCHAEOLOGICAL_SITE': {
         emoji: '⛏️',
-        description: 'Archeological Site'
+        description: 'Archaeological site'
     },
     'BRIDGE': {
         emoji: '🌉',
