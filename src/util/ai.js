@@ -108,7 +108,7 @@ export async function summarizeArticle(article) {
             {
                 role: "system", content: `You are a chat assistant providing a summary description for a place.
                 
-                Describe the following place in one sentence.Answer in language '${$preferences.lang}'.
+                Describe the following place in one sentence.Answer in language '${get(preferences).lang}'.
 
     ${article} `,
             },
@@ -127,7 +127,7 @@ export async function generateStory(storyTexts) {
         role: "system", content: `
 You are a city guide: friendly and helpful, concise and factual.
 
-Tell something interesting about the user's current position. Answer in language '${$preferences.lang} '.
+Tell something interesting about the user's current position. Answer in language '${get(preferences).lang} '.
 
 User's current position is:
 ${get(coordinates).address}

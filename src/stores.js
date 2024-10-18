@@ -4,6 +4,8 @@ import { CLASSES, LABELS } from "./constants.js";
 import { analyzePlaces } from "./util/ai.js";
 import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmData as loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
 
+let prefsInitialized = false;
+
 // Coordinates stores
 function createCoordinates() {
     const { subscribe, set } = writable(null);
@@ -34,6 +36,37 @@ export const preferences = writable({
     labels: LABELS,
     lang: 'de'
 });
+
+// Function to save preferences to local storage
+const savePreferences = (prefs) => {
+    if (typeof localStorage !== 'undefined') {
+        console.log('Saving preferences:', prefs);  
+        localStorage.setItem('preferences', JSON.stringify(prefs));
+    }
+};
+
+// Function to load preferences from local storage
+const loadPreferences = () => {
+    if (typeof localStorage !== 'undefined') {
+        const storedPrefs = localStorage.getItem('preferences');
+        if (storedPrefs) {
+            console.log('Loading preferences:', JSON.parse(storedPrefs));
+            preferences.set(JSON.parse(storedPrefs));
+        }
+    }
+};
+
+// Subscribe to preferences store to save changes
+preferences.subscribe((prefs) => {
+    if (!prefsInitialized) {
+        prefsInitialized = true;
+        return;
+    }
+    savePreferences(prefs);
+});
+
+// Load preferences when the application starts
+loadPreferences();
 
 // Places store
 function createPlaces() {

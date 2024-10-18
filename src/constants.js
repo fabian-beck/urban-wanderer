@@ -129,11 +129,9 @@ export const CLASSES = {
 export const LABELS = [
     "ARCHITECTURE",
     "CULTURE",
-    "ECONOMY",
-    "EDUCATION",
     "GEOGRAPHY",
     "HISTORY",
     "RELIGION",
-    "SPORT",
+    "SPORTS",
     "TRANSPORTATION"
 ];
