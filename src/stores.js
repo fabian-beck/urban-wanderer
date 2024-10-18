@@ -31,7 +31,8 @@ export const coordinates = createCoordinates();
 // Uers preferences store
 export const preferences = writable({
     radius: 500,
-    labels: LABELS
+    labels: LABELS,
+    lang: 'de'
 });
 
 // Places store

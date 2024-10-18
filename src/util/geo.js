@@ -1,5 +1,5 @@
 import { coordinates, preferences } from "../stores.js";
-import { nArticles, lang } from "../constants.js";
+import { nArticles } from "../constants.js";
 import { get } from "svelte/store";
 
 export async function loadWikipediaPlaces() {
@@ -25,6 +25,7 @@ export async function loadWikipediaPlaces() {
 }
 
 export async function loadArticleTexts(places) {
+    const lang = get(preferences).lang;
     await Promise.all(
         places.map(async place => {
             if (!place.pageid) {
@@ -49,6 +50,7 @@ export async function loadArticleTexts(places) {
 }
 
 export async function loadExtracts(places) {
+    const lang = get(preferences).lang;
     await Promise.all(
         places.map(async place => {
             if (!place.pageid && !place.wikipedia) {
@@ -74,6 +76,7 @@ export async function loadExtracts(places) {
 }
 
 export async function loadWikipediaImageUrls(places) {
+    const lang = get(preferences).lang;
     await Promise.all(
         places.map(async place => {
             let response;
@@ -174,12 +177,14 @@ out skel qt;
 }
 
 export async function loadAddressData(coords) {
+    const lang = get(preferences).lang;
     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1&accept-language=${lang}`);
     const data = await response.json();
     return data;
 }
 
 export async function getRandomPlaceCoordinates() {
+    const lang = get(preferences).lang;
     while (true) {
         const response = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/random/summary`);
         const data = await response.json();
@@ -190,6 +195,7 @@ export async function getRandomPlaceCoordinates() {
 }
 
 async function wikipediaGeoSearchForPlaces(coordinates) {
+    const lang = get(preferences).lang;
     const response = await fetch(
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.latitude}|${coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`
     );
@@ -204,6 +210,7 @@ async function wikipediaGeoSearchForPlaces(coordinates) {
 }
 
 async function wikipediaNameSearchForPlace(name) {
+    const lang = get(preferences).lang;
     const response2 = await fetch(
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${name}&srlimit=1&format=json&origin=*`
     );

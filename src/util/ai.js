@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
 import { placesHere, placesNearby, coordinates, preferences, places, } from "../stores.js";
 import { get } from "svelte/store";
-import { LABELS, CLASSES, lang } from "../constants.js";
+import { LABELS, CLASSES } from "../constants.js";
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
@@ -108,7 +108,7 @@ export async function summarizeArticle(article) {
             {
                 role: "system", content: `You are a chat assistant providing a summary description for a place.
                 
-                Describe the following place in one sentence.Answer in language '${lang}'.
+                Describe the following place in one sentence.Answer in language '${$preferences.lang}'.
 
     ${article} `,
             },
@@ -127,7 +127,7 @@ export async function generateStory(storyTexts) {
         role: "system", content: `
 You are a city guide: friendly and helpful, concise and factual.
 
-Tell something interesting about the user's current position. Answer in language '${lang} '.
+Tell something interesting about the user's current position. Answer in language '${$preferences.lang} '.
 
 User's current position is:
 ${get(coordinates).address}
