@@ -80,7 +80,7 @@ export const placesSurrounding = derived([coordinates, places], ([$coordinates, 
 export const placesHere = derived([coordinates, places, placesSurrounding], ([$coordinates, $places, $placesSurrounding]) => {
     if (!$coordinates || !$places || !$placesSurrounding) return [];
     return $places.filter(place => {
-        if (place.dist === 0 && !$placesSurrounding.includes(place)) {
+        if ((place.dist === 0 || place.dist < (CLASSES[place.class]?.radius || 100)) && !$placesSurrounding.includes(place)) {
             return true;
         }
     });

@@ -18,7 +18,7 @@
 	<Alert color="primary"
 		><i
 			>No places found directly at your position&mdash;maybe, walk a bit to find some interesting
-			ones?</i
+			ones.</i
 		></Alert
 	>
 {/if}

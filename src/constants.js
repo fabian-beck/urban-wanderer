@@ -1,12 +1,13 @@
 export const appName = 'Urban Wanderer';
 
 export const nArticles = 30;
-export const lang = 'en';
+export const lang = 'de';
 
 export const CLASSES = {
     'AIRPORT': {
         emoji: '✈️',
         description: 'Airport',
+        radius: 1000
     },
     'ABSTRACT_ENTITY': {
         emoji: '?',
@@ -19,7 +20,8 @@ export const CLASSES = {
     },
     'BRIDGE': {
         emoji: '🌉',
-        description: 'Bridge'
+        description: 'Bridge',
+        radius: 150
     },
     'BUILDING': {
         emoji: '🏢',
@@ -27,11 +29,13 @@ export const CLASSES = {
     },
     'CASTLE': {
         emoji: '🏰',
-        description: 'Castle or fortress'
+        description: 'Castle or fortress',
+        radius: 200
     },
     'CEMETERY': {
         emoji: '⚰️',
-        description: 'Cemetery or tomb'
+        description: 'Cemetery or tomb',
+        radius: 200
     },
     'CITY/DISTRICT': {
         emoji: '🏙️',
@@ -40,7 +44,8 @@ export const CLASSES = {
     },
     'BUSINESS': {
         emoji: '💼',
-        description: 'Business (e.g., a shop, a restaurant, a hotel)'
+        description: 'Business (e.g., a shop, a restaurant, a hotel)',
+        nonGeo: true
     },
     'EVENT': {
         emoji: '🎉',
@@ -65,7 +70,8 @@ export const CLASSES = {
     },
     'MOUNTAIN': {
         emoji: '⛰️',
-        description: 'Mountain'
+        description: 'Mountain',
+        radius: 500
     },
     'MUSEUM': {
         emoji: '🖼️',
@@ -73,7 +79,8 @@ export const CLASSES = {
     },
     'PARK': {
         emoji: '🌳',
-        description: 'Park'
+        description: 'Park',
+        radius: 300
     },
     'PERSON': {
         emoji: '👤',
@@ -86,7 +93,8 @@ export const CLASSES = {
     },
     'SPORTS_FACILITY': {
         emoji: '🏟️',
-        description: 'Sports facility (e.g., a stadium, a gym)'
+        description: 'Sports facility (e.g., a stadium, a gym)',
+        radius: 200	
     },
     'STATE/COUNTRY': {
         emoji: '🌍',
@@ -99,19 +107,23 @@ export const CLASSES = {
     },
     'STATION': {
         emoji: '🚉',
-        description: 'Station (e.g., a train station, a bus station)'
+        description: 'Station (e.g., a train station, a bus station)',
+        radius: 200
     },
     'STREET/SQUARE': {
         emoji: '🛣️',
-        description: 'Street or square'
+        description: 'Street or square',
+        radius: 150
     },
     'UNIVERSITY/SCHOOL': {
         emoji: '🎓',
-        description: 'University, college, or school'
+        description: 'University, college, or school',
+        radius: 200
     },
     'WATERBODY': {
         emoji: '🌊',
-        description: 'Waterbody (e.g., a river, a lake, an ocean)'
+        description: 'Waterbody (e.g., a river, a lake, an ocean)',
+        radius: 200
     }
 };
 

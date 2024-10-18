@@ -53,7 +53,7 @@
 </script>
 
 <Header updateRandom={() => update('random')} />
-<main id="main" class="mb-10 p-4 pb-24 pt-20">
+<main id="main" class="mb-10 p-4 pb-24 pt-20 max-w-lg mx-auto">
 	{#if $errorMessage}
 		<Alert type="danger" class="mb-4 flex text-xs">
 			<div class="flex-auto overflow-hidden">
