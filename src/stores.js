@@ -1,7 +1,7 @@
 import { writable, get, derived } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { CLASSES, LABELS } from "./constants.js";
-import { analyzePlaces } from "./util/ai.js";
+import { analyzePlaces, groupDuplicatePlaces } from "./util/ai.js";
 import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmData as loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
 
 let prefsInitialized = false;
@@ -83,6 +83,8 @@ function createPlaces() {
                 loadingMessage.set("Analyzing places ...");
                 await analyzePlaces();
                 console.log('Places after analysis:', get(places));
+                loadingMessage.set("Grouping places ...");
+                await groupDuplicatePlaces();
                 loadMetadataAndRate();
             } catch (error) {
                 console.error(error);

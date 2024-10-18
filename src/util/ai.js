@@ -1,14 +1,83 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { placesHere, placesNearby, coordinates, preferences, places, } from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences, places} from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, CLASSES } from "../constants.js";
+import { z } from "zod";
+import { zodResponseFormat } from "openai/helpers/zod"
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
 const analysisCache = {};
 
-// TODO: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
+export async function groupDuplicatePlaces() {
+    const $places = get(places);
+    const instructions = `You are an assistant helping a user identify duplicate places and tranlating place names.
+
+For a list of places [A , B , C ] output a JSON object like this:
+
+    groups: [
+        { "title": "AB_tranlated", places: ["A (classOfA)", "B (classOfB)"] }, // A ~ B, but maybe not exactly the same or in different languages
+        { "title": "C_translated", places: ["C"] }
+    ]
+
+IMPORTANT: Places only belong to the same group if they refer to the same place. The title might vary (also in langauge) and the coordinates might be slightly different, but the places should be the same.
+
+In any case, as title of each group of duplicates use the name of the place translated to ${get(preferences).lang} if necessary and possible.`;
+    const dataString = `[${$places.map(place => place.class ? `${place.title} (${place.class})` : place.title).join(", ")}]`;
+    console.log(instructions);
+    console.log(dataString);
+    const Group = z.object({
+        title: z.string(),
+        places: z.array(z.string())
+      });
+    const Groups = z.object({
+        groups: z.array(Group)
+      });
+    const completion = await openai.beta.chat.completions.parse({
+        model: "gpt-4o-mini",
+        messages: [
+            {
+                role: "system", content: instructions,
+            },
+            {
+                role: "user",
+                content: dataString,
+            },
+        ],
+        response_format: zodResponseFormat(Groups, 'groups')
+    });
+    const groups = completion.choices[0].message.parsed.groups;
+    console.log('Grouping result:', groups);
+    const visitedGroups = new Set();
+    // const placesNameIsSimilar = (name1, name2) => {
+    //     name1 = name1.toLowerCase();
+    //     name2 = name2.toLowerCase();
+    //     // remove content in brackets
+    //     name1 = name1.replace(/ *\([^)]*\) */g, "");
+    //     name2 = name2.replace(/ *\([^)]*\) */g, "");
+    //     // remove special characters
+    //     name1 = name1.replace(/[^a-z0-9]/g, '');
+    //     name2 = name2.replace(/[^a-z0-9]/g, '');
+    //     return name1 === name2;
+    // }
+    const newPlaces = $places.map(place => {
+        const group = groups.find(group => group.places.includes(place.title));
+        if (group) {
+            if (visitedGroups.has(group.title)) {
+                return null;
+            }
+            visitedGroups.add(group.title);
+            place.title = group.title;
+        }
+        return place;
+    }).filter(place => place);
+    places.set(newPlaces);
+    console.log('Places after grouping:', get(places));
+}   
+
+
+// ToDo: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
 export async function analyzePlaces() {
     const $places = get(places);
     console.log('Places before analysis:', $places);
@@ -35,8 +104,8 @@ Available IMPORTANCE values are:
 5: very high
 
 To best best characterize the place answer with 
-* exactly one class and
-* up to three labels.
+* exactly one class,
+* up to three labels, and
 * one importance value.
 
 For a list of places [A, B, C] and their descriptions output a JSON object like this:
@@ -83,7 +152,9 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
         console.log('Analysis result:', json);
         // update cache
         Object.entries(json).forEach(([title, labels]) => {
-            const place = $places.find(place => place.title === title);
+            // ignore potential brackets in titles
+            const title2 = title.replace(/ *\([^)]*\) */g, "");
+            const place = $places.find(place => place.title.replace(/ *\([^)]*\) */g, "") === title2);
             if (!place) {
                 return;
             }

@@ -109,7 +109,7 @@ export const CLASSES = {
         description: 'Station (e.g., a train station, a bus station)',
         radius: 200
     },
-    'STREET/SQUARE': {
+    'STREET': {
         emoji: '🛣️',
         description: 'Street or square',
         radius: 150
