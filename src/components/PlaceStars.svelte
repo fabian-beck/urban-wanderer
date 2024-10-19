@@ -4,7 +4,6 @@
 	export let item;
 	export let detail = false;
 
-	// $: matchingLabels = item?.labels?.filter((label) => $preferences.labels.includes(label));
 	// Filter labels that match the user's preferences; if labels are undefined, set to empty array
 	$: matchingLabels = item?.labels
 		? item.labels.filter((label) => $preferences.labels.includes(label))

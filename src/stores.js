@@ -17,9 +17,16 @@ function createCoordinates() {
                     coords = await getRandomPlaceCoordinates();
                 } else if (!coords) {
                     coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
+                    console.log('Received coordinates:', coords);
                 }
                 const addressData = await loadAddressData(coords);
-                set({ latitude: coords.latitude, longitude: coords.longitude, address: addressData.display_name, town: addressData.address.town || addressData.address.city, village: addressData.address.village || addressData.address.city_district });
+                set({
+                    latitude: coords.latitude,
+                    longitude: coords.longitude,
+                    address: addressData.display_name,
+                    town: addressData.address.town || addressData.address.city,
+                    village: addressData.address.village || addressData.address.city_district
+                });
             } catch (error) {
                 console.error(error);
                 errorMessage.set(error);
@@ -40,7 +47,7 @@ export const preferences = writable({
 // Function to save preferences to local storage
 const savePreferences = (prefs) => {
     if (typeof localStorage !== 'undefined') {
-        console.log('Saving preferences:', prefs);  
+        console.log('Saving preferences:', prefs);
         localStorage.setItem('preferences', JSON.stringify(prefs));
     }
 };

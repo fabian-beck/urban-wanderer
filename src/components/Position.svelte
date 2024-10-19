@@ -2,6 +2,7 @@
 	import { Button } from 'flowbite-svelte';
 	import { RefreshOutline, MapPinAltOutline } from 'flowbite-svelte-icons';
 	import { coordinates } from '../stores.js';
+	import { onMount } from 'svelte';
 
 	export let loading = false;
 	export let update;
@@ -12,13 +13,31 @@
 		const lon = longitude >= 0 ? `${longitude.toFixed(4)}°E` : `${(-longitude).toFixed(4)}°W`;
 		return `${lat}; ${lon}`;
 	};
+
+	let heading = 0;
+
+	$: headingString = (() => {
+		const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+		const index = Math.round(heading / 45) % 8;
+		return directions[index];
+	})();
+
+	onMount(() => {
+		window.addEventListener(
+			'deviceorientationabsolute',
+			(event) => {
+				heading = event.alpha;
+			},
+			true
+		);
+	});
 </script>
 
 <div
 	class="fixed bottom-0 left-0 right-0 m-2 flex min-h-10 items-center justify-center rounded-lg bg-gray-100 p-4"
 >
 	<div class="flex flex-auto">
-		{#if !loading && $coordinates}
+		{#if $coordinates}
 			<div class="text-xs">
 				<div>
 					<a
@@ -37,6 +56,9 @@
 			<i class="text-sm text-primary-800">Click the refresh button to get your location</i>
 		{/if}
 	</div>
+	{#if $coordinates && headingString}
+		<div class="w-20 text-center">{headingString}</div>
+	{/if}
 	<div class="ml-2 flex-none">
 		<Button on:click={update} pill class="!p-2" disabled={loading}><RefreshOutline /></Button>
 	</div>

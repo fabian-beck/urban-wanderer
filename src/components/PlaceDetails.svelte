@@ -103,7 +103,7 @@
 				<SearchOutline class="!mr-1" />Search
 			</a>
 			<a
-				href={`https://www.google.com/maps/search/?api=1&query=${$coordinates.latitude},${$coordinates.longitude}`}
+				href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`}
 				target="_blank"
 				class="flex"
 			>
