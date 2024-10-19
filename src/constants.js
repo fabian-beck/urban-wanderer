@@ -1,6 +1,6 @@
 export const appName = 'Urban Wanderer';
 
-export const nArticles = 30;
+export const nArticles = 10;
 
 export const CLASSES = {
     'AIRPORT': {
@@ -109,7 +109,7 @@ export const CLASSES = {
         description: 'Station (e.g., a train station, a bus station)',
         radius: 200
     },
-    'STREET': {
+    'STREET/SQUARE': {
         emoji: '🛣️',
         description: 'Street or square',
         radius: 150
@@ -117,7 +117,7 @@ export const CLASSES = {
     'UNIVERSITY/SCHOOL': {
         emoji: '🎓',
         description: 'University, college, or school',
-        radius: 200
+        radius: 150
     },
     'WATERBODY': {
         emoji: '🌊',
@@ -125,6 +125,12 @@ export const CLASSES = {
         radius: 200
     }
 };
+
+export const ALL_LANGS = [
+    'en',
+    'de',
+    'cs'
+];
 
 export const LABELS = [
     "ARCHITECTURE",

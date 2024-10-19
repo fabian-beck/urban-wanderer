@@ -78,13 +78,13 @@ function createPlaces() {
             try {
                 let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
                 set(mergePlaces(placesTmp, placesOsm));
+                loadingMessage.set("Grouping places ...");
+                await groupDuplicatePlaces();
                 loadingMessage.set("Loading article extracts ...");
                 await loadExtracts(get(places));
                 loadingMessage.set("Analyzing places ...");
                 await analyzePlaces();
                 console.log('Places after analysis:', get(places));
-                loadingMessage.set("Grouping places ...");
-                await groupDuplicatePlaces();
                 loadMetadataAndRate();
             } catch (error) {
                 console.error(error);

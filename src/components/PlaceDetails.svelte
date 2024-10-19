@@ -20,7 +20,7 @@
 	onMount(async () => {
 		if (item.pageid || item.wikipedia) {
 			const url = item.pageid
-				? `https://${$preferences.lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
+				? `https://${item.lang || $preferences.lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
 				: `https://${item.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${item.wikipedia.split(':')[1]}&origin=*`;
 			const response = await fetch(url);
 			const data = await response.json();
@@ -39,22 +39,24 @@
 	classDialog=""
 >
 	<svelte:fragment slot="header">
-		<span class="text-xl"><PlaceTitle {item}/></span>
+		<span class="text-xl"><PlaceTitle {item} /></span>
 	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
 		{#if item.image}
 			<img src={item.image} alt={item.title} class="mb-2 max-h-64 object-cover" />
 		{/if}
 		<div class="p-4">
-			<div class="flex flex-auto">
-				{#if summary}
-					{summary}
-				{:else}
-					...
-				{/if}
-			</div>
-			{#if !isSurroundingPlace}
+			{#if item.pageid || item.wikipedia || item.description}
+				<div class="flex flex-auto">
+					{#if summary}
+						{summary}
+					{:else}
+						...
+					{/if}
+				</div>
 				<hr class="my-4" />
+			{/if}
+			{#if !isSurroundingPlace}
 				{#if item.labels}
 					<div class="flex flex-wrap">
 						{#each item.labels as label}
@@ -73,7 +75,7 @@
 		<div class="flex w-full text-xs">
 			{#if item.pageid}
 				<a
-					href={`https://${$preferences.lang}.m.wikipedia.org/?curid=${item.pageid}`}
+					href={`https://${item.lang || $preferences.lang}.m.wikipedia.org/?curid=${item.pageid}`}
 					target="_blank"
 					class="flex flex-auto"
 				>
@@ -101,7 +103,7 @@
 				<SearchOutline class="!mr-1" />Search
 			</a>
 			<a
-				href={`https://www.google.com/maps/search/?api=1&query=${item.title}&near=${$coordinates.latitude},${$coordinates.longitude}`}
+				href={`https://www.google.com/maps/search/?api=1&query=${$coordinates.latitude},${$coordinates.longitude}`}
 				target="_blank"
 				class="flex"
 			>

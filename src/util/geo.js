@@ -1,5 +1,5 @@
 import { coordinates, preferences } from "../stores.js";
-import { nArticles } from "../constants.js";
+import { nArticles, ALL_LANGS } from "../constants.js";
 import { get } from "svelte/store";
 
 export async function loadWikipediaPlaces() {
@@ -7,7 +7,10 @@ export async function loadWikipediaPlaces() {
     if (!$coordinates) {
         return;
     }
-    const places = await wikipediaGeoSearchForPlaces($coordinates);
+    const places = [];
+    ALL_LANGS.forEach(async lang => {
+        places.push(...await wikipediaGeoSearchForPlaces($coordinates, lang));
+    });
     if ($coordinates.village && !places.find(place => place?.title === $coordinates.village)) {
         const place = await wikipediaNameSearchForPlace($coordinates.village);
         if (place) {
@@ -32,7 +35,7 @@ export async function loadArticleTexts(places) {
                 return;
             }
             const response = await fetch(
-                `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=revisions&rvprop=content&rvslots=main`
+                `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=revisions&rvprop=content&rvslots=main`
             );
             const data = await response.json();
             place.article = data.query.pages[place.pageid].revisions[0].slots.main["*"];
@@ -50,7 +53,6 @@ export async function loadArticleTexts(places) {
 }
 
 export async function loadExtracts(places) {
-    const lang = get(preferences).lang;
     await Promise.all(
         places.map(async place => {
             if (!place.pageid && !place.wikipedia) {
@@ -59,7 +61,7 @@ export async function loadExtracts(places) {
             let response;
             if (place.pageid) {
                 response = await fetch(
-                    `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
+                    `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
                 );
             } else if (place.wikipedia) {
                 const placeLang = place.wikipedia.split(":")[0];
@@ -76,7 +78,6 @@ export async function loadExtracts(places) {
 }
 
 export async function loadWikipediaImageUrls(places) {
-    const lang = get(preferences).lang;
     await Promise.all(
         places.map(async place => {
             let response;
@@ -88,7 +89,7 @@ export async function loadWikipediaImageUrls(places) {
                 );
             } else if (place.pageid) {
                 response = await fetch(
-                    `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=500`
+                    `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=500`
                 );
             }
             if (!response) {
@@ -194,8 +195,7 @@ export async function getRandomPlaceCoordinates() {
     }
 }
 
-async function wikipediaGeoSearchForPlaces(coordinates) {
-    const lang = get(preferences).lang;
+async function wikipediaGeoSearchForPlaces(coordinates, lang) {
     const response = await fetch(
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.latitude}|${coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`
     );
@@ -205,6 +205,7 @@ async function wikipediaGeoSearchForPlaces(coordinates) {
         place.title = place.title.replace(/\s*\(.*?\)\s*/g, "");
         // remove text after comma
         place.title = place.title.split(",")[0];
+        place.lang = lang;
     });
     return data.query.geosearch;
 }

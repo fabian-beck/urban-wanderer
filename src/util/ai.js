@@ -12,27 +12,24 @@ const analysisCache = {};
 
 export async function groupDuplicatePlaces() {
     const $places = get(places);
-    const instructions = `You are an assistant helping a user identify duplicate places and tranlating place names.
+    const instructions = `You are an assistant helping translating place names to ${get(preferences).lang}. You may skip places that are difficult to translate.
 
-For a list of places [A , B , C ] output a JSON object like this:
+For a list of places [A , B , C] output a JSON object like this:
 
-    groups: [
-        { "title": "AB_tranlated", places: ["A (classOfA)", "B (classOfB)"] }, // A ~ B, but maybe not exactly the same or in different languages
-        { "title": "C_translated", places: ["C"] }
-    ]
-
-IMPORTANT: Places only belong to the same group if they refer to the same place. The title might vary (also in langauge) and the coordinates might be slightly different, but the places should be the same.
-
-In any case, as title of each group of duplicates use the name of the place translated to ${get(preferences).lang} if necessary and possible.`;
-    const dataString = `[${$places.map(place => place.class ? `${place.title} (${place.class})` : place.title).join(", ")}]`;
+    translations: [
+        { "title": "A", "translation": "TRANSLATION_A" },
+        // B skipped because there is no good translation
+        { "title": "C", "translation": "TRANSLATION_C" }    
+    ]`;
+    const dataString = `[${$places.map(place => place.title).join(", ")}]`;
     console.log(instructions);
     console.log(dataString);
-    const Group = z.object({
+    const Translation = z.object({
         title: z.string(),
-        places: z.array(z.string())
+        translation: z.string()
       });
-    const Groups = z.object({
-        groups: z.array(Group)
+    const Translations = z.object({
+        translations: z.array(Translation)
       });
     const completion = await openai.beta.chat.completions.parse({
         model: "gpt-4o-mini",
@@ -45,35 +42,54 @@ In any case, as title of each group of duplicates use the name of the place tran
                 content: dataString,
             },
         ],
-        response_format: zodResponseFormat(Groups, 'groups')
+        response_format: zodResponseFormat(Translations, 'translations')
     });
-    const groups = completion.choices[0].message.parsed.groups;
-    console.log('Grouping result:', groups);
-    const visitedGroups = new Set();
-    // const placesNameIsSimilar = (name1, name2) => {
-    //     name1 = name1.toLowerCase();
-    //     name2 = name2.toLowerCase();
-    //     // remove content in brackets
-    //     name1 = name1.replace(/ *\([^)]*\) */g, "");
-    //     name2 = name2.replace(/ *\([^)]*\) */g, "");
-    //     // remove special characters
-    //     name1 = name1.replace(/[^a-z0-9]/g, '');
-    //     name2 = name2.replace(/[^a-z0-9]/g, '');
-    //     return name1 === name2;
-    // }
-    const newPlaces = $places.map(place => {
-        const group = groups.find(group => group.places.includes(place.title));
-        if (group) {
-            if (visitedGroups.has(group.title)) {
-                return null;
-            }
-            visitedGroups.add(group.title);
-            place.title = group.title;
+    const translations = completion.choices[0].message.parsed.translations;
+    console.log('Tranlations result:', translations);
+
+    const placesNameIsSimilar = (name1, name2) => {
+        name1 = name1.toLowerCase();
+        name2 = name2.toLowerCase();
+        // remove content in brackets
+        name1 = name1.replace(/ *\([^)]*\) */g, "");
+        name2 = name2.replace(/ *\([^)]*\) */g, "");
+        // remove special characters
+        name1 = name1.replace(/[^a-z0-9]/g, '');
+        name2 = name2.replace(/[^a-z0-9]/g, '');
+        return name1 === name2;
+    }
+
+    const newPlaces = [];
+    for (const place of $places) {
+        const translation = translations.find(translation => placesNameIsSimilar(place.title, translation.title));
+        if (translation && translation.translation !== place.title) {
+            place.title = `${translation.translation} (${place.title})`;
         }
-        return place;
-    }).filter(place => place);
+        const previousPlace = newPlaces.find(p => placesNameIsSimilar(p.title, place.title));
+        if (previousPlace) {
+            if (previousPlace.lang === get(preferences).lang) {
+                // replace previous place with the new one
+                newPlaces[newPlaces.indexOf(previousPlace)] = place;
+            }
+            continue;
+        }
+        newPlaces.push(place);
+    }
+    console.log('Places after grouping:', newPlaces);
     places.set(newPlaces);
-    console.log('Places after grouping:', get(places));
+    // const newPlaces = $places.map(place => {
+    //     const group = groups.find(group => group.places.includes(place.title));
+    //     if (group) {
+    //         if (visitedGroups.has(group.title)) {
+    //             return null;
+    //         }
+    //         visitedGroups.add(group.title);
+    //         place.title = group.title;
+    //     }
+    //     return place;
+    // }).filter(place => place);
+    // places.set(newPlaces);
+    // console.log('Places after grouping:', get(places));
 }   
 
 
@@ -179,7 +195,7 @@ export async function summarizeArticle(article) {
             {
                 role: "system", content: `You are a chat assistant providing a summary description for a place.
                 
-                Describe the following place in one sentence.Answer in language '${get(preferences).lang}'.
+                Describe the following place in a short paragraph. Answer in language '${get(preferences).lang}'.
 
     ${article} `,
             },
@@ -236,8 +252,6 @@ The story should be two to three paragraphs long and focus on the position of th
 Keep the language concise and factual. You may use an informal tone, but use a moderate language. Try to realisticially describe the relevance of places. 
 
 Just give summary of the most important information, but do not reply to the user's questions. Do not welcome the user or ask for feedback.
-
-Return HTML formatted text. Highlight the places in the text in bold with HTML syntax (through "<strong>PLACE</strong>").
 `,
     };
     console.log(initialMessage.content);
