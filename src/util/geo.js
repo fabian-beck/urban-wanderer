@@ -1,4 +1,4 @@
-import { coordinates, preferences } from "../stores.js";
+import { coordinates, preferences, places } from "../stores.js";
 import { nArticles, ALL_LANGS } from "../constants.js";
 import { get } from "svelte/store";
 
@@ -77,19 +77,19 @@ export async function loadExtracts(places) {
     );
 }
 
-export async function loadWikipediaImageUrls(places) {
+export async function loadWikipediaImageUrls(attribute, size) {
     await Promise.all(
-        places.map(async place => {
+        get(places).map(async place => {
             let response;
             if (place.wikipedia) {
                 const placeLang = place.wikipedia.split(":")[0];
                 const placeTitle = place.wikipedia.split(":")[1];
                 response = await fetch(
-                    `https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${placeTitle}&origin=*&pithumbsize=500`
+                    `https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${placeTitle}&origin=*&pithumbsize=${size}`
                 );
             } else if (place.pageid) {
                 response = await fetch(
-                    `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=500`
+                    `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=${size}`
                 );
             }
             if (!response) {
@@ -97,7 +97,8 @@ export async function loadWikipediaImageUrls(places) {
             }
             const data = await response.json();
             const pageid = Object.keys(data.query.pages)[0];
-            place.image = data.query.pages[pageid].thumbnail?.source;
+            place[attribute] = data.query.pages[pageid].thumbnail?.source;
+            places.set(get(places));
         })
     );
 }

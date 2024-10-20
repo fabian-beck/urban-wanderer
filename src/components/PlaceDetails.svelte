@@ -39,7 +39,7 @@
 	classDialog=""
 >
 	<svelte:fragment slot="header">
-		<span class="text-xl"><PlaceTitle {item} /></span>
+		<span class="text-xl"><PlaceTitle place={item} /></span>
 	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
 		{#if item.image}

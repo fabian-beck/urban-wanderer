@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { placesHere, placesNearby, coordinates, preferences, places} from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences, places } from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, CLASSES } from "../constants.js";
 import { z } from "zod";
@@ -27,10 +27,10 @@ For a list of places [A , B , C] output a JSON object like this:
     const Translation = z.object({
         title: z.string(),
         translation: z.string()
-      });
+    });
     const Translations = z.object({
         translations: z.array(Translation)
-      });
+    });
     const completion = await openai.beta.chat.completions.parse({
         model: "gpt-4o-mini",
         messages: [
@@ -90,7 +90,7 @@ For a list of places [A , B , C] output a JSON object like this:
     // }).filter(place => place);
     // places.set(newPlaces);
     // console.log('Places after grouping:', get(places));
-}   
+}
 
 
 // ToDo: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
@@ -128,17 +128,17 @@ For a list of places [A, B, C] and their descriptions output a JSON object like 
 
 {
     "A": {
-        class: "CLASS1",
+        cls: "CLASS1",
         labels: ["LABEL1", "LABEL2"]
         importance: 5
     },
     "B": {
-        class: "CLASS2",
+        cls: "CLASS2",
         labels: ["LABEL3"]
         importance: 3
     },
     "C": {
-        class: "CLASS31,
+        cls: "CLASS31,
         labels: ["LABEL1", "LABEL2", "LABEL3"]
         importance: 2
     }
@@ -167,24 +167,24 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
         const json = JSON.parse(completion.choices[0].message.content);
         console.log('Analysis result:', json);
         // update cache
-        Object.entries(json).forEach(([title, labels]) => {
+        Object.entries(json).forEach(([title, results]) => {
             // ignore potential brackets in titles
             const title2 = title.replace(/ *\([^)]*\) */g, "");
             const place = $places.find(place => place.title.replace(/ *\([^)]*\) */g, "") === title2);
             if (!place) {
                 return;
             }
-            analysisCache[place.title] = labels;
+            analysisCache[place.title] = results;
         });
     }
     const newPlaces = $places.map(place => ({
         ...place,
         labels: analysisCache[place.title]?.labels,
-        class: analysisCache[place.title]?.class,
+        cls: analysisCache[place.title]?.cls,
         importance: analysisCache[place.title]?.importance
     }));
     const nonGeoClasses = Object.keys(CLASSES).filter(classLabel => CLASSES[classLabel]?.nonGeo);
-    places.set(newPlaces.filter(place => !nonGeoClasses.includes(place.class)));
+    places.set(newPlaces.filter(place => !nonGeoClasses.includes(place.cls)));
 }
 
 // summarize article

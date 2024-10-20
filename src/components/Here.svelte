@@ -11,7 +11,7 @@
 </div>
 
 {#if $placesHere?.length > 0}
-	<Listgroup items={$placesHere} let:item>
+	<Listgroup items={$placesHere} let:item itemDefaultClass="!px-0">
 		<PlaceItem {item} />
 	</Listgroup>
 {:else}

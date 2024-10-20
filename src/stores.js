@@ -113,7 +113,7 @@ export const placesSurrounding = derived([coordinates, places], ([$coordinates, 
             place.type = "address";
             return true;
         }
-        if (CLASSES[place.class]?.isSurrounding) {
+        if (CLASSES[place.cls]?.isSurrounding) {
             return true;
         }
     });
@@ -123,7 +123,7 @@ export const placesSurrounding = derived([coordinates, places], ([$coordinates, 
 export const placesHere = derived([coordinates, places, placesSurrounding], ([$coordinates, $places, $placesSurrounding]) => {
     if (!$coordinates || !$places || !$placesSurrounding) return [];
     return $places.filter(place => {
-        if ((place.dist === 0 || place.dist < (CLASSES[place.class]?.radius || 100)) && !$placesSurrounding.includes(place)) {
+        if ((place.dist === 0 || place.dist < (CLASSES[place.cls]?.radius || 100)) && !$placesSurrounding.includes(place)) {
             return true;
         }
     });
@@ -162,7 +162,8 @@ export const loadingMessage = createLoadingMessage();
 
 async function loadMetadataAndRate() {
     await loadArticleTexts(get(placesHere));
-    await loadWikipediaImageUrls(get(places));
+    await loadWikipediaImageUrls('imageThumb', 100);
+    await loadWikipediaImageUrls('image', 500);
 }
 
 function mergePlaces(placesTmp, placesOsm) {
