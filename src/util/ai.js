@@ -255,10 +255,10 @@ Just give summary of the most important information, but do not reply to the use
 `,
     };
     console.log(initialMessage.content);
-    let messages = [initialMessage, ...storyTexts.map(text => ({ role: "system", content: text }))];
+    let messages = [initialMessage, ...storyTexts.map(text => ({ role: "assistant", content: text }))];
     if (storyTexts.length > 0) {
         messages.push({
-            role: "user", content: `Tell me more about something different. You may focus on a certain aspect.
+            role: "user", content: `Tell me more about something different. You may focus on something specific, but don't repeat yourself.
 
 Remember, I am at this position:
 ${get(coordinates).address
