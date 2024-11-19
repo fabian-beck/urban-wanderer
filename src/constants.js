@@ -93,7 +93,7 @@ export const CLASSES = {
     'SPORTS_FACILITY': {
         emoji: '🏟️',
         description: 'Sports facility (e.g., a stadium, a gym)',
-        radius: 200	
+        radius: 200
     },
     'STATE/COUNTRY': {
         emoji: '🌍',
@@ -126,10 +126,9 @@ export const CLASSES = {
     }
 };
 
-export const ALL_LANGS = [
-    'en',
-    'de',
-    'cs'
+export const LANGUAGES = [
+    { value: 'en', name: 'English' },
+    { value: 'de', name: 'German' }
 ];
 
 export const LABELS = [

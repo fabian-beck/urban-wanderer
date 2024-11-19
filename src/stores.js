@@ -41,7 +41,8 @@ export const coordinates = createCoordinates();
 export const preferences = writable({
     radius: 500,
     labels: LABELS,
-    lang: 'de'
+    lang: 'de',
+    sourceLanguages: ['de', 'en'],
 });
 
 // Function to save preferences to local storage

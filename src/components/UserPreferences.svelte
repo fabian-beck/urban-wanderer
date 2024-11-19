@@ -2,17 +2,16 @@
 	import { Label, Range, Checkbox, Modal, Select } from 'flowbite-svelte';
 	import { preferences } from '../stores.js';
 	import { places } from '../stores.js';
-	import { LABELS } from '../constants.js';
+	import { LABELS, LANGUAGES } from '../constants.js';
 
 	export let visible = false;
-	const langOptions = [{ value: 'en', name: 'English' }, { value: 'de', name: 'German' }];
+	const langOptions = [
+		{ value: 'en', name: 'English' },
+		{ value: 'de', name: 'German' }
+	];
 </script>
 
 <Modal title="Preferences" bind:open={visible} autoclose on:close={places.update}>
-	<Label>Language</Label>
-	<Select bind:value={$preferences.lang} items={langOptions} />
-	<Label>Search radius ({$preferences.radius}&nbsp;m)</Label>
-	<Range id="range1" bind:value={$preferences.radius} min="100" max="3000" step="100" />
 	<Label>My Interests</Label>
 	{#each LABELS as label}
 		<Checkbox
@@ -29,4 +28,29 @@
 			{label}
 		</Checkbox>
 	{/each}
+	<Label>Content presentation language</Label>
+	<Select bind:value={$preferences.lang} items={langOptions} />
+	<Label>Content source languages</Label>
+	{#each LANGUAGES as lang}
+		<Checkbox
+			id={lang.value}
+			checked={$preferences.sourceLanguages?.includes(lang.value)}
+			on:change={() => {
+				if (!$preferences.sourceLanguages) {
+					$preferences.sourceLanguages = [];
+				}
+				if ($preferences.sourceLanguages?.includes(lang.value)) {
+					$preferences.sourceLanguages = $preferences.sourceLanguages.filter(
+						(l) => l !== lang.value
+					);
+				} else {
+					$preferences.sourceLanguages = [...$preferences.sourceLanguages, lang.value];
+				}
+			}}
+		>
+			{lang.name}
+		</Checkbox>
+	{/each}
+	<Label>Search radius ({$preferences.radius}&nbsp;m)</Label>
+	<Range id="range1" bind:value={$preferences.radius} min="100" max="3000" step="100" />
 </Modal>

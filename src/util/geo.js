@@ -1,5 +1,5 @@
 import { coordinates, preferences, places } from "../stores.js";
-import { nArticles, ALL_LANGS } from "../constants.js";
+import { nArticles } from "../constants.js";
 import { get } from "svelte/store";
 
 export async function loadWikipediaPlaces() {
@@ -8,7 +8,7 @@ export async function loadWikipediaPlaces() {
         return;
     }
     const places = [];
-    ALL_LANGS.forEach(async lang => {
+    get(preferences).sourceLanguages?.forEach(async lang => {
         places.push(...await wikipediaGeoSearchForPlaces($coordinates, lang));
     });
     if ($coordinates.village && !places.find(place => place?.title === $coordinates.village)) {
