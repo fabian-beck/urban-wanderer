@@ -25,7 +25,9 @@ function createCoordinates() {
                     longitude: coords.longitude,
                     address: addressData.display_name,
                     town: addressData.address.town || addressData.address.city,
-                    village: addressData.address.village || addressData.address.city_district
+                    village: addressData.address.village || addressData.address.city_district,
+                    suburb: addressData.address.suburb || addressData.address.city_district,
+                    road: addressData.address.road
                 });
             } catch (error) {
                 console.error(error);
@@ -124,7 +126,7 @@ export const placesSurrounding = derived([coordinates, places], ([$coordinates, 
 export const placesHere = derived([coordinates, places, placesSurrounding], ([$coordinates, $places, $placesSurrounding]) => {
     if (!$coordinates || !$places || !$placesSurrounding) return [];
     return $places.filter(place => {
-        if ((place.dist === 0 || place.dist < (CLASSES[place.cls]?.radius || 100)) && !$placesSurrounding.includes(place)) {
+        if ((!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) && !$placesSurrounding.includes(place)) {
             return true;
         }
     });

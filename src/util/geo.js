@@ -11,17 +11,23 @@ export async function loadWikipediaPlaces() {
     get(preferences).sourceLanguages?.forEach(async lang => {
         places.push(...await wikipediaGeoSearchForPlaces($coordinates, lang));
     });
-    if ($coordinates.village && !places.find(place => place?.title === $coordinates.village)) {
-        const place = await wikipediaNameSearchForPlace($coordinates.village);
-        if (place) {
+    const searchAndAddPlace = async (title) => {
+        if (title && !places.find(place => place?.title === title)) {
+            const title2 = `${title} (${$coordinates.town})`;
+            let place = await wikipediaNameSearchForPlace(title);
+            if (!place) {
+                return;
+            }
             places.push(place);
         }
     }
-    if ($coordinates.town && !places.find(place => place?.title === $coordinates.town)) {
-        const place = await wikipediaNameSearchForPlace($coordinates.town);
-        if (place) {
-            places.push(place);
-        }
+    if ($coordinates.town) {
+        searchAndAddPlace($coordinates.town);
+        searchAndAddPlace(`${$coordinates.village} (${$coordinates.town})`);
+        searchAndAddPlace(`${$coordinates.suburb} (${$coordinates.town})`);
+        searchAndAddPlace(`${$coordinates.road} (${$coordinates.town})`);
+    } else {
+        searchAndAddPlace($coordinates.village);
     }
     console.log('Wikipedia places:', places);
     return places;
@@ -156,7 +162,7 @@ out skel qt;
         body: `data=${encodeURIComponent(overpassQuery)}`
     });
     const data = await response.json();
-    const places = data.elements.filter(element => element.tags?.name).map(
+    const places = data.elements.filter(element => element.tags?.name && element.tags?.description).map(
         element => {
             const tags = element.tags;
             let title = tags.name.replace(/\s*\(.*?\)\s*/g, "");
