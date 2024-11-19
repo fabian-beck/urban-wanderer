@@ -17,7 +17,7 @@
 	let heading = 0;
 
 	$: headingString = (() => {
-		const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+		const directions = ['N', 'NW', 'W', 'SW', 'S', 'SE', 'E', 'NE'];
 		const index = Math.round(heading / 45) % 8;
 		return directions[index];
 	})();
