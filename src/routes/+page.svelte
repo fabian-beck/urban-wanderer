@@ -10,6 +10,7 @@
 	import { appName } from '../constants.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
+	import History from '../components/History.svelte';
 
 	let loading = false;
 
@@ -53,7 +54,7 @@
 </script>
 
 <Header updateRandom={() => update('random')} />
-<main id="main" class="mb-10 p-4 pb-24 pt-20 max-w-lg mx-auto">
+<main id="main" class="mx-auto mb-10 max-w-lg p-4 pb-24 pt-20">
 	{#if $errorMessage}
 		<Alert type="danger" class="mb-4 flex text-xs">
 			<div class="flex-auto overflow-hidden">
@@ -68,6 +69,7 @@
 		<Nearby />
 		<hr class="m-4" />
 		<Story />
+		<History />
 	{:else}
 		<div class="m-6 mt-20 flex justify-center">
 			<img src="urban-wanderer-icon.png" alt="logo" class="w-24" />

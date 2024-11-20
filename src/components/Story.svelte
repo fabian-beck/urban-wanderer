@@ -48,3 +48,4 @@
 		<Spinner />
 	</div>
 {/if}
+<hr class="my-4" />

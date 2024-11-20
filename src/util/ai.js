@@ -82,19 +82,6 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
     }
     console.log('Places after grouping:', newPlaces);
     places.set(newPlaces);
-    // const newPlaces = $places.map(place => {
-    //     const group = groups.find(group => group.places.includes(place.title));
-    //     if (group) {
-    //         if (visitedGroups.has(group.title)) {
-    //             return null;
-    //         }
-    //         visitedGroups.add(group.title);
-    //         place.title = group.title;
-    //     }
-    //     return place;
-    // }).filter(place => place);
-    // places.set(newPlaces);
-    // console.log('Places after grouping:', get(places));
 }
 
 
@@ -285,3 +272,37 @@ Write one to two paragraphs of text. Give the text a headline marked in bold fon
     });
     return completion.choices[0].message.content;
 }
+
+// extract and list historic events 
+export async function extractHistoricEvents() {
+    const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+            {
+                role: "system", content: `You are a chat assistant helping a user to extract historic events for nearby places.
+
+Extract and list historic events from the following text descring nearby places. 
+
+Put more emphasis on higher rated places. Answer in language '${get(preferences).lang}'.
+
+${get(placesHere).map(place =>
+                    `# ${place.title}: ${place.labels?.join(", ")}` +
+                    `Rating: ${place.rating}` +
+                    `${place.article || place.description || place.snippet || place.type || ""}`
+                ).join("\n\n")
+                    }
+
+Only output a List of events in ascending temporal as bullet points in the following format:
+
+- **DATE 1:** EVENT 1
+- **DATE 2:** EVENT 2
+
+Skip events if they are not immediately relevant for the specific place.
+`,
+            },
+        ]
+    });
+    console.log(completion.choices[0].message.content);
+    return completion.choices[0].message.content;
+}
+
