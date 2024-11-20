@@ -1,15 +1,16 @@
 <script>
 	import { Button, Spinner } from 'flowbite-svelte';
 	import { generateStory } from '../util/ai.js';
+	import { markPlacesInText } from '../util/text.js';
 	import { errorMessage, storyTexts } from '../stores.js';
 	import { ArrowRightOutline, MessageDotsOutline } from 'flowbite-svelte-icons';
+	import { marked } from 'marked';
 
 	let loading = false;
 
 	const updateStory = async () => {
 		loading = true;
 		try {
-			// $storyText = await generateStory();
 			const nextStoryText = await generateStory($storyTexts);
 			$storyTexts = [...$storyTexts, nextStoryText];
 		} catch (error) {
@@ -30,7 +31,7 @@
 {#if $storyTexts.length > 0}
 	{#each $storyTexts as storyText}
 		<div>
-			{@html storyText.replaceAll('<p>', '<p class="mt-2">')}
+			{@html marked(markPlacesInText(storyText)).replaceAll('<p>', '<p class="mt-2">')}
 		</div>
 		<hr class="my-4" />
 	{/each}

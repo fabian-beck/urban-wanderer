@@ -12,7 +12,9 @@ const analysisCache = {};
 
 export async function groupDuplicatePlaces() {
     const $places = get(places);
-    const instructions = `You are an assistant helping translating place names to ${get(preferences).lang}. You may skip places that are difficult to translate.
+    const instructions = `You are an assistant helping translating place names to ${get(preferences).lang}. 
+    
+You must skip places that are difficult to translate or are already in the targeted language (${get(preferences).lang}). Generally, skip place names in English. 
 
 For a list of places [A , B , C] output a JSON object like this:
 
@@ -20,7 +22,10 @@ For a list of places [A , B , C] output a JSON object like this:
         { "title": "A", "translation": "TRANSLATION_A" },
         // B skipped because there is no good translation
         { "title": "C", "translation": "TRANSLATION_C" }    
-    ]`;
+    ]
+        
+IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
+`;
     const dataString = `[${$places.map(place => place.title).join(", ")}]`;
     console.log(instructions);
     console.log(dataString);
@@ -258,9 +263,9 @@ Just give summary of the most important information, but do not reply to the use
     let messages = [initialMessage, ...storyTexts.map(text => ({ role: "assistant", content: text }))];
     if (storyTexts.length > 0) {
         messages.push({
-            role: "user", content: `Tell me more about something different. You may focus on something specific, but don't repeat yourself.
+            role: "system", content: `Tell the user more about something different. You may focus on something specific, but don't repeat yourself.
 
-Remember, I am at this position:
+Remember, the user is at this position:
 ${get(coordinates).address
                 }
 
@@ -269,6 +274,8 @@ ${get(placesHere).map(place =>
                     `* ${place.title}: ${place.labels?.join(", ")}`
                 ).join("\n")
                 }
+
+Write one to two paragraphs of text. Give the text a headline marked in bold font.
 ` });
         console.log(messages[messages.length - 1]);
     }
