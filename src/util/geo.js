@@ -13,7 +13,6 @@ export async function loadWikipediaPlaces() {
     });
     const searchAndAddPlace = async (title) => {
         if (title && !places.find(place => place?.title === title)) {
-            const title2 = `${title} (${$coordinates.town})`;
             let place = await wikipediaNameSearchForPlace(title);
             if (!place) {
                 return;
@@ -23,8 +22,15 @@ export async function loadWikipediaPlaces() {
     }
     if ($coordinates.town) {
         searchAndAddPlace($coordinates.town);
-        searchAndAddPlace(`${$coordinates.village} (${$coordinates.town})`);
-        searchAndAddPlace(`${$coordinates.suburb} (${$coordinates.town})`);
+        if ($coordinates.village) {
+            searchAndAddPlace(`${$coordinates.village} (${$coordinates.town})`);
+        }
+        if ($coordinates.town) {
+            searchAndAddPlace(`${$coordinates.town} (${$coordinates.town})`);
+        }
+        if ($coordinates.road) {
+            searchAndAddPlace(`${$coordinates.road} (${$coordinates.town})`);
+        }
         searchAndAddPlace(`${$coordinates.road} (${$coordinates.town})`);
     } else {
         searchAndAddPlace($coordinates.village);
@@ -109,17 +115,18 @@ export async function loadWikipediaImageUrls(attribute, size) {
     );
 }
 
-export async function loadOsmData() {
-    const $coordinates = get(coordinates);
-    const radius = 100;
-    const waterway = "river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point";
-    const amenities = "museum|school|college|university|library|place_of_worship";
-    const tourism = "viewpoint|attraction|mall|zoo|theme_park|aquarium|gallery|artwork|memorial|museum|theatre|cinema";
-    const historic = "monument|memorial|monument|memorial|ruins|castle|church|tomb|battlefield|fort|city_gate|citywalls|gate|archaeological_site";
-    const man_made = "statue|sculpture|obelisk|stone|cross|wayside_cross|wayside_shrine|shelter|tower|water_tower|chimney|bridge|tunnel|mine|adit|bunker|silo|tank|reservoir|water_tank|water_reservoir|storage_tank|storage_reservoir|water_storage_tank|water_storage_reservoir|storage|container";
-    const leisure = "park|nature_reserve|sports_centre|stadium";
+export async function loadOsmPlaces() {
+    try {
+        const $coordinates = get(coordinates);
+        const radius = 100;
+        const waterway = "river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point";
+        const amenities = "museum|school|college|university|library|place_of_worship";
+        const tourism = "viewpoint|attraction|mall|zoo|theme_park|aquarium|gallery|artwork|memorial|museum|theatre|cinema";
+        const historic = "monument|memorial|monument|memorial|ruins|castle|church|tomb|battlefield|fort|city_gate|citywalls|gate|archaeological_site";
+        const man_made = "statue|sculpture|obelisk|stone|cross|wayside_cross|wayside_shrine|shelter|tower|water_tower|chimney|bridge|tunnel|mine|adit|bunker|silo|tank|reservoir|water_tank|water_reservoir|storage_tank|storage_reservoir|water_storage_tank|water_storage_reservoir|storage|container";
+        const leisure = "park|nature_reserve|sports_centre|stadium";
 
-    const overpassQuery = `
+        const overpassQuery = `
 [out:json];
 (
     // Search for waterways
@@ -154,34 +161,37 @@ out body;
 >;
 out skel qt;
 `;
-    const response = await fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: `data=${encodeURIComponent(overpassQuery)}`
-    });
-    const data = await response.json();
-    const places = data.elements.filter(element => element.tags?.name && element.tags?.description).map(
-        element => {
-            const tags = element.tags;
-            let title = tags.name.replace(/\s*\(.*?\)\s*/g, "");
-            title = title.split(",")[0];
-            return {
-                title: title,
-                description: tags.description,
-                type: tags.waterway || tags.amenity || tags.tourism ||
-                    tags.historic || tags.man_made || tags.leisure,
-                url: tags["contact:website"] || tags.website,
-                wikipedia: tags.wikipedia,
-                lat: element.lat,
-                lon: element.lon,
-                dist: 0
-            };
-        }
-    );
-    console.log('OSM places:', places);
-    return places;
+        const response = await fetch("https://overpass-api.de/api/interpreter", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: `data=${encodeURIComponent(overpassQuery)}`
+        });
+        const data = await response.json();
+        const places = data.elements.filter(element => element.tags?.name && element.tags?.description).map(
+            element => {
+                const tags = element.tags;
+                let title = tags.name.replace(/\s*\(.*?\)\s*/g, "");
+                title = title.split(",")[0];
+                return {
+                    title: title,
+                    description: tags.description,
+                    type: tags.waterway || tags.amenity || tags.tourism ||
+                        tags.historic || tags.man_made || tags.leisure,
+                    url: tags["contact:website"] || tags.website,
+                    wikipedia: tags.wikipedia,
+                    lat: element.lat,
+                    lon: element.lon,
+                    dist: 0
+                };
+            }
+        );
+        console.log('OSM places:', places);
+        return places;
+    } catch (error) {
+        console.error("Could not load OSM places:", error);
+    }
 }
 
 export async function loadAddressData(coords) {

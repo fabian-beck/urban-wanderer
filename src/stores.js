@@ -2,7 +2,7 @@ import { writable, get, derived } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { CLASSES, LABELS } from "./constants.js";
 import { analyzePlaces, groupDuplicatePlaces } from "./util/ai.js";
-import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmData as loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
+import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
 
 let prefsInitialized = false;
 

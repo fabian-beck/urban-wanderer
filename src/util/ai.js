@@ -211,22 +211,22 @@ Tell something interesting about the user's current position. Answer in language
 User's current position is:
 ${get(coordinates).address}
 
-The position is close to /in (most important!):
+The position is close to /in:
 
 ${get(placesHere).map(place =>
             `# ${place.title}: ${place.labels?.join(", ")}    	    
-Rating: ${place.rating}
+Importance: ${place.importance}
 
 ${place.article || place.description || place.snippet || place.type || ""}
 `).join("\n")
             }
 
-Nearby places are (less important!):
+Nearby places are:
 
                 ${get(placesNearby).map(place =>
                 `
 # ${place.title} (${place.dist}m): ${place.labels?.join(", ")}
-Rating: ${place.rating}
+Importance: ${place.importance}
     
 ${place.article || place.description || place.snippet || place.type || ""}
 `).join("\n")
@@ -275,22 +275,18 @@ Write one to two paragraphs of text. Give the text a headline marked in bold fon
 
 // extract and list historic events 
 export async function extractHistoricEvents() {
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-            {
-                role: "system", content: `You are a chat assistant helping a user to extract historic events for nearby places.
+    const instructions = `You are a chat assistant helping a user to extract historic events for nearby places.
 
 Extract and list historic events from the following text descring nearby places. 
 
 Put more emphasis on higher rated places. Answer in language '${get(preferences).lang}'.
 
 ${get(placesHere).map(place =>
-                    `# ${place.title}: ${place.labels?.join(", ")}` +
-                    `Rating: ${place.rating}` +
-                    `${place.article || place.description || place.snippet || place.type || ""}`
-                ).join("\n\n")
-                    }
+        `# ${place.title}: ${place.labels?.join(", ")}` +
+        `Importance: ${place.importance}` +
+        `${place.article || place.description || place.snippet || place.type || ""}`
+    ).join("\n\n")
+        }
 
 Only output a List of events in ascending temporal as bullet points in the following format:
 
@@ -298,7 +294,15 @@ Only output a List of events in ascending temporal as bullet points in the follo
 - **DATE 2:** EVENT 2
 
 Skip events if they are not immediately relevant for the specific place.
-`,
+
+If the list of places is empty or the text is too short, output that no events could be found.
+`;
+    console.log(instructions);
+    const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+            {
+                role: "system", content: instructions,
             },
         ]
     });
