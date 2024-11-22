@@ -59,6 +59,11 @@ export const CLASSES = {
         emoji: '📍 ',
         description: 'Landmark'
     },
+    'HARBOUR': {
+        emoji: '⚓',
+        description: 'Harbour',
+        radius: 300
+    },
     'HOSPITAL': {
         emoji: '🏥',
         description: 'Medical facility (e.g., a hospital, a clinic)'

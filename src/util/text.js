@@ -19,7 +19,6 @@ export function markPlacesInText(text) {
         let regEx = new RegExp(`\\b${placeName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\w*\\b`, 'i'); // match only the first occurrence and ignore slightly different word endings
         result = result.replace(regEx, (match) => {
             const textBefore = result.slice(0, result.indexOf(match));
-            console.log(textBefore);
             // Check if the match is not already marked by counting the number of square brackets before the match
             if (textBefore.split('[').length === textBefore.split(']').length) {
                 return `[${match}]`;

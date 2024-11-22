@@ -164,9 +164,10 @@ function createLoadingMessage() {
 export const loadingMessage = createLoadingMessage();
 
 async function loadMetadataAndRate() {
-    await loadArticleTexts(get(placesHere));
-    await loadWikipediaImageUrls('imageThumb', 100);
-    await loadWikipediaImageUrls('image', 500);
+    loadWikipediaImageUrls('imageThumb', 100);
+    loadWikipediaImageUrls('image', 500);
+    loadArticleTexts(get(placesHere));
+    loadArticleTexts(get(placesSurrounding));
 }
 
 function mergePlaces(placesTmp, placesOsm) {

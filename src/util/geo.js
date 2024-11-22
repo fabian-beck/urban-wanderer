@@ -1,6 +1,7 @@
 import { coordinates, preferences, places } from "../stores.js";
 import { nArticles } from "../constants.js";
 import { get } from "svelte/store";
+import { extractFactsFromArticle } from "./ai.js";
 
 export async function loadWikipediaPlaces() {
     const $coordinates = get(coordinates);
@@ -25,13 +26,12 @@ export async function loadWikipediaPlaces() {
         if ($coordinates.village) {
             searchAndAddPlace(`${$coordinates.village} (${$coordinates.town})`);
         }
-        if ($coordinates.town) {
-            searchAndAddPlace(`${$coordinates.town} (${$coordinates.town})`);
+        if ($coordinates.suburb) {
+            searchAndAddPlace(`${$coordinates.suburb} (${$coordinates.town})`);
         }
         if ($coordinates.road) {
             searchAndAddPlace(`${$coordinates.road} (${$coordinates.town})`);
         }
-        searchAndAddPlace(`${$coordinates.road} (${$coordinates.town})`);
     } else {
         searchAndAddPlace($coordinates.village);
     }
@@ -60,6 +60,8 @@ export async function loadArticleTexts(places) {
             if (place.article.length > 20000) {
                 place.article = place.article.substring(0, 20000) + "...";
             }
+            // extracts facts
+            place.facts = await extractFactsFromArticle(place.article)
         })
     );
 }
@@ -233,13 +235,28 @@ async function wikipediaNameSearchForPlace(name) {
         `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${name}&srlimit=1&format=json&origin=*`
     );
     const data2 = await response2.json();
-    const place = data2.query.search[0];
-    if (!place) {
-        console.error(`Could not find Wikipedia article for ${name}.`);
-        return;
+    // for each search result, check if it has geocoordinates and is close to $coordinates
+    for (const searchResult of data2.query.search) {
+        // get geocoordinates through pageid
+        const response3 = await fetch(
+            `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&prop=coordinates&pageids=${searchResult.pageid}&origin=*`
+        );
+        const data3 = await response3.json();
+        const pageid = Object.keys(data3.query.pages)[0];
+        const coords = data3.query.pages[pageid].coordinates[0];
+        // calculate distance
+        const distance = Math.sqrt(
+            Math.pow(coords.lat - get(coordinates).latitude, 2) +
+            Math.pow(coords.lon - get(coordinates).longitude, 2)
+        );
+        // if close enough, return place
+        if (distance < 0.1) {
+            searchResult.title = searchResult.title.replace(/\s*\(.*?\)\s*/g, "");
+            searchResult.title = searchResult.title.split(",")[0];
+            return searchResult;
+        }
     }
-    place.title.replace(/\s*\(.*?\)\s*/g, "");
-    place.title = place.title.split(",")[0];
-    return place;
+    console.error(`Could not find Wikipedia article for ${name}.`);
+    return;
 }
 

@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { placesHere, placesNearby, coordinates, preferences, places } from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences, places, placesSurrounding } from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, CLASSES } from "../constants.js";
 import { z } from "zod";
@@ -8,7 +8,8 @@ import { zodResponseFormat } from "openai/helpers/zod"
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
-const analysisCache = {};
+
+// ----------------------------------------------
 
 export async function groupDuplicatePlaces() {
     const $places = get(places);
@@ -84,6 +85,9 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
     places.set(newPlaces);
 }
 
+// ----------------------------------------------
+
+const analysisCache = {};
 
 // ToDo: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
 export async function analyzePlaces() {
@@ -179,6 +183,8 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
     places.set(newPlaces.filter(place => !nonGeoClasses.includes(place.cls)));
 }
 
+// ----------------------------------------------
+
 // summarize article
 export async function summarizeArticle(article) {
     const completion = await openai.chat.completions.create({
@@ -197,6 +203,8 @@ export async function summarizeArticle(article) {
     return completion.choices[0].message.content;
 }
 
+// ----------------------------------------------
+
 // generate story about the user position
 export async function generateStory(storyTexts) {
     if (!storyTexts) {
@@ -208,33 +216,42 @@ You are a city guide: friendly and helpful, concise and factual.
 
 Tell something interesting about the user's current position. Answer in language '${get(preferences).lang} '.
 
-User's current position is:
+# The user's current position is:
+
 ${get(coordinates).address}
 
-The position is close to /in:
+# The position is close to /in:
 
 ${get(placesHere).map(place =>
-            `# ${place.title}: ${place.labels?.join(", ")}    	    
+            `## ${place.title}: ${place.labels?.join(", ")}    	    
 Importance: ${place.importance}
 
-${place.article || place.description || place.snippet || place.type || ""}
+${place.facts || place.article || place.description || place.snippet || place.type || ""}
 `).join("\n")
             }
 
-Nearby places are:
+# Nearby places are:
 
                 ${get(placesNearby).map(place =>
                 `
-# ${place.title} (${place.dist}m): ${place.labels?.join(", ")}
+## ${place.title} (${place.dist}m): ${place.labels?.join(", ")}
 Importance: ${place.importance}
     
-${place.article || place.description || place.snippet || place.type || ""}
+${place.facts || place.article || place.description || place.snippet || place.type || ""}
 `).join("\n")
-            }}
+            }
+
+# The user is in:
+
+${get(placesSurrounding).map(place => `## ${place.title}
+    
+${place.facts || place.article || place.description || place.snippet || place.type || ""}
+    `).join("\n")}
+
 
 ----------------------------------------------
 
-    IMPORTANT:
+# IMPORTANT INSTUCTIONS:
 
 User's preferences are the following topics:
 ${get(preferences).labels?.map(label => `- ${label}`).join("\n")}
@@ -264,7 +281,7 @@ ${get(placesHere).map(place =>
 
 Write one to two paragraphs of text. Give the text a headline marked in bold font.
 ` });
-        console.log(messages[messages.length - 1]);
+        console.log(messages[messages.length - 1].content);
     }
     const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -273,27 +290,33 @@ Write one to two paragraphs of text. Give the text a headline marked in bold fon
     return completion.choices[0].message.content;
 }
 
+// ----------------------------------------------
+
 // extract and list historic events 
 export async function extractHistoricEvents() {
+    let relevantPlaces = get(placesHere).filter(place => place.importance > 3);
+    if (relevantPlaces.length < 2) {
+        relevantPlaces.push(...get(placesSurrounding));
+    }
     const instructions = `You are a chat assistant helping a user to extract historic events for nearby places.
 
 Extract and list historic events from the following text descring nearby places. 
 
 Put more emphasis on higher rated places. Answer in language '${get(preferences).lang}'.
 
-${get(placesHere).map(place =>
-        `# ${place.title}: ${place.labels?.join(", ")}` +
-        `Importance: ${place.importance}` +
+${relevantPlaces.map(place =>
+        `# ${place.title}: ${place.labels?.join(", ")}
+Importance: ${place.importance}` +
         `${place.article || place.description || place.snippet || place.type || ""}`
     ).join("\n\n")
         }
 
-Only output a List of events in ascending temporal as bullet points in the following format:
+Only output a list of events in ascending temporal as bullet points in the following format:
 
 - **DATE 1:** EVENT 1
 - **DATE 2:** EVENT 2
 
-Skip events if they are not immediately relevant for the specific place.
+Skip events if they are not immediately relevant for the specific place, especially very early events from stone age or similar. Prefer truely local events of the very specific place, over those that affect the whole town or region.
 
 If the list of places is empty or the text is too short, output that no events could be found.
 `;
@@ -310,3 +333,23 @@ If the list of places is empty or the text is too short, output that no events c
     return completion.choices[0].message.content;
 }
 
+export async function extractFactsFromArticle(article) {
+    const instructions = `You are a chat assistant helping a user to extract facts from an article, relevant when visiting the place.
+
+Return a list of bullet points, focusing on the most important facts. Answer in language '${get(preferences).lang}'.    
+`;
+    console.log(instructions);
+    const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+            {
+                role: "system", content: instructions,
+            },
+            {
+                role: "user", content: article,
+            },
+        ]
+    });
+    console.log(completion.choices[0].message.content);
+    return completion.choices[0].message.content;
+}
