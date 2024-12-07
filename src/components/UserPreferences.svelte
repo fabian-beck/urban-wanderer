@@ -1,5 +1,5 @@
 <script>
-	import { Label, Range, Checkbox, Modal, Select } from 'flowbite-svelte';
+	import { Label, Range, Checkbox, Modal, Select, Toggle } from 'flowbite-svelte';
 	import { preferences } from '../stores.js';
 	import { places } from '../stores.js';
 	import { LABELS, LANGUAGES } from '../constants.js';
@@ -53,4 +53,7 @@
 	{/each}
 	<Label>Search radius ({$preferences.radius}&nbsp;m)</Label>
 	<Range id="range1" bind:value={$preferences.radius} min="100" max="3000" step="100" />
+	<!-- Audio on/off toggle -->
+	<Label>Audio (speech synthesis)</Label>
+	<Toggle bind:checked={$preferences.audio} />
 </Modal>

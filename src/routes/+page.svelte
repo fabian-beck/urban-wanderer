@@ -1,12 +1,21 @@
 <script>
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { coordinates, places, errorMessage, storyTexts, loadingMessage } from '../stores.js';
+	import {
+		coordinates,
+		places,
+		errorMessage,
+		storyTexts,
+		loadingMessage,
+		audioState,
+		preferences
+	} from '../stores.js';
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
 	import Nearby from '../components/Nearby.svelte';
 	import Story from '../components/Story.svelte';
-	import { Alert, CloseButton, Spinner } from 'flowbite-svelte';
+	import { Alert, CloseButton, Spinner, Toast } from 'flowbite-svelte';
+	import { VolumeUpSolid } from 'flowbite-svelte-icons';
 	import { appName } from '../constants.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
@@ -86,3 +95,22 @@
 	{/if}
 </main>
 <Location {loading} update={() => update(false)} />
+{#if $preferences.audio}
+	<Toast
+		type="info"
+		class="fixed left-0 top-0 m-1 h-12 transform"
+		toastStatus={$audioState !== 'paused'}
+		color="red"
+		on:close={() => audioState.set('paused')}
+	>
+		<svelte:fragment slot="icon">
+			{#if $audioState === 'loading'}
+				<Spinner size="6" />
+			{/if}
+			{#if $audioState === 'playing'}
+				<VolumeUpSolid />
+			{/if}
+		</svelte:fragment>
+		Audio {$audioState}
+	</Toast>
+{/if}

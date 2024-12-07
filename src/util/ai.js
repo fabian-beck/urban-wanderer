@@ -1,12 +1,14 @@
 import OpenAI from "openai";
 import { OPENAI_API_KEY } from "../.openai_api_key.js";
-import { placesHere, placesNearby, coordinates, preferences, places, placesSurrounding } from "../stores.js";
+import { placesHere, placesNearby, coordinates, preferences, places, placesSurrounding, audioState } from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, CLASSES } from "../constants.js";
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod"
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
+
+let audio = null;
 
 
 // ----------------------------------------------
@@ -214,7 +216,7 @@ export async function generateStory(storyTexts) {
         role: "system", content: `
 You are a city guide: friendly and helpful, concise and factual.
 
-Tell something interesting about the user's current position. Answer in language '${get(preferences).lang} '.
+Tell something interesting about the user's current position. Answer in language '${get(preferences).lang}'.
 
 # The user's current position is:
 
@@ -287,6 +289,7 @@ Write one to two paragraphs of text. Give the text a headline marked in bold fon
         model: "gpt-4o",
         messages: messages,
     });
+    textToSpeech(completion.choices[0].message.content);
     return completion.choices[0].message.content;
 }
 
@@ -352,4 +355,43 @@ Return a list of bullet points, focusing on the most important facts. Answer in 
     });
     console.log(completion.choices[0].message.content);
     return completion.choices[0].message.content;
+}
+
+export async function textToSpeech(text) {
+    if (!get(preferences).audio)
+        return;
+    if (get(audioState) === 'playing') {
+        audioState.set('paused');
+        if (audio) {
+            audio.pause();
+        }
+    }
+    audioState.set('loading');
+    console.log('text to speech:', text);
+    const response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: "alloy",
+        input: text,
+    });
+    const blob = await response.blob();
+    if (audio) {
+        audio.pause();
+    }
+    audio = new Audio(URL.createObjectURL(blob));
+    if (get(audioState) === 'paused') {
+        return;
+    }
+    document.querySelectorAll('audio').forEach(audio => audio.pause());
+    audioState.set('playing');
+    audio.play();
+    const unsubscribe = audioState.subscribe(state => {
+        if (state === 'paused') {
+            audio.pause();
+            unsubscribe();
+        }
+    });
+    audio.onended = () => {
+        audioState.set('paused');
+        audio = null;
+    };
 }

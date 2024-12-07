@@ -1,7 +1,7 @@
 import { writable, get, derived } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { CLASSES, LABELS } from "./constants.js";
-import { analyzePlaces, groupDuplicatePlaces } from "./util/ai.js";
+import { analyzePlaces, groupDuplicatePlaces, textToSpeech } from "./util/ai.js";
 import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
 
 let prefsInitialized = false;
@@ -45,6 +45,7 @@ export const preferences = writable({
     labels: LABELS,
     lang: 'de',
     sourceLanguages: ['de', 'en'],
+    audio: true
 });
 
 // Function to save preferences to local storage
@@ -162,6 +163,9 @@ function createLoadingMessage() {
     };
 }
 export const loadingMessage = createLoadingMessage();
+
+// audio state (loading, playing or paused)
+export const audioState = writable('paused');
 
 async function loadMetadataAndRate() {
     loadWikipediaImageUrls('imageThumb', 100);
