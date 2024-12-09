@@ -188,7 +188,11 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
 // ----------------------------------------------
 
 // summarize article
+const summaryCache = {};
 export async function summarizeArticle(article) {
+    if (summaryCache[article]) {
+        return summaryCache[article];
+    }
     const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -201,8 +205,9 @@ export async function summarizeArticle(article) {
             },
         ]
     });
-
-    return completion.choices[0].message.content;
+    const summary = completion.choices[0].message.content;
+    summaryCache[article] = summary;
+    return summary;
 }
 
 // ----------------------------------------------
@@ -258,7 +263,7 @@ ${place.facts || place.article || place.description || place.snippet || place.ty
 User's preferences are the following topics:
 ${get(preferences).labels?.map(label => `- ${label}`).join("\n")}
 
-The story should be two to three paragraphs long and focus on the position of the user and the most closest places. Avoid giving precise directions or distances.
+The story should be up to ${Math.min(Math.round(0.5 + (get(placesHere).length + get(placesSurrounding).length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places. Avoid giving precise directions or distances.
 
 Keep the language concise and factual. You may use an informal tone, but use a moderate language. Try to realisticially describe the relevance of places. 
 
@@ -269,7 +274,7 @@ Just give summary of the most important information, but do not reply to the use
     let messages = [initialMessage, ...storyTexts.map(text => ({ role: "assistant", content: text }))];
     if (storyTexts.length > 0) {
         messages.push({
-            role: "system", content: `Tell the user more about something different. You may focus on something specific, but don't repeat yourself.
+            role: "system", content: `Tell the user more about something different. You may focus on something specific, but never repeat yourself.
 
 Remember, the user is at this position:
 ${get(coordinates).address
