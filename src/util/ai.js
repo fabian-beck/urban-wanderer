@@ -280,7 +280,7 @@ Remember, the user is at this position:
 ${get(coordinates).address
                 }
 
-The position is close to /in:
+The position is close to/in:
 ${get(placesHere).map(place =>
                     `* ${place.title}: ${place.labels?.join(", ")}`
                 ).join("\n")
@@ -324,8 +324,12 @@ Only output a list of events in ascending temporal as bullet points in the follo
 - **DATE 1:** EVENT 1
 - **DATE 2:** EVENT 2
 
-Skip events if they are not immediately relevant for the specific place, especially very early events from stone age or similar. Prefer truely local events of the very specific place, over those that affect the whole town or region.
+Skip events if they are not immediately relevant for the specific, narrower place, especially early events from stone age, middle ages, or similar. Prefer truely local events of the very specific place, over those that affect the whole town or region.
 
+Remember, the user is at this position:
+${get(coordinates).address
+        }
+                
 If the list of places is empty or the text is too short, output that no events could be found.
 `;
     console.log(instructions);
