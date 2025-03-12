@@ -111,7 +111,27 @@ export async function loadWikipediaImageUrls(attribute, size) {
             }
             const data = await response.json();
             const pageid = Object.keys(data.query.pages)[0];
-            place[attribute] = data.query.pages[pageid].thumbnail?.source;
+            if (data.query.pages[pageid].thumbnail) {
+                place[attribute] = data.query.pages[pageid].thumbnail?.source;
+            } else {
+                // load first image from wiki page
+                const response2 = await fetch(
+                    `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&prop=images&pageids=${place.pageid}&origin=*`
+                );
+                const data2 = await response2.json();
+                const images = data2.query.pages[place.pageid].images;
+                if (images) {
+                    const firstImage = images[0].title;
+                    const response3 = await fetch(
+                        `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&titles=${firstImage}&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=${size}`
+                    );
+                    const data3 = await response3.json();
+                    const imageinfo = Object.values(data3.query.pages)[0].imageinfo;
+                    if (imageinfo) {
+                        place[attribute] = imageinfo[0].url;
+                    }
+                }
+            }
             places.set(get(places));
         })
     );
