@@ -1,5 +1,5 @@
 <script>
-	import { Button, Spinner } from 'flowbite-svelte';
+	import { Button, Spinner, Alert } from 'flowbite-svelte';
 	import { extractHistoricEvents } from '../util/ai.js';
 	import { markPlacesInText } from '../util/text.js';
 	import { errorMessage } from '../stores.js';
@@ -13,31 +13,22 @@
 	const updateHistory = async () => {
 		loading = true;
 		try {
-			const historyText = await extractHistoricEvents();
-			events = [];
-			// split event text -> events.text
-			// extract date from events.text -> events.date
-			events = historyText.split('\n').map((line) => {
-				// remove trailing markdown list characters
-				line = line.replace(/^- /, '');
-				// parse year from date if possible, ignore markdown (Format: "**2021...")
-				let year = line.match(/(\d{4})/);
-				year = year ? year[0] : '';
-				if (year) {
-					return { date: year, text: line };
+			events = await extractHistoricEvents();
+			// sort events by year
+			events = events.sort((a, b) => {
+				if (a.year && b.year) {
+					return a.year - b.year;
 				}
-				return { date: '', text: line };
+				return 0;
 			});
-			// filter empty events
-			events = events.filter((event) => event.text.trim() !== '');
 			// compute year differences to next event -> events.yearDiff
 			events = events.map((event, index) => {
-				if (event.date) {
+				if (event.year) {
 					let yearDiff = 0;
 					if (index < events.length - 1) {
-						yearDiff = events[index + 1].date - event.date;
+						yearDiff = events[index + 1].year - event.year;
 					} else {
-						yearDiff = new Date().getFullYear() - event.date;
+						yearDiff = new Date().getFullYear() - event.year;
 						if (yearDiff <= 0) {
 							yearDiff = 0;
 						}
@@ -49,7 +40,6 @@
 				}
 				return event;
 			});
-			console.log(events);
 		} catch (error) {
 			console.error('Error extracting history', error);
 			errorMessage.set('Error extracting history: ' + error);
@@ -68,10 +58,14 @@
 	{/if}
 </div>
 {#if events}
+	{#if events.length === 0}
+		<Alert color="primary"><i>No historic events found.</i></Alert>
+	{/if}
 	<div class="timeline">
 		<ul>
 			{#each events as event}
 				<li class="mt-2">
+					<span class="text-sm font-bold text-primary-800">{event.date_string}</span>
 					{@html marked(markPlacesInText(event.text))}
 					<!-- line height depends linearly on yearDiff-->
 					<div

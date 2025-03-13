@@ -319,10 +319,7 @@ Importance: ${place.importance}` +
     ).join("\n\n")
         }
 
-Only output a list of events in ascending temporal as bullet points in the following format:
-
-- **DATE 1:** EVENT 1
-- **DATE 2:** EVENT 2
+Only output a list of events in ascending temporal in JSON format. If events refer to a time range, translate the range to the start year of the range ("year"), but give the range description in "date_string". Years BC should be negative.
 
 Skip events if they are not immediately relevant for the specific, narrower place, especially early events from stone age, middle ages, or similar. Prefer truely local events of the very specific place, over those that affect the whole town or region.
 
@@ -330,19 +327,45 @@ Remember, the user is at this position:
 ${get(coordinates).address
         }
                 
-If the list of places is empty or the text is too short, output that no events could be found.
+If the list of places is empty or the text is too short, leave the list of events empty.
 `;
     console.log(instructions);
-    const completion = await openai.chat.completions.create({
+    const response = await openai.responses.create({
         model: "gpt-4o",
-        messages: [
+        input: [
             {
                 role: "system", content: instructions,
             },
-        ]
+        ],
+        text: {
+            format: {
+                type: "json_schema",
+                name: "event",
+                schema: {
+                    type: "object",
+                    properties: {
+                        events: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    year: { type: "number" },
+                                    date_string: { type: "string" },
+                                    text: { type: "string" }
+                                },
+                                required: ["year", "date_string", "text"],
+                                additionalProperties: false,
+                            }
+                        }
+                    },
+                    required: ["events"],
+                    additionalProperties: false,
+                }
+            }
+        }
     });
-    console.log(completion.choices[0].message.content);
-    return completion.choices[0].message.content;
+    console.log(response.output_text);
+    return JSON.parse(response.output_text).events;
 }
 
 export async function extractFactsFromArticle(article) {
