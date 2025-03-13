@@ -7,15 +7,17 @@
 		GlobeOutline,
 		SearchOutline
 	} from 'flowbite-svelte-icons';
-	import { summarizeArticle } from '../util/ai.js';
+	import { summarizeArticle, searchPlaceWeb } from '../util/ai.js';
 	import { coordinates, placesSurrounding, preferences } from '../stores.js';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
+	import { marked } from 'marked';
 
 	export let visible = false;
 	export let item;
 	$: isSurroundingPlace = $placesSurrounding.find((place) => place.title === item.title);
 	let summary = '';
+	let weblinks = '';
 
 	onMount(async () => {
 		if (item.pageid || item.wikipedia) {
@@ -25,6 +27,7 @@
 			const response = await fetch(url);
 			const data = await response.json();
 			summary = await summarizeArticle(Object.values(data.query.pages)[0].extract);
+			weblinks = await searchPlaceWeb(item.title);
 		} else if (item.description) {
 			summary = await summarizeArticle(`${item.title}. ${item.description} (${item.type})`);
 		}
@@ -54,6 +57,28 @@
 						...
 					{/if}
 				</div>
+				{#if !isSurroundingPlace}
+					<hr class="my-4" />
+					<h3 class="text-lg">More about {item.title}</h3>
+					<div>
+						{#if weblinks}
+							<ul>
+								{#each weblinks as weblink}
+									<!-- skip wikipedia links -->
+									{#if !weblink.source_domain.includes('wikipedia')}
+										<li class="mt-2">
+											<a href={weblink.url} target="_blank">
+												{@html marked(weblink.text + ' (' + weblink.source_domain + ')')}
+											</a>
+										</li>
+									{/if}
+								{/each}
+							</ul>
+						{:else}
+							...
+						{/if}
+					</div>
+				{/if}
 				<hr class="my-4" />
 			{/if}
 			{#if !isSurroundingPlace}

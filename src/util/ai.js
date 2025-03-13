@@ -210,6 +210,49 @@ export async function summarizeArticle(article) {
     return summary;
 }
 
+// web search for a place
+export async function searchPlaceWeb(place) {
+    const response = await openai.responses.create({
+        model: "gpt-4o",
+        tools: [{ type: "web_search_preview" }],
+        input: `You are a chat assistant helping a user to find more information and links about a place.
+
+Search the web for detailed information, current events, opening hours, or other relevant links about the following place. Keep the search restricted to the specific place. Answer in language '${get(preferences).lang}'.
+
+PLACE: ${place} located near ${get(coordinates).address}. The user is currently at the place.
+
+Answer as a list links, consisting each of a short summary of the information ("text" without url), with additional properties for "url" and "source_domain". The links should include only information relevant for a current touristic visitor of the place. Avoid redundancies. Directions are not necessary as the user is at the place already. Avoid any general description of the place and do not provide general information about the city or region. Do not address the user directly or ask for feedback. Do not list businesses, restaurants, or similar places unless they are of historical or cultural significance. Do not list events or activities that are not directly related to the place. Do not list general travel information or general tourist information.`,
+        text: {
+            format: {
+                type: "json_schema",
+                name: "links",
+                schema: {
+                    type: "object",
+                    properties: {
+                        links: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    url: { type: "string" },
+                                    text: { type: "string" },
+                                    source_domain: { type: "string" },
+                                },
+                                required: ["url", "text", "source_domain"],
+                                additionalProperties: false,
+                            }
+                        }
+                    },
+                    required: ["links"],
+                    additionalProperties: false,
+                }
+            }
+        }
+    });
+    console.log(response.output_text);
+    return JSON.parse(response.output_text).links;
+}
+
 // ----------------------------------------------
 
 // generate story about the user position
@@ -229,7 +272,7 @@ ${get(coordinates).address}
 
 # The position is close to /in:
 
-${get(placesHere).map(place =>
+        ${get(placesHere).map(place =>
             `## ${place.title}: ${place.labels?.join(", ")}    	    
 Importance: ${place.importance}
 
@@ -239,7 +282,7 @@ ${place.facts || place.article || place.description || place.snippet || place.ty
 
 # Nearby places are:
 
-                ${get(placesNearby).map(place =>
+        ${get(placesNearby).map(place =>
                 `
 ## ${place.title} (${place.dist}m): ${place.labels?.join(", ")}
 Importance: ${place.importance}
@@ -250,22 +293,23 @@ ${place.facts || place.article || place.description || place.snippet || place.ty
 
 # The user is in:
 
-${get(placesSurrounding).map(place => `## ${place.title}
+        ${get(placesSurrounding).map(place => `## ${place.title}
     
 ${place.facts || place.article || place.description || place.snippet || place.type || ""}
-    `).join("\n")}
+    `).join("\n")
+            }
 
 
 ----------------------------------------------
 
 # IMPORTANT INSTUCTIONS:
 
-User's preferences are the following topics:
+        User's preferences are the following topics:
 ${get(preferences).labels?.map(label => `- ${label}`).join("\n")}
 
-The story should be up to ${Math.min(Math.round(0.5 + (get(placesHere).length + get(placesSurrounding).length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places. Avoid giving precise directions or distances.
+The story should be up to ${Math.min(Math.round(0.5 + (get(placesHere).length + get(placesSurrounding).length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places.Avoid giving precise directions or distances.
 
-Keep the language concise and factual. You may use an informal tone, but use a moderate language. Try to realisticially describe the relevance of places. 
+Keep the language concise and factual.You may use an informal tone, but use a moderate language.Try to realisticially describe the relevance of places. 
 
 Just give summary of the most important information, but do not reply to the user's questions. Do not welcome the user or ask for feedback.
 `,
@@ -274,19 +318,19 @@ Just give summary of the most important information, but do not reply to the use
     let messages = [initialMessage, ...storyTexts.map(text => ({ role: "assistant", content: text }))];
     if (storyTexts.length > 0) {
         messages.push({
-            role: "system", content: `Tell the user more about something different. You may focus on something specific, but never repeat yourself.
+            role: "system", content: `Tell the user more about something different.You may focus on something specific, but never repeat yourself.
 
-Remember, the user is at this position:
+        Remember, the user is at this position:
 ${get(coordinates).address
                 }
 
-The position is close to/in:
+The position is close to /in:
 ${get(placesHere).map(place =>
                     `* ${place.title}: ${place.labels?.join(", ")}`
                 ).join("\n")
                 }
 
-Write one to two paragraphs of text. Give the text a headline marked in bold font.
+Write one to two paragraphs of text.Give the text a headline marked in bold font.
 ` });
         console.log(messages[messages.length - 1].content);
     }
@@ -310,20 +354,20 @@ export async function extractHistoricEvents() {
 
 Extract and list historic events from the following text descring nearby places. 
 
-Put more emphasis on higher rated places. Answer in language '${get(preferences).lang}'.
+Put more emphasis on higher rated places.Answer in language '${get(preferences).lang}'.
 
-${relevantPlaces.map(place =>
+        ${relevantPlaces.map(place =>
         `# ${place.title}: ${place.labels?.join(", ")}
 Importance: ${place.importance}` +
         `${place.article || place.description || place.snippet || place.type || ""}`
     ).join("\n\n")
         }
 
-Only output a list of events in ascending temporal in JSON format. If events refer to a time range, translate the range to the start year of the range ("year"), but give the range description in "date_string". Years BC should be negative.
+Only output a list of events in ascending temporal in JSON format.If events refer to a time range, translate the range to the start year of the range("year"), but give the range description in "date_string".Years BC should be negative.
 
-Skip events if they are not immediately relevant for the specific, narrower place, especially early events from stone age, middle ages, or similar. Prefer truely local events of the very specific place, over those that affect the whole town or region.
+Skip events if they are not immediately relevant for the specific, narrower place, especially early events from stone age, middle ages, or similar.Prefer truely local events of the very specific place, over those that affect the whole town or region.
 
-Remember, the user is at this position:
+        Remember, the user is at this position:
 ${get(coordinates).address
         }
                 
@@ -371,7 +415,7 @@ If the list of places is empty or the text is too short, leave the list of event
 export async function extractFactsFromArticle(article) {
     const instructions = `You are a chat assistant helping a user to extract facts from an article, relevant when visiting the place.
 
-Return a list of bullet points, focusing on the most important facts. Answer in language '${get(preferences).lang}'.    
+Return a list of bullet points, focusing on the most important facts.Answer in language '${get(preferences).lang}'.    
 `;
     console.log(instructions);
     const completion = await openai.chat.completions.create({

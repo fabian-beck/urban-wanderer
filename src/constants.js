@@ -81,6 +81,10 @@ export const CLASSES = {
         emoji: '🖼️',
         description: 'Museum'
     },
+    'OBSERVATORY': {
+        emoji: '🔭',
+        description: 'Observatory'
+    },
     'PARK': {
         emoji: '🌳',
         description: 'Park',
