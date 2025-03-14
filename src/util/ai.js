@@ -213,7 +213,7 @@ export async function summarizeArticle(article) {
 // web search for a place
 export async function searchPlaceWeb(place) {
     const response = await openai.responses.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         tools: [{ type: "web_search_preview" }],
         input: `You are a chat assistant helping a user to find more information and links about a place.
 

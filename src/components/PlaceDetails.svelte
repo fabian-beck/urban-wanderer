@@ -1,11 +1,12 @@
 <script>
 	import { onMount } from 'svelte';
-	import { Modal } from 'flowbite-svelte';
+	import { Button, Modal, Spinner } from 'flowbite-svelte';
 	import {
 		FileOutline,
 		MapPinAltOutline,
 		GlobeOutline,
-		SearchOutline
+		SearchOutline,
+		ArrowRightOutline
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle, searchPlaceWeb } from '../util/ai.js';
 	import { coordinates, placesSurrounding, preferences } from '../stores.js';
@@ -18,29 +19,31 @@
 	$: isSurroundingPlace = $placesSurrounding.find((place) => place.title === item.title);
 	let summary = '';
 	let weblinks = '';
+	let weblinksLoading = false;
 
-	onMount(async () => {
-		if (item.pageid || item.wikipedia) {
-			const url = item.pageid
-				? `https://${item.lang || $preferences.lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
-				: `https://${item.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${item.wikipedia.split(':')[1]}&origin=*`;
-			const response = await fetch(url);
-			const data = await response.json();
-			summary = await summarizeArticle(Object.values(data.query.pages)[0].extract);
-			weblinks = await searchPlaceWeb(item.title);
-		} else if (item.description) {
-			summary = await summarizeArticle(`${item.title}. ${item.description} (${item.type})`);
-		}
+	onMount(() => {
+		(async () => {
+			if (item.pageid || item.wikipedia) {
+				const url = item.pageid
+					? `https://${item.lang || $preferences.lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
+					: `https://${item.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${item.wikipedia.split(':')[1]}&origin=*`;
+				const response = await fetch(url);
+				const data = await response.json();
+				summary = await summarizeArticle(Object.values(data.query.pages)[0].extract);
+			} else if (item.description) {
+				summary = await summarizeArticle(`${item.title}. ${item.description} (${item.type})`);
+			}
+		})();
 	});
+
+	const loadWeblinks = async () => {
+		weblinksLoading = true;
+		weblinks = await searchPlaceWeb(item.title);
+		weblinksLoading = false;
+	};
 </script>
 
-<Modal
-	title={item.title}
-	bind:open={visible}
-	autoclose
-	classBody="p-0 overscroll-none"
-	classDialog=""
->
+<Modal title={item.title} bind:open={visible} classBody="p-0 overscroll-none" classDialog="">
 	<svelte:fragment slot="header">
 		<span class="text-xl"><PlaceTitle place={item} /></span>
 	</svelte:fragment>
@@ -67,15 +70,22 @@
 									<!-- skip wikipedia links -->
 									{#if !weblink.source_domain.includes('wikipedia')}
 										<li class="mt-2">
-											<a href={weblink.url} target="_blank">
+											<a href={weblink.url} target="_blank" class="text-primary-800">
 												{@html marked(weblink.text + ' (' + weblink.source_domain + ')')}
 											</a>
 										</li>
 									{/if}
 								{/each}
 							</ul>
+						{:else if weblinksLoading}
+							<div class="m-6 flex justify-center">
+								<Spinner size="6" />
+							</div>
 						{:else}
-							...
+							<Button on:click={loadWeblinks} pill size="xs" outline class="mt-2"
+								><ArrowRightOutline />
+								Search the web
+							</Button>
 						{/if}
 					</div>
 				{/if}
@@ -120,13 +130,6 @@
 					<GlobeOutline class="!mr-1" />Page
 				</a>
 			{/if}
-			<a
-				href={`https://www.google.com/search?q=${item.title} ${$coordinates.town}`}
-				target="_blank"
-				class="flex flex-auto"
-			>
-				<SearchOutline class="!mr-1" />Search
-			</a>
 			<a
 				href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`}
 				target="_blank"
