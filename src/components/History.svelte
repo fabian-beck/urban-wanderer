@@ -94,5 +94,6 @@
 		width: 4px;
 		height: 20px;
 		@apply bg-primary-500;
+		margin-left: 4px;
 	}
 </style>
