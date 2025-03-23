@@ -445,8 +445,10 @@ export async function textToSpeech(text) {
     audioState.set('loading');
     console.log('text to speech:', text);
     const response = await openai.audio.speech.create({
-        model: "tts-1",
+        model: "gpt-4o-mini-tts",
         voice: "alloy",
+        instructions: "You are friendly and motivated city guide and speak accordingly in a moderate and friendly tone. Pronounciation can be colloquial and deviate from the standard language to not sound too artificial. Make pauses between sentences and paragraphs, and use enganging intonation to make the speech more lively. Filler words like 'uhm' or 'well' are allowed to make the speech more natural.",
+        speed: 1.5,
         input: text,
     });
     const blob = await response.blob();
