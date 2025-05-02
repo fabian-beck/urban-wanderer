@@ -73,20 +73,32 @@ export async function loadExtracts(places) {
                 return;
             }
             let response;
-            if (place.pageid) {
-                response = await fetch(
-                    `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
-                );
-            } else if (place.wikipedia) {
-                const placeLang = place.wikipedia.split(":")[0];
-                const placeTitle = place.wikipedia.split(":")[1];
-                response = await fetch(
-                    `https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&titles=${placeTitle}&origin=*&prop=extracts&exintro=1&explaintext=1`
-                );
+            try {
+                if (place.pageid) {
+                    response = await fetch(
+                        `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
+                    );
+                } else if (place.wikipedia) {
+                    const placeLang = place.wikipedia.split(":")[0];
+                    const placeTitle = place.wikipedia.split(":")[1];
+                    response = await fetch(
+                        `https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=extracts&exintro=1&explaintext=1&titles=${placeTitle}`
+                    );
+                }
+                if (!response.ok) {
+                    console.error(`Failed to fetch extract for place: ${place.title}. HTTP status: ${response.status}`);
+                    return;
+                }
+                const data = await response.json();
+                const pageid = Object.keys(data.query.pages)[0];
+                if (data.query.pages[pageid].missing) {
+                    console.warn(`Extract not found for place: ${place.title}`);
+                    return;
+                }
+                place.description = data.query.pages[pageid].extract;
+            } catch (error) {
+                console.error(`Error fetching extract for place: ${place.title}`, error);
             }
-            const data = await response.json();
-            const pageid = Object.keys(data.query.pages)[0];
-            place.description = data.query.pages[pageid].extract;
         })
     );
 }
@@ -140,7 +152,7 @@ export async function loadWikipediaImageUrls(attribute, size) {
 export async function loadOsmPlaces() {
     try {
         const $coordinates = get(coordinates);
-        const radius = 100;
+        const radius = 150;
         const waterway = "river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point";
         const amenities = "museum|school|college|university|library|place_of_worship";
         const tourism = "viewpoint|attraction|mall|zoo|theme_park|aquarium|gallery|artwork|memorial|museum|theatre|cinema";
@@ -191,7 +203,8 @@ out skel qt;
             body: `data=${encodeURIComponent(overpassQuery)}`
         });
         const data = await response.json();
-        const places = data.elements.filter(element => element.tags?.name && element.tags?.description).map(
+        console.log('OSM response:', data);
+        const places = data.elements.filter(element => element.tags?.name).map(
             element => {
                 const tags = element.tags;
                 let title = tags.name.replace(/\s*\(.*?\)\s*/g, "");
@@ -205,7 +218,10 @@ out skel qt;
                     wikipedia: tags.wikipedia,
                     lat: element.lat,
                     lon: element.lon,
-                    dist: 0
+                    dist: Math.sqrt(
+                        Math.pow(element.lat - $coordinates.latitude, 2) +
+                        Math.pow(element.lon - $coordinates.longitude, 2)
+                    ) * 111139, // convert degrees to meters
                 };
             }
         );
@@ -246,6 +262,7 @@ async function wikipediaGeoSearchForPlaces(coordinates, lang) {
         place.title = place.title.split(",")[0];
         place.lang = lang;
     });
+    console.log('Wikipedia geosearch response:', data);
     return data.query.geosearch;
 }
 
@@ -268,15 +285,18 @@ async function wikipediaNameSearchForPlace(name) {
         const distance = Math.sqrt(
             Math.pow(coords.lat - get(coordinates).latitude, 2) +
             Math.pow(coords.lon - get(coordinates).longitude, 2)
-        );
+        ) * 111139; // convert degrees to meters
         // if close enough, return place
-        if (distance < 0.1) {
+        if (distance < 10000) {
             searchResult.title = searchResult.title.replace(/\s*\(.*?\)\s*/g, "");
             searchResult.title = searchResult.title.split(",")[0];
-            return searchResult;
+            if (name.toLowerCase().includes(searchResult.title.toLowerCase()) || searchResult.title.toLowerCase().includes(name.toLowerCase())) {
+                console.log('Wikipedia name search response:', [name, searchResult]);
+                return searchResult;
+            }
         }
     }
-    console.error(`Could not find Wikipedia article for ${name}.`);
+    console.warn(`Could not find Wikipedia article for ${name}.`);
     return;
 }
 

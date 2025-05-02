@@ -1,6 +1,6 @@
 export const appName = 'Urban Wanderer';
 
-export const nArticles = 10;
+export const nArticles = 15;
 
 export const CLASSES = {
     'AIRPORT': {
@@ -66,7 +66,8 @@ export const CLASSES = {
     },
     'HOSPITAL': {
         emoji: '🏥',
-        description: 'Medical facility (e.g., a hospital, a clinic)'
+        description: 'Medical facility (e.g., a hospital, a clinic)',
+        radius: 200
     },
     'MONUMENT': {
         emoji: '🗿',
@@ -97,7 +98,8 @@ export const CLASSES = {
     },
     'PLACE_OF_WORSHIP': {
         emoji: '🛐',
-        description: 'Place of worship (e.g., a church, a mosque, a temple)'
+        description: 'Place of worship (e.g., a church, a mosque, a temple)',
+        radius: 150
     },
     'SPORTS_FACILITY': {
         emoji: '🏟️',

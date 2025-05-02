@@ -126,18 +126,20 @@ export const placesSurrounding = derived([coordinates, places], ([$coordinates, 
 // places (here) store (derived from places and surrounding places)
 export const placesHere = derived([coordinates, places, placesSurrounding], ([$coordinates, $places, $placesSurrounding]) => {
     if (!$coordinates || !$places || !$placesSurrounding) return [];
-    return $places.filter(place => {
-        if ((!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) && !$placesSurrounding.includes(place)) {
-            return true;
-        }
-    });
+    return $places
+        .filter(place => {
+            if ((!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) && place.importance > 2 && !$placesSurrounding.includes(place)) {
+                return true;
+            }
+        })
+        .sort((a, b) => (b.importance || 0) - (a.importance || 0));
 });
 
 // places (nearby) store (derived from places, surrounding places, and places here)
 export const placesNearby = derived([coordinates, places, placesSurrounding, placesHere], ([$coordinates, $places, $placesSurrounding, $placesHere]) => {
     if (!$coordinates || !$places || !$placesSurrounding || !$placesHere) return [];
     return $places.filter(place => {
-        if (!$placesSurrounding.includes(place) && !$placesHere.includes(place)) {
+        if (!$placesSurrounding.includes(place) && !$placesHere.includes(place) && place.importance > 3) {
             return true;
         }
     });

@@ -5,7 +5,6 @@
 		FileOutline,
 		MapPinAltOutline,
 		GlobeOutline,
-		SearchOutline,
 		ArrowRightOutline
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle, searchPlaceWeb } from '../util/ai.js';
@@ -60,37 +59,37 @@
 						...
 					{/if}
 				</div>
-				{#if !isSurroundingPlace}
-					<hr class="my-4" />
-					<h3 class="text-lg">More about {item.title}</h3>
-					<div>
-						{#if weblinks}
-							<ul>
-								{#each weblinks as weblink}
-									<!-- skip wikipedia links -->
-									{#if !weblink.source_domain.includes('wikipedia')}
-										<li class="mt-2">
-											<a href={weblink.url} target="_blank" class="text-primary-800">
-												{@html marked(weblink.text + ' (' + weblink.source_domain + ')')}
-											</a>
-										</li>
-									{/if}
-								{/each}
-							</ul>
-						{:else if weblinksLoading}
-							<div class="m-6 flex justify-center">
-								<Spinner size="6" />
-							</div>
-						{:else}
-							<Button on:click={loadWeblinks} pill size="xs" outline class="mt-2"
-								><ArrowRightOutline />
-								Search the web
-							</Button>
-						{/if}
-					</div>
-				{/if}
-				<hr class="my-4" />
 			{/if}
+			{#if !isSurroundingPlace}
+				<hr class="my-4" />
+				<h3 class="text-lg">More about {item.title}</h3>
+				<div>
+					{#if weblinks}
+						<ul>
+							{#each weblinks as weblink}
+								<!-- skip wikipedia links -->
+								{#if !weblink.source_domain.includes('wikipedia')}
+									<li class="mt-2">
+										<a href={weblink.url} target="_blank" class="text-primary-800">
+											{@html marked(weblink.text + ' (' + weblink.source_domain + ')')}
+										</a>
+									</li>
+								{/if}
+							{/each}
+						</ul>
+					{:else if weblinksLoading}
+						<div class="m-6 flex justify-center">
+							<Spinner size="6" />
+						</div>
+					{:else}
+						<Button on:click={loadWeblinks} pill size="xs" outline class="mt-2"
+							><ArrowRightOutline />
+							Search the web
+						</Button>
+					{/if}
+				</div>
+			{/if}
+			<hr class="my-4" />
 			{#if !isSurroundingPlace}
 				{#if item.labels}
 					<div class="flex flex-wrap">
@@ -103,6 +102,15 @@
 				{/if}
 				<hr class="my-4" />
 				<PlaceStars {item} detail />
+			{/if}
+			{#if item.lon && item.lat}
+				<hr class="my-4" />
+				<Button
+					on:click={() => (window.location.href = `/?lat=${item.lat}&lon=${item.lon}`)}
+					class="m-1 mt-2 flex items-center rounded-full bg-primary-800 p-2 text-white shadow-lg"
+				>
+					<MapPinAltOutline class="!mr-1" />Jump to this place
+				</Button>
 			{/if}
 		</div>
 	</div>
@@ -129,21 +137,33 @@
 				<a href={item.url} target="_blank" class="flex flex-auto">
 					<GlobeOutline class="!mr-1" />Page
 				</a>
+			{:else}
+				<span class="flex flex-auto"></span>
 			{/if}
-			<a
-				href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`}
-				target="_blank"
-				class="flex"
-			>
-				<span>
-					{#if item.dist >= 50}
-						{Math.floor(item.dist / 50) * 50}&nbsp;m
-					{:else}
-						here
-					{/if}
-				</span>
-				<MapPinAltOutline class="!ml-1" />
-			</a>
+			{#if item.lon && item.lat}
+				<a
+					href={`https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`}
+					target="_blank"
+					class="flex"
+				>
+					<span>
+						{#if item.dist >= 50}
+							{Math.floor(item.dist / 50) * 50}&nbsp;m
+						{:else}
+							here
+						{/if}
+					</span>
+					<MapPinAltOutline class="!ml-1" />
+				</a>
+			{:else if item.title}
+				<a
+					href={`https://www.google.com/maps/search/?api=1&query=${item.title}${$coordinates.town ? ', ' + $coordinates.town : ''}`}
+					target="_blank"
+					class="flex"
+				>
+					<MapPinAltOutline class="!ml-1" />
+				</a>
+			{/if}
 		</div>
 	</svelte:fragment>
 </Modal>

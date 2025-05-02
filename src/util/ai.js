@@ -30,8 +30,7 @@ For a list of places [A , B , C] output a JSON object like this:
 IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
 `;
     const dataString = `[${$places.map(place => place.title).join(", ")}]`;
-    console.log(instructions);
-    console.log(dataString);
+    console.log('Translation instructions and data:', [instructions, dataString]);
     const Translation = z.object({
         title: z.string(),
         translation: z.string()
@@ -40,7 +39,7 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
         translations: z.array(Translation)
     });
     const completion = await openai.beta.chat.completions.parse({
-        model: "gpt-4o-mini",
+        model: "gpt-4.1-mini",
         messages: [
             {
                 role: "system", content: instructions,
@@ -53,7 +52,7 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
         response_format: zodResponseFormat(Translations, 'translations')
     });
     const translations = completion.choices[0].message.parsed.translations;
-    console.log('Tranlations result:', translations);
+    console.log('Translations result:', translations);
 
     const placesNameIsSimilar = (name1, name2) => {
         name1 = name1.toLowerCase();
@@ -111,11 +110,27 @@ Available LABELS are:
 ${LABELS.map(label => `- ${label}`).join("\n")}
 
 Available IMPORTANCE values are:
-1: very low
+1: very low 
 2: low
 3: medium
 4: high
 5: very high
+
+Aspects that contribute to HIGER IMPORTANCE are:
+* the place is a landmark or a famous building
+* the place is unique in the area
+* the place is of historical or cultural significance
+* the place is related to a well-known person or event
+* the place is characteristic for the area
+* the place dominates the perceived environment (e.g. a skyscraper, a castle, a park)
+
+Aspects that contribute to LOWER IMPORTANCE are:
+* the place is a generic business or a shop
+* the place is a detail of a larger place
+* the place is a larger area (e.g., a city, a district, a region)
+* the place is a larger geographic feature (e.g., a river, a lake, a mountain)
+* the place is a generic entity (e.g., a concept, a non-physical object)
+* the place has vanished or is not accessible anymore
 
 To best best characterize the place answer with 
 * exactly one class,
@@ -140,18 +155,21 @@ For a list of places [A, B, C] and their descriptions output a JSON object like 
         labels: ["LABEL1", "LABEL2", "LABEL3"]
         importance: 2
     }
-}`;
+}
+    
+FURTHER INSTRUCTIONS:
+* Geographic places like rivers or lakes, that are not a specific location, should be labeled only as "GEOGRAPHY" and have a very low importance as they can be accessed from many locations.
+`;
         const dataString = `[${placesWithoutCachedAnalysis.map(place => place.title).join(", ")}]
         
 DESCRIPTIONS:
 
 ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet || place.description || place.type || ""}`).join("\n\n")}
 `;
-        console.log(instructions);
-        console.log(dataString);
-        const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
+        console.log('Analysis instructions and data:', [instructions, dataString]);
+        const response = await openai.responses.create({
+            model: "gpt-4.1-mini",
+            input: [
                 {
                     role: "system", content: instructions,
                 },
@@ -160,9 +178,13 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
                     content: dataString,
                 },
             ],
-            response_format: { "type": "json_object" }
+            text: {
+                format: {
+                    type: "json_object"
+                }
+            }
         });
-        const json = JSON.parse(completion.choices[0].message.content);
+        const json = JSON.parse(response.output_text);
         console.log('Analysis result:', json);
         // update cache
         Object.entries(json).forEach(([title, results]) => {
@@ -194,7 +216,7 @@ export async function summarizeArticle(article) {
         return summaryCache[article];
     }
     const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4.1-mini",
         messages: [
             {
                 role: "system", content: `You are a chat assistant providing a summary description for a place.
@@ -213,7 +235,7 @@ export async function summarizeArticle(article) {
 // web search for a place
 export async function searchPlaceWeb(place) {
     const response = await openai.responses.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4.1-mini",
         tools: [{ type: "web_search_preview" }],
         input: `You are a chat assistant helping a user to find more information and links about a place.
 
@@ -249,7 +271,7 @@ Answer as a list links, consisting each of a short summary of the information ("
             }
         }
     });
-    console.log(response.output_text);
+    console.log("Web search response:", response.output_text);
     return JSON.parse(response.output_text).links;
 }
 
@@ -272,7 +294,7 @@ ${get(coordinates).address}
 
 # The position is close to /in:
 
-        ${get(placesHere).map(place =>
+${get(placesHere).map(place =>
             `## ${place.title}: ${place.labels?.join(", ")}    	    
 Importance: ${place.importance}
 
@@ -282,7 +304,7 @@ ${place.facts || place.article || place.description || place.snippet || place.ty
 
 # Nearby places are:
 
-        ${get(placesNearby).map(place =>
+${get(placesNearby).map(place =>
                 `
 ## ${place.title} (${place.dist}m): ${place.labels?.join(", ")}
 Importance: ${place.importance}
@@ -293,7 +315,7 @@ ${place.facts || place.article || place.description || place.snippet || place.ty
 
 # The user is in:
 
-        ${get(placesSurrounding).map(place => `## ${place.title}
+${get(placesSurrounding).map(place => `## ${place.title}
     
 ${place.facts || place.article || place.description || place.snippet || place.type || ""}
     `).join("\n")
@@ -304,23 +326,29 @@ ${place.facts || place.article || place.description || place.snippet || place.ty
 
 # IMPORTANT INSTUCTIONS:
 
-        User's preferences are the following topics:
+User's preferences are the following topics:
 ${get(preferences).labels?.map(label => `- ${label}`).join("\n")}
 
-The story should be up to ${Math.min(Math.round(0.5 + (get(placesHere).length + get(placesSurrounding).length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places.Avoid giving precise directions or distances.
+The story should be up to ${Math.min(Math.round(0.5 + (get(placesHere).length + get(placesSurrounding).length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places.
+Avoid giving directions or distances.
 
-Keep the language concise and factual.You may use an informal tone, but use a moderate language.Try to realisticially describe the relevance of places. 
+Keep the language as concise as possible and factual. 
+You may use an informal tone, but use a moderate language.
+Try to realisticially describe the relevance of places, but do not exaggerate; not all places are "famous" or "important".
+Avoid generic claims like "this is a famous place" or "the place has a rich history".
+Do not conclude paragraphs with a generic statements.
 
-Just give summary of the most important information, but do not reply to the user's questions. Do not welcome the user or ask for feedback.
+Just give summary of the most important information, but do not reply to the user's questions. 
+Do not welcome the user or ask for feedback.
+Do not mention the exact address and consider that GPS coordinates are not always exact.
 `,
     };
-    console.log(initialMessage.content);
     let messages = [initialMessage, ...storyTexts.map(text => ({ role: "assistant", content: text }))];
     if (storyTexts.length > 0) {
         messages.push({
-            role: "system", content: `Tell the user more about something different.You may focus on something specific, but never repeat yourself.
+            role: "system", content: `Tell the user more about something different. You may focus on something specific, but never repeat yourself.
 
-        Remember, the user is at this position:
+Remember, the user is at this position:
 ${get(coordinates).address
                 }
 
@@ -330,12 +358,14 @@ ${get(placesHere).map(place =>
                 ).join("\n")
                 }
 
-Write one to two paragraphs of text.Give the text a headline marked in bold font.
+Strictly stick to the initially provided instructions and facts about the places.
+Write one to three paragraphs of text. 
+Give the text a headline marked in bold font.
 ` });
-        console.log(messages[messages.length - 1].content);
     }
+    console.log("Story writing instructions", messages);
     const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         messages: messages,
     });
     textToSpeech(completion.choices[0].message.content);
@@ -354,9 +384,9 @@ export async function extractHistoricEvents() {
 
 Extract and list historic events from the following text descring nearby places. 
 
-Put more emphasis on higher rated places.Answer in language '${get(preferences).lang}'.
+Put more emphasis on higher rated places. Answer in language '${get(preferences).lang}'.
 
-        ${relevantPlaces.map(place =>
+${relevantPlaces.map(place =>
         `# ${place.title}: ${place.labels?.join(", ")}
 Importance: ${place.importance}` +
         `${place.article || place.description || place.snippet || place.type || ""}`
@@ -373,9 +403,9 @@ ${get(coordinates).address
                 
 If the list of places is empty or the text is too short, leave the list of events empty.
 `;
-    console.log(instructions);
+    console.log("Historic events instructions", [instructions]);
     const response = await openai.responses.create({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         input: [
             {
                 role: "system", content: instructions,
@@ -408,19 +438,20 @@ If the list of places is empty or the text is too short, leave the list of event
             }
         }
     });
-    console.log(response.output_text);
+    console.log("Historic events response:", response.output_text);
     return JSON.parse(response.output_text).events;
 }
 
 export async function extractFactsFromArticle(article) {
     const instructions = `You are a chat assistant helping a user to extract facts from an article, relevant when visiting the place.
 
-Return a list of bullet points, focusing on the most important facts.Answer in language '${get(preferences).lang}'.    
+Return a list of bullet points, focusing on the most important facts. 
+Answer in language '${get(preferences).lang}'.    
 `;
-    console.log(instructions);
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+    console.log("Extract facts instructions", [instructions]);
+    const response = await openai.responses.create({
+        model: "gpt-4.1-mini",
+        input: [
             {
                 role: "system", content: instructions,
             },
@@ -429,8 +460,8 @@ Return a list of bullet points, focusing on the most important facts.Answer in l
             },
         ]
     });
-    console.log(completion.choices[0].message.content);
-    return completion.choices[0].message.content;
+    console.log("Extract facts response:", [response.output_text]);
+    return response.output_text;
 }
 
 export async function textToSpeech(text) {
@@ -443,7 +474,7 @@ export async function textToSpeech(text) {
         }
     }
     audioState.set('loading');
-    console.log('text to speech:', text);
+    console.log('Text to speech:', text);
     const response = await openai.audio.speech.create({
         model: "gpt-4o-mini-tts",
         voice: "alloy",
