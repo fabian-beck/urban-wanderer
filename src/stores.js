@@ -3,6 +3,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { CLASSES, LABELS } from "./constants.js";
 import { analyzePlaces, groupDuplicatePlaces } from "./util/ai.js";
 import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls, loadWaterMap } from "./util/geo.js";
+import { number } from "zod";
 
 let prefsInitialized = false;
 
@@ -87,17 +88,30 @@ function createPlaces() {
         set,
         update: async () => {
             try {
+                // init timer
+                const startTime = Date.now();
+                let previousTime = startTime;
+                loadingMessage.set("Loading places ...");
                 loadWaterMap()
                 let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
                 set(mergePlaces(placesTmp, placesOsm));
+                console.log("Time to load places (s):", ((Date.now() - startTime) / 1000).toFixed(2));
+                previousTime = Date.now();
                 loadingMessage.set("Grouping places ...");
                 await groupDuplicatePlaces();
+                console.log("Time to group places (s):", ((Date.now() - previousTime) / 1000).toFixed(2));
+                previousTime = Date.now();
                 loadingMessage.set("Loading article extracts ...");
                 await loadExtracts(get(places));
+                console.log("Time to load extracts (s):", ((Date.now() - previousTime) / 1000).toFixed(2));
+                previousTime = Date.now();
                 loadingMessage.set("Analyzing places ...");
                 await analyzePlaces();
                 console.log('Places after analysis:', get(places));
-                loadMetadataAndRate();
+                console.log("Time to analyze places (s):", ((Date.now() - previousTime) / 1000).toFixed(2));
+                console.log("Total time to preprocess places (s):", ((Date.now() - startTime) / 1000).toFixed(2));
+                rate();
+                loadMetadata();
             } catch (error) {
                 console.error(error);
                 errorMessage.set("Could not load places: " + error);
@@ -129,11 +143,11 @@ export const placesHere = derived([coordinates, places, placesSurrounding], ([$c
     if (!$coordinates || !$places || !$placesSurrounding) return [];
     return $places
         .filter(place => {
-            if ((!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) && place.importance > 2 && !$placesSurrounding.includes(place)) {
+            if ((!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) && place.stars > 0 && !$placesSurrounding.includes(place)) {
                 return true;
             }
         })
-        .sort((a, b) => (b.importance || 0) - (a.importance || 0));
+        .sort((a, b) => (b.stars || 0) - (a.stars || 0));
 });
 
 // places (nearby) store (derived from places, surrounding places, and places here)
@@ -146,7 +160,7 @@ export const placesNearby = derived(
                 if (
                     !$placesSurrounding.includes(place) &&
                     !$placesHere.includes(place) &&
-                    place.importance > 2
+                    place.stars > 0
                 ) {
                     return true;
                 }
@@ -179,7 +193,30 @@ export const loadingMessage = createLoadingMessage();
 // audio state (loading, playing or paused)
 export const audioState = writable('paused');
 
-async function loadMetadataAndRate() {
+function rate() {
+    get(places).forEach(place => {
+        place.stars = 0;
+        place.starDescriptions = [];
+        // one star for wikipedia article     
+        if (place.wikipedia || place.pageid) {
+            place.stars += 1;
+            place.starDescriptions.push({ number: 1, text: "has a Wikipedia article" });
+        }
+        // up to two stars for importance
+        if (place.importance > 3) {
+            place.stars += place.importance - 3;
+            place.starDescriptions.push({ number: place.importance - 3, text: place.importance > 4 ? "is very important for the location" : "is important for the location" });
+        }
+        // up to two stars for matching labels
+        const matchingLabels = place.labels?.filter(label => get(preferences).labels?.includes(label)) || [];
+        place.stars += Math.min(matchingLabels.length, 2);
+        if (matchingLabels.length > 0) {
+            place.starDescriptions.push({ number: Math.min(matchingLabels.length, 2), text: matchingLabels.length > 1 ? "matches multiple of your interests" : "matches one of your interests" });
+        }
+    });
+}
+
+async function loadMetadata() {
     loadWikipediaImageUrls('imageThumb', 100);
     loadWikipediaImageUrls('image', 500);
     loadArticleTexts(get(placesHere));

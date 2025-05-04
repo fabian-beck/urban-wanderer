@@ -3,15 +3,19 @@ export const appName = 'Urban Wanderer';
 export const nArticles = 25;
 
 export const CLASSES = {
+    'ABSTRACT_ENTITY': {
+        emoji: '?',
+        description: 'Abstract entity (e.g., a concept, a non-physical object)',
+        nonGeo: true
+    },
     'AIRPORT': {
         emoji: '✈️',
         description: 'Airport',
         radius: 1000
     },
-    'ABSTRACT_ENTITY': {
-        emoji: '?',
-        description: 'Abstract entity (e.g., a concept, a non-physical object)',
-        nonGeo: true
+    'ARTWORK': {
+        emoji: '🖼️',
+        description: 'Artwork (e.g., a painting, a relief, but not a statue)',
     },
     'ARCHAEOLOGICAL_SITE': {
         emoji: '⛏️',
@@ -24,7 +28,7 @@ export const CLASSES = {
     },
     'BUILDING': {
         emoji: '🏢',
-        description: 'Building of any kind (e.g., a house, a skyscraper, a factory)'
+        description: 'Building of any kind (e.g., a house, a skyscraper, a factory) or a part of a building (e.g., a portal, a room)',
     },
     'CASTLE': {
         emoji: '🏰',
@@ -68,6 +72,10 @@ export const CLASSES = {
         emoji: '🏥',
         description: 'Medical facility (e.g., a hospital, a clinic)',
         radius: 200
+    },
+    'MEMORIAL': {
+        emoji: '🕯️',
+        description: 'Memorial (e.g., a memorial stone)'
     },
     'MONUMENT': {
         emoji: '🗿',

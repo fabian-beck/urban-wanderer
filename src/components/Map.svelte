@@ -9,8 +9,20 @@
 		const highlighted = [];
 		const minDistance = 70; // Minimum distance in meters
 
-		$places?.forEach((place) => {
-			if (place.lon && place.lat && place.importance > 2) {
+		const filteredPlaces = $places?.filter((place) => place.lon && place.lat && place.stars > 2);
+
+		// sort places by stars (descending; primary) and by place.dist (ascending; secondary)
+		const sortedPlaces = filteredPlaces?.sort((a, b) => {
+			if (a.stars !== b.stars) {
+				return b.stars - a.stars; // Sort by stars in descending order
+			} else if (a.dist !== b.dist) {
+				return a.dist - b.dist; // Sort by distance in ascending order
+			}
+			return 0; // No sorting needed if both stars and distance are equal
+		});
+
+		sortedPlaces?.forEach((place) => {
+			if (place.lon && place.lat && place.stars > 1) {
 				const isTooClose = highlighted.some((highlightedPlace) => {
 					const distance = haversineDistance(
 						place.lat,
@@ -70,7 +82,7 @@
 			<g clip-path="url(#circleClip)">
 				<!-- background: all places as blurred circles -->
 				<g class="places-bg">
-					{#each $places.filter((place) => place.lon && place.lat && place.importance > 2) as place}
+					{#each $places.filter((place) => place.lon && place.lat && place.stars > 1) as place}
 						<circle
 							cx={latLonToX(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
 							cy={latLonToY(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}

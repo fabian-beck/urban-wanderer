@@ -39,7 +39,7 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
         translations: z.array(Translation)
     });
     const completion = await openai.beta.chat.completions.parse({
-        model: "gpt-4.1-mini",
+        model: "gpt-4.1-nano",
         messages: [
             {
                 role: "system", content: instructions,
@@ -168,7 +168,7 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
 `;
         console.log('Analysis instructions and data:', [instructions, dataString]);
         const response = await openai.responses.create({
-            model: "gpt-4.1-mini",
+            model: "gpt-4.1-nano",
             input: [
                 {
                     role: "system", content: instructions,
@@ -201,10 +201,8 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
         ...place,
         labels: analysisCache[place.title]?.labels,
         cls: analysisCache[place.title]?.cls,
-        importance: analysisCache[place.title]?.importance
+        importance: analysisCache[place.title]?.importance,
     }));
-    // sort places by importance
-    newPlaces.sort((a, b) => (b.importance || 0) - (a.importance || 0));
     // remove non-geographic classes
     const nonGeoClasses = Object.keys(CLASSES).filter(classLabel => CLASSES[classLabel]?.nonGeo);
     places.set(newPlaces.filter(place => !nonGeoClasses.includes(place.cls)));
@@ -299,7 +297,7 @@ ${get(coordinates).address}
 
 ${get(placesHere).map(place =>
             `## ${place.title}: ${place.labels?.join(", ")}    	    
-Importance: ${place.importance}
+Rating: ${place.stars}
 
 ${place.facts || place.article || place.description || place.snippet || place.type || ""}
 `).join("\n")
@@ -310,7 +308,7 @@ ${place.facts || place.article || place.description || place.snippet || place.ty
 ${get(placesNearby).map(place =>
                 `
 ## ${place.title} (${place.dist}m): ${place.labels?.join(", ")}
-Importance: ${place.importance}
+Rating: ${place.stars}
     
 ${place.facts || place.article || place.description || place.snippet || place.type || ""}
 `).join("\n")
@@ -379,7 +377,7 @@ Give the text a headline marked in bold font.
 
 // extract and list historic events 
 export async function extractHistoricEvents() {
-    let relevantPlaces = get(placesHere).filter(place => place.importance > 3);
+    let relevantPlaces = get(placesHere).filter(place => place.stars > 2);
     if (relevantPlaces.length < 2) {
         relevantPlaces.push(...get(placesSurrounding));
     }
@@ -391,7 +389,7 @@ Put more emphasis on higher rated places. Answer in language '${get(preferences)
 
 ${relevantPlaces.map(place =>
         `# ${place.title}: ${place.labels?.join(", ")}
-Importance: ${place.importance}` +
+Rating: ${place.stars}` +
         `${place.article || place.description || place.snippet || place.type || ""}`
     ).join("\n\n")
         }
