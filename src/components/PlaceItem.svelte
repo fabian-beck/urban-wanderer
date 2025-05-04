@@ -3,17 +3,17 @@
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import PlaceDirection from './PlaceDirection.svelte';
+	import { placeDetailsVisible } from '../stores.js';
 
 	export let item;
 	export let showDistance = false;
 	export let hideRating = false;
-	let detailsVisible = false;
 </script>
 
 {#if item}
 	<button
 		on:click={() => {
-			detailsVisible = true;
+			placeDetailsVisible.set(item.title);
 		}}
 		class="flex min-h-10 w-full flex-col align-top"
 	>
@@ -54,5 +54,5 @@
 			</div>
 		</div>
 	</button>
-	<PlaceDetails bind:visible={detailsVisible} {item} />
+	<PlaceDetails {item} />
 {/if}

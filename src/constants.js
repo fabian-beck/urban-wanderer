@@ -1,6 +1,6 @@
 export const appName = 'Urban Wanderer';
 
-export const nArticles = 15;
+export const nArticles = 25;
 
 export const CLASSES = {
     'AIRPORT': {

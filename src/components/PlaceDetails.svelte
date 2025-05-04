@@ -8,13 +8,18 @@
 		ArrowRightOutline
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle, searchPlaceWeb } from '../util/ai.js';
-	import { coordinates, placesSurrounding, preferences } from '../stores.js';
+	import { coordinates, placesSurrounding, preferences, placeDetailsVisible } from '../stores.js';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import { marked } from 'marked';
+	import { derived } from 'svelte/store';
 
-	export let visible = false;
 	export let item;
+	const visible = derived(
+		placeDetailsVisible,
+		($placeDetailsVisible) => $placeDetailsVisible === item.title
+	);
+
 	$: isSurroundingPlace = $placesSurrounding.find((place) => place.title === item.title);
 	let summary = '';
 	let weblinks = '';
@@ -42,7 +47,13 @@
 	};
 </script>
 
-<Modal title={item.title} bind:open={visible} classBody="p-0 overscroll-none" classDialog="">
+<Modal
+	title={item.title}
+	classBody="p-0 overscroll-none"
+	classDialog=""
+	open={$visible}
+	on:close={() => placeDetailsVisible.set('')}
+>
 	<svelte:fragment slot="header">
 		<span class="text-xl"><PlaceTitle place={item} /></span>
 	</svelte:fragment>

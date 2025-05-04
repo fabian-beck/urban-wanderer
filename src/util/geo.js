@@ -1,4 +1,4 @@
-import { coordinates, preferences, places } from "../stores.js";
+import { coordinates, preferences, places, waterMap } from "../stores.js";
 import { nArticles } from "../constants.js";
 import { get } from "svelte/store";
 import { extractFactsFromArticle } from "./ai.js";
@@ -298,5 +298,120 @@ async function wikipediaNameSearchForPlace(name) {
     }
     console.warn(`Could not find Wikipedia article for ${name}.`);
     return;
+}
+
+// Calculate the distance between two geographical points using the Haversine formula
+export function haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth radius in meters
+    const toRad = deg => deg * Math.PI / 180;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// Calculate x coordinate from latitude and longitude given a center point
+export function latLonToX(lat, lon, centerLat, centerLon) {
+    return haversineDistance(centerLat, centerLon, centerLat, lon) * (lon >= centerLon ? 1 : -1);
+}
+
+// Calculate y coordinate from latitude and longitude given a center point
+export function latLonToY(lat, lon, centerLat, centerLon) {
+    return haversineDistance(centerLat, centerLon, lat, centerLon) * (lat >= centerLat ? -1 : 1);
+}
+
+// water map 
+export async function loadWaterMap() {
+    const increaseWaterLevel = (x, y, value) => {
+        if (value < 0.1) {
+            return;
+        }
+        if (x >= 0 && x < 80 && y >= 0 && y < 80) {
+            waterMapTmp[x][y] += value;
+            if (waterMapTmp[x][y] > 1) {
+                waterMapTmp[x][y] = 1;
+            }
+            increaseWaterLevel(x + 1, y, value / 4);
+            increaseWaterLevel(x - 1, y, value / 4);
+            increaseWaterLevel(x, y + 1, value / 4);
+            increaseWaterLevel(x, y - 1, value / 4);
+        }
+    }
+
+    const overpassQuery = `
+[out:json];
+(
+    // Search for water bodies
+    relation[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    node[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+);
+out body;
+>;
+out skel qt;
+`;
+    const response = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `data=${encodeURIComponent(overpassQuery)}`
+    });
+    const data = await response.json();
+    console.log('Water map response:', data);
+    const waterPolylines = data.elements.filter(element => element.type === "way" && element.tags?.name).map(element => {
+        const nodes = element.nodes.map(nodeId => {
+            const node = data.elements.find(el => el.type === "node" && el.id === nodeId);
+            return {
+                lat: node.lat,
+                lon: node.lon
+            };
+        });
+        return {
+            type: "polyline",
+            name: element.tags?.name,
+            nodes: nodes
+        };
+    });
+    console.log('Water polylines:', waterPolylines);
+    const waterMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
+    for (const polyline of waterPolylines) {
+        for (let i = 0; i < polyline.nodes.length - 1; i++) {
+            const lat1 = polyline.nodes[i].lat;
+            const lon1 = polyline.nodes[i].lon;
+            const lat2 = polyline.nodes[i + 1].lat;
+            const lon2 = polyline.nodes[i + 1].lon;
+            // calculate x and y coordinates in the grid
+            const x1 = Math.floor(latLonToX(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
+            const y1 = Math.floor(latLonToY(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
+            const x2 = Math.floor(latLonToX(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
+            const y2 = Math.floor(latLonToY(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
+            increaseWaterLevel(x1, y1, 1);
+            // set all cells in between to 1 accoring to the Bresenham line algorithm
+            let x = x1;
+            let y = y1;
+            const dx = Math.abs(x2 - x1);
+            const dy = Math.abs(y2 - y1);
+            const sx = x1 < x2 ? 1 : -1;
+            const sy = y1 < y2 ? 1 : -1;
+            let err = dx - dy;
+
+            while (x !== x2 || y !== y2) {
+                if (!((x === x1 && y === y1) || (x === x2 && y === y2))) {
+                    increaseWaterLevel(x, y, 1);   // mark intermediate cells
+                }
+                const e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; x += sx; }
+                if (e2 < dx) { err += dx; y += sy; }
+            }
+        }
+
+        waterMap.set(waterMapTmp);
+    }
 }
 

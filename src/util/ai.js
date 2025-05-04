@@ -203,6 +203,9 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
         cls: analysisCache[place.title]?.cls,
         importance: analysisCache[place.title]?.importance
     }));
+    // sort places by importance
+    newPlaces.sort((a, b) => (b.importance || 0) - (a.importance || 0));
+    // remove non-geographic classes
     const nonGeoClasses = Object.keys(CLASSES).filter(classLabel => CLASSES[classLabel]?.nonGeo);
     places.set(newPlaces.filter(place => !nonGeoClasses.includes(place.cls)));
 }

@@ -8,7 +8,8 @@
 		storyTexts,
 		loadingMessage,
 		audioState,
-		preferences
+		preferences,
+		heading
 	} from '../stores.js';
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
@@ -20,6 +21,7 @@
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
 	import History from '../components/History.svelte';
+	import Map from '../components/Map.svelte';
 
 	let loading = false;
 
@@ -59,6 +61,14 @@
 		if (lat && lon) {
 			update({ latitude: lat, longitude: lon });
 		}
+		// set heading listener for device orientation
+		window.addEventListener(
+			'deviceorientationabsolute',
+			(event) => {
+				heading.set(event.alpha);
+			},
+			true
+		);
 	});
 </script>
 
@@ -73,6 +83,8 @@
 		</Alert>
 	{/if}
 	{#if !loading && $coordinates}
+		<Map />
+		<hr class="m-4" />
 		<Here />
 		<hr class="m-4" />
 		<Nearby />

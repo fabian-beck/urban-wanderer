@@ -1,8 +1,8 @@
 import { writable, get, derived } from "svelte/store";
 import { Geolocation } from '@capacitor/geolocation';
 import { CLASSES, LABELS } from "./constants.js";
-import { analyzePlaces, groupDuplicatePlaces, textToSpeech } from "./util/ai.js";
-import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls } from "./util/geo.js";
+import { analyzePlaces, groupDuplicatePlaces } from "./util/ai.js";
+import { loadWikipediaPlaces as loadWikipediaPlaces, loadArticleTexts, loadExtracts, loadOsmPlaces, loadAddressData, getRandomPlaceCoordinates, loadWikipediaImageUrls, loadWaterMap } from "./util/geo.js";
 
 let prefsInitialized = false;
 
@@ -87,6 +87,7 @@ function createPlaces() {
         set,
         update: async () => {
             try {
+                loadWaterMap()
                 let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
                 set(mergePlaces(placesTmp, placesOsm));
                 loadingMessage.set("Grouping places ...");
@@ -136,14 +137,23 @@ export const placesHere = derived([coordinates, places, placesSurrounding], ([$c
 });
 
 // places (nearby) store (derived from places, surrounding places, and places here)
-export const placesNearby = derived([coordinates, places, placesSurrounding, placesHere], ([$coordinates, $places, $placesSurrounding, $placesHere]) => {
-    if (!$coordinates || !$places || !$placesSurrounding || !$placesHere) return [];
-    return $places.filter(place => {
-        if (!$placesSurrounding.includes(place) && !$placesHere.includes(place) && place.importance > 3) {
-            return true;
-        }
-    });
-});
+export const placesNearby = derived(
+    [coordinates, places, placesSurrounding, placesHere],
+    ([$coordinates, $places, $placesSurrounding, $placesHere]) => {
+        if (!$coordinates || !$places || !$placesSurrounding || !$placesHere) return [];
+        return $places
+            .filter(place => {
+                if (
+                    !$placesSurrounding.includes(place) &&
+                    !$placesHere.includes(place) &&
+                    place.importance > 2
+                ) {
+                    return true;
+                }
+            })
+            .sort((a, b) => (a.dist || Infinity) - (b.dist || Infinity));
+    }
+);
 
 
 // story
@@ -197,3 +207,12 @@ function mergePlaces(placesTmp, placesOsm) {
     });
     return placesTmp;
 }
+
+// heading
+export const heading = writable(0);
+
+// place details visible
+export const placeDetailsVisible = writable("");
+
+// water map
+export const waterMap = writable([]);
