@@ -44,6 +44,8 @@ export const coordinates = createCoordinates();
 export const preferences = writable({
     radius: 500,
     labels: LABELS,
+    guideCharacter: "friendly and helpful",
+    familiarity: "unfamiliar",
     lang: 'de',
     sourceLanguages: ['de', 'en'],
     audio: true

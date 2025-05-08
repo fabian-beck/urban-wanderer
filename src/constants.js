@@ -159,3 +159,19 @@ export const LABELS = [
     "SPORTS",
     "TRANSPORTATION"
 ];
+
+export const GUIDE_CHARACTERS = [
+    "friendly and helpful",
+    "funny and witty",
+    "serious and professional",
+    "kid-friendly (simple language) and pedagogical",
+    "romantic and poetic",
+    "adventurous and curious",
+    "sarcastic and ironic"
+]
+
+export const FAMILIARITY = [
+    { value: 'unfamiliar', name: 'unfamiliar (I have never been there)' },
+    { value: 'somewhat_familiar', name: "somewhat familiar (I've been there before)" },
+    { value: 'familiar', name: 'familiar (I know the place)' },
+];

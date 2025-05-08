@@ -2,13 +2,17 @@
 	import { Label, Range, Checkbox, Modal, Select, Toggle } from 'flowbite-svelte';
 	import { preferences } from '../stores.js';
 	import { places } from '../stores.js';
-	import { LABELS, LANGUAGES } from '../constants.js';
+	import { LABELS, LANGUAGES, GUIDE_CHARACTERS, FAMILIARITY } from '../constants.js';
 
 	export let visible = false;
 	const langOptions = [
 		{ value: 'en', name: 'English' },
 		{ value: 'de', name: 'German' }
 	];
+	const characterOptions = GUIDE_CHARACTERS.map((character) => ({
+		value: character,
+		name: character
+	}));
 </script>
 
 <Modal title="Preferences" bind:open={visible} autoclose on:close={places.update}>
@@ -28,6 +32,10 @@
 			{label}
 		</Checkbox>
 	{/each}
+	<Label>Guide character</Label>
+	<Select bind:value={$preferences.guideCharacter} items={characterOptions} />
+	<Label>Familiarity with the area</Label>
+	<Select bind:value={$preferences.familiarity} items={FAMILIARITY} />
 	<Label>Content presentation language</Label>
 	<Select bind:value={$preferences.lang} items={langOptions} />
 	<Label>Content source languages</Label>

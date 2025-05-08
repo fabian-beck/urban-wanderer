@@ -168,7 +168,7 @@ ${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet ||
 `;
         console.log('Analysis instructions and data:', [instructions, dataString]);
         const response = await openai.responses.create({
-            model: "gpt-4.1-nano",
+            model: "gpt-4.1-mini",
             input: [
                 {
                     role: "system", content: instructions,
@@ -285,7 +285,7 @@ export async function generateStory(storyTexts) {
     }
     const initialMessage = {
         role: "system", content: `
-You are a city guide: friendly and helpful, concise and factual.
+You are a city guide: ${get(preferences).guideCharacter}, and always concise and factual.
 
 Tell something interesting about the user's current position. Answer in language '${get(preferences).lang}'.
 
@@ -342,6 +342,9 @@ Do not conclude paragraphs with a generic statements.
 Just give summary of the most important information, but do not reply to the user's questions. 
 Do not welcome the user or ask for feedback.
 Do not mention the exact address and consider that GPS coordinates are not always exact.
+
+Remember that you enact a ${get(preferences).guideCharacter} guide and take this role seriously towards exaggeration and over-enthusiasm.
+Consider that the user is ${get(preferences).familiarity} with the area; select the facts and adapt the explanations accordingly.
 `,
     };
     let messages = [initialMessage, ...storyTexts.map(text => ({ role: "assistant", content: text }))];
