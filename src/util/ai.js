@@ -13,46 +13,50 @@ let audio = null;
 
 // ----------------------------------------------
 
-export async function groupDuplicatePlaces() {
-    const $places = get(places);
-    const instructions = `You are an assistant helping translating place names to ${get(preferences).lang}. 
-    
-You must skip places that are difficult to translate or are already in the targeted language (${get(preferences).lang}). Generally, skip place names in English. 
+async function translatePlaceName(place) {
+    const instructions = `You are a chat assistant helping a user to translate place names to ${get(preferences).lang}.
 
-For a list of places [A , B , C] output a JSON object like this:
+You must skip places that are difficult to translate or are already in the targeted language (${get(preferences).lang}). Generally, skip place names in English.
 
-    translations: [
-        { "title": "A", "translation": "TRANSLATION_A" },
-        // B skipped because there is no good translation
-        { "title": "C", "translation": "TRANSLATION_C" }    
-    ]
-        
-IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
+For a place "A" output a JSON object like this:
+
+{
+    title: "A",
+    translation: "TRANSLATION_A"
+}
+
+IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then, return the original name.
+
+{
+    title: "A",
+    translation: "A"
+}
 `;
-    const dataString = `[${$places.map(place => place.title).join(", ")}]`;
-    console.log('Translation instructions and data:', [instructions, dataString]);
     const Translation = z.object({
         title: z.string(),
         translation: z.string()
     });
-    const Translations = z.object({
-        translations: z.array(Translation)
-    });
     const completion = await openai.beta.chat.completions.parse({
-        model: "gpt-4.1-nano",
+        model: "gpt-4.1-mini",
         messages: [
             {
                 role: "system", content: instructions,
             },
             {
                 role: "user",
-                content: dataString,
+                content: place.title,
             },
         ],
-        response_format: zodResponseFormat(Translations, 'translations')
+        response_format: zodResponseFormat(Translation, 'translation')
     });
-    const translations = completion.choices[0].message.parsed.translations;
-    console.log('Translations result:', translations);
+    const translation = completion.choices[0].message.parsed;
+    return translation;
+}
+
+export async function groupDuplicatePlaces() {
+    const $places = get(places);
+    const translations = await Promise.all($places.map(place => translatePlaceName(place)));
+    console.log('Translations:', translations);
 
     const placesNameIsSimilar = (name1, name2) => {
         name1 = name1.toLowerCase();
@@ -90,15 +94,8 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better.
 
 const analysisCache = {};
 
-// ToDo: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
-export async function analyzePlaces() {
-    const $places = get(places);
-    console.log('Places before analysis:', $places);
-    // get places with cached labels (labelsCache)
-    const placesWithoutCachedAnalysis = $places.filter(place => !analysisCache[place.title]);
-
-    if (placesWithoutCachedAnalysis.length > 0) {
-        const instructions = `You are a chat assistant helping a user analyze places:
+async function analyzeSinglePlace(place) {
+    const instructions = `You are a chat assistant helping a user analyze places:
 (1) To classify them
 (2) To assign labels to them
 (3) To rate them based on their impact and importance to the user's environment
@@ -110,7 +107,7 @@ Available LABELS are:
 ${LABELS.map(label => `- ${label}`).join("\n")}
 
 Available IMPORTANCE values are:
-1: very low 
+1: very low
 2: low
 3: medium
 4: high
@@ -120,9 +117,9 @@ Aspects that contribute to HIGER IMPORTANCE are:
 * the place is a landmark or a famous building
 * the place is unique in the area
 * the place is of historical or cultural significance
-* the place is related to a well-known person or event
+* the place is related to a well - known person or event
 * the place is characteristic for the area
-* the place dominates the perceived environment (e.g. a skyscraper, a castle, a park)
+* the place dominates the perceived environment (e.g., a skyscraper, a castle, a park)
 
 Aspects that contribute to LOWER IMPORTANCE are:
 * the place is a generic business or a shop
@@ -130,6 +127,7 @@ Aspects that contribute to LOWER IMPORTANCE are:
 * the place is a larger area (e.g., a city, a district, a region)
 * the place is a larger geographic feature (e.g., a river, a lake, a mountain)
 * the place is a generic entity (e.g., a concept, a non-physical object)
+* the place is maybe just an office of a business or intitution
 * the place has vanished or is not accessible anymore
 
 To best best characterize the place answer with 
@@ -137,65 +135,52 @@ To best best characterize the place answer with
 * up to three labels, and
 * one importance value.
 
-For a list of places [A, B, C] and their descriptions output a JSON object like this:
+For a place "A" and its description output a JSON object like this:
 
 {
-    "A": {
-        cls: "CLASS1",
+    cls: "CLASS1",
         labels: ["LABEL1", "LABEL2"]
-        importance: 5
-    },
-    "B": {
-        cls: "CLASS2",
-        labels: ["LABEL3"]
-        importance: 3
-    },
-    "C": {
-        cls: "CLASS31,
-        labels: ["LABEL1", "LABEL2", "LABEL3"]
-        importance: 2
-    }
+    importance: 5
 }
     
 FURTHER INSTRUCTIONS:
 * Geographic places like rivers or lakes, that are not a specific location, should be labeled only as "GEOGRAPHY" and have a very low importance as they can be accessed from many locations.
 `;
-        const dataString = `[${placesWithoutCachedAnalysis.map(place => place.title).join(", ")}]
-        
-DESCRIPTIONS:
+    const dataString = `* ${place.title}: ${place.snippet || place.description || place.type || ""} `;
+    console.log('Single place analysis instructions and data:', [instructions, dataString]);
+    const response = await openai.responses.create({
+        model: "gpt-4.1-mini",
+        input: [
+            {
+                role: "system", content: instructions,
+            },
+            {
+                role: "user",
+                content: dataString,
+            },
+        ],
+        text: {
+            format: {
+                type: "json_object"
+            }
+        }
+    });
+    const json = JSON.parse(response.output_text);
+    console.log('Single place analysis result:', json);
+    // update cache
+    analysisCache[place.title] = json;
+}
 
-${placesWithoutCachedAnalysis.map(place => `* ${place.title}: ${place.snippet || place.description || place.type || ""}`).join("\n\n")}
-`;
-        console.log('Analysis instructions and data:', [instructions, dataString]);
-        const response = await openai.responses.create({
-            model: "gpt-4.1-mini",
-            input: [
-                {
-                    role: "system", content: instructions,
-                },
-                {
-                    role: "user",
-                    content: dataString,
-                },
-            ],
-            text: {
-                format: {
-                    type: "json_object"
-                }
-            }
-        });
-        const json = JSON.parse(response.output_text);
-        console.log('Analysis result:', json);
-        // update cache
-        Object.entries(json).forEach(([title, results]) => {
-            // ignore potential brackets in titles
-            const title2 = title.replace(/ *\([^)]*\) */g, "");
-            const place = $places.find(place => place.title.replace(/ *\([^)]*\) */g, "") === title2);
-            if (!place) {
-                return;
-            }
-            analysisCache[place.title] = results;
-        });
+
+// ToDo: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
+export async function analyzePlaces() {
+    const $places = get(places);
+    console.log('Places before analysis:', $places);
+    // get places with cached labels (labelsCache)
+    const placesWithoutCachedAnalysis = $places.filter(place => !analysisCache[place.title]);
+    if (placesWithoutCachedAnalysis.length > 0) {
+        // analyze each place separately, but concurrently
+        await Promise.all(placesWithoutCachedAnalysis.map(place => analyzeSinglePlace(place)));
     }
     const newPlaces = $places.map(place => ({
         ...place,

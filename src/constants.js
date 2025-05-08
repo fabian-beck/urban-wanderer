@@ -13,6 +13,11 @@ export const CLASSES = {
         description: 'Airport',
         radius: 1000
     },
+    'AMBIGUOUS_PLACE': {
+        emoji: '?',
+        description: 'Not really a place, but a reference to mulitple places or a vague location (e.g., a public tranport network)',
+        nonGeo: true
+    },
     'ARTWORK': {
         emoji: '🖼️',
         description: 'Artwork (e.g., a painting, a relief, but not a statue)',
