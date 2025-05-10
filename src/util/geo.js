@@ -79,6 +79,11 @@ export async function loadExtracts(places) {
                         `https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
                     );
                 } else if (place.wikipedia) {
+                    // return if wikipedia link contains "#" (subheading) as the returned extract would not relate to the place
+                    if (place.wikipedia.includes("#")) {
+                        console.warn(`Not loading description as Wikipedia reference contains "#": ${place.wikipedia}`);
+                        return;
+                    }
                     const placeLang = place.wikipedia.split(":")[0];
                     const placeTitle = place.wikipedia.split(":")[1];
                     response = await fetch(
@@ -108,6 +113,10 @@ export async function loadWikipediaImageUrls(attribute, size) {
         get(places).map(async place => {
             let response;
             if (place.wikipedia) {
+                if (place.wikipedia.includes("#")) {
+                    console.warn(`Not loading image (${attribute}) as Wikipedia reference contains "#": ${place.wikipedia}`);
+                    return;
+                }
                 const placeLang = place.wikipedia.split(":")[0];
                 const placeTitle = place.wikipedia.split(":")[1];
                 response = await fetch(
@@ -410,8 +419,7 @@ out skel qt;
                 if (e2 < dx) { err += dx; y += sy; }
             }
         }
-
-        waterMap.set(waterMapTmp);
     }
+    waterMap.set(waterMapTmp);
 }
 

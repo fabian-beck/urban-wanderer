@@ -27,7 +27,7 @@
 
 	onMount(() => {
 		(async () => {
-			if (item.pageid || item.wikipedia) {
+			if (item.pageid || (item.wikipedia && !item.wikipedia.includes('#'))) {
 				const url = item.pageid
 					? `https://${item.lang || $preferences.lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${item.pageid}&origin=*`
 					: `https://${item.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${item.wikipedia.split(':')[1]}&origin=*`;

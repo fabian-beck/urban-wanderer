@@ -1,6 +1,6 @@
 export const appName = 'Urban Wanderer';
 
-export const nArticles = 25;
+export const nArticles = 40;
 
 export const CLASSES = {
     'ABSTRACT_ENTITY': {
@@ -35,6 +35,15 @@ export const CLASSES = {
         emoji: '🏢',
         description: 'Building of any kind (e.g., a house, a skyscraper, a factory) or a part of a building (e.g., a portal, a room)',
     },
+    'BUSINESS_REGULAR': {
+        emoji: '💼',
+        description: 'Regular business (e.g., a shop, a restaurant, a hotel)',
+        nonGeo: true
+    },
+    'BUSINESS_UNIQUE': {
+        emoji: '💼',
+        description: 'Unique business (e.g., a famous restaurant, a unique hotel, a business of historical importance)',
+    },
     'CASTLE': {
         emoji: '🏰',
         description: 'Castle or fortress',
@@ -49,11 +58,6 @@ export const CLASSES = {
         emoji: '🏙️',
         description: 'City, village, or district',
         isSurrounding: true
-    },
-    'BUSINESS': {
-        emoji: '💼',
-        description: 'Business (e.g., a shop, a restaurant, a hotel)',
-        nonGeo: true
     },
     'EVENT': {
         emoji: '🎉',

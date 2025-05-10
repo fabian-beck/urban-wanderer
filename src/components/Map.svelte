@@ -1,6 +1,13 @@
 <script>
 	import { GlobeOutline } from 'flowbite-svelte-icons';
-	import { coordinates, places, heading, placeDetailsVisible, waterMap } from '../stores.js';
+	import {
+		coordinates,
+		places,
+		placesSurrounding,
+		heading,
+		placeDetailsVisible,
+		waterMap
+	} from '../stores.js';
 
 	import { derived } from 'svelte/store';
 	import { haversineDistance, latLonToX, latLonToY } from '../util/geo.js';
@@ -9,7 +16,13 @@
 		const highlighted = [];
 		const minDistance = 70; // Minimum distance in meters
 
-		const filteredPlaces = $places?.filter((place) => place.lon && place.lat && place.stars > 2);
+		const filteredPlaces = $places?.filter(
+			(place) =>
+				place.lon &&
+				place.lat &&
+				place.stars > 0 &&
+				!$placesSurrounding.find((p) => p.title === place.title)
+		);
 
 		// sort places by stars (descending; primary) and by place.dist (ascending; secondary)
 		const sortedPlaces = filteredPlaces?.sort((a, b) => {
@@ -86,9 +99,9 @@
 						<circle
 							cx={latLonToX(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
 							cy={latLonToY(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
-							r="50"
+							r={10 * place.stars}
 							class="place-circle fill-current text-primary-500 opacity-100"
-							style="filter: blur(100px);"
+							style="filter: blur(70px);"
 						/>
 					{/each}</g
 				>

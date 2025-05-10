@@ -149,7 +149,12 @@ export const placesHere = derived([coordinates, places, placesSurrounding], ([$c
                 return true;
             }
         })
-        .sort((a, b) => (b.stars || 0) - (a.stars || 0));
+        .sort((a, b) => {
+            // Sort by stars descending, then by dist ascending
+            const starDiff = (b.stars || 0) - (a.stars || 0);
+            if (starDiff !== 0) return starDiff;
+            return (a.dist || Infinity) - (b.dist || Infinity);
+        });
 });
 
 // places (nearby) store (derived from places, surrounding places, and places here)

@@ -58,7 +58,39 @@ export async function groupDuplicatePlaces() {
     const translations = await Promise.all($places.map(place => translatePlaceName(place)));
     console.log('Translations:', translations);
 
+    const levenshtein = (a, b) => {
+        const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1));
+
+        for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+        for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+
+        for (let i = 1; i <= a.length; i++) {
+            for (let j = 1; j <= b.length; j++) {
+                const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                dp[i][j] = Math.min(
+                    dp[i - 1][j] + 1,      // deletion
+                    dp[i][j - 1] + 1,      // insertion
+                    dp[i - 1][j - 1] + cost // substitution
+                );
+            }
+        }
+
+        return dp[a.length][b.length];
+    }
+
+
     const placesNameIsSimilar = (name1, name2) => {
+        // if names contain numbers, compare them based on the numbers
+        const numbers1 = name1.match(/\d+/g) || [];
+        const numbers2 = name2.match(/\d+/g) || [];
+        if (numbers1.length > 0 || numbers2.length > 0) {
+            const number1 = numbers1.join('');
+            const number2 = numbers2.join('');
+            if (number1 != number2) {
+                return false;
+            }
+        }
+        // lower case names
         name1 = name1.toLowerCase();
         name2 = name2.toLowerCase();
         // remove content in brackets
@@ -67,7 +99,20 @@ export async function groupDuplicatePlaces() {
         // remove special characters
         name1 = name1.replace(/[^a-z0-9]/g, '');
         name2 = name2.replace(/[^a-z0-9]/g, '');
-        return name1 === name2;
+        // remove town name from place name (if place name significantly longer than town name)
+        const townName = get(coordinates).town.toLowerCase();
+        if (name1.length > townName.length + 5) {
+            name1 = name1.replace(townName, '');
+        }
+        if (name2.length > townName.length + 5) {
+            name2 = name2.replace(townName, '');
+        }
+        const allowedDistance = Math.max(name1.length, name2.length) / 4
+            + (Math.max(name1.length, name2.length) - Math.min(name1.length, name2.length)) / 4;
+        if (levenshtein(name1, name2) < allowedDistance && levenshtein(name1, name2) > 0) {
+            console.log('Levenshtein distance:', levenshtein(name1, name2), name1, name2, allowedDistance);
+        }
+        return name1 === name2 || levenshtein(name1, name2) < allowedDistance;
     }
 
     const newPlaces = [];
@@ -129,6 +174,7 @@ Aspects that contribute to LOWER IMPORTANCE are:
 * the place is a generic entity (e.g., a concept, a non-physical object)
 * the place is maybe just an office of a business or intitution
 * the place has vanished or is not accessible anymore
+* the place is built over or is not visible anymore
 
 To best best characterize the place answer with 
 * exactly one class,
@@ -146,8 +192,8 @@ For a place "A" and its description output a JSON object like this:
 FURTHER INSTRUCTIONS:
 * Geographic places like rivers or lakes, that are not a specific location, should be labeled only as "GEOGRAPHY" and have a very low importance as they can be accessed from many locations.
 `;
-    const dataString = `* ${place.title}: ${place.snippet || place.description || place.type || ""} `;
-    console.log('Single place analysis instructions and data:', [instructions, dataString]);
+    const dataString = `* ${place.title}  (${place.type || ""}): ${place.snippet || place.description || ""}`;
+    console.log("Place analysis instructions", [instructions, dataString]);
     const response = await openai.responses.create({
         model: "gpt-4.1-mini",
         input: [
@@ -166,7 +212,6 @@ FURTHER INSTRUCTIONS:
         }
     });
     const json = JSON.parse(response.output_text);
-    console.log('Single place analysis result:', json);
     // update cache
     analysisCache[place.title] = json;
 }
