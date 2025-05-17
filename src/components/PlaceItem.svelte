@@ -1,9 +1,9 @@
 <script>
-	import PlaceDetails from './PlaceDetails.svelte';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import PlaceDirection from './PlaceDirection.svelte';
 	import { placeDetailsVisible } from '../stores.js';
+	import PlaceDetailsModal from './PlaceDetailsModal.svelte';
 
 	export let item;
 	export let showDistance = false;
@@ -54,5 +54,5 @@
 			</div>
 		</div>
 	</button>
-	<PlaceDetails {item} />
+	<PlaceDetailsModal {item} />
 {/if}

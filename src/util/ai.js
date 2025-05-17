@@ -402,7 +402,6 @@ Give the text a headline marked in bold font.
         model: "gpt-4.1",
         messages: messages,
     });
-    textToSpeech(completion.choices[0].message.content);
     return completion.choices[0].message.content;
 }
 
@@ -499,8 +498,6 @@ Answer in language '${get(preferences).lang}'.
 }
 
 export async function textToSpeech(text) {
-    if (!get(preferences).audio)
-        return;
     if (get(audioState) === 'playing') {
         audioState.set('paused');
         if (audio) {
@@ -509,11 +506,14 @@ export async function textToSpeech(text) {
     }
     audioState.set('loading');
     console.log('Text to speech:', text);
+    const instructions = `
+You are ${get(preferences).guideCharacter} city guide and speak accordingly.
+`;
     const response = await openai.audio.speech.create({
         model: "gpt-4o-mini-tts",
         voice: "alloy",
-        instructions: "You are friendly and motivated city guide and speak accordingly in a moderate and friendly tone. Pronounciation can be colloquial and deviate from the standard language to not sound too artificial. Make pauses between sentences and paragraphs, and use enganging intonation to make the speech more lively. Filler words like 'uhm' or 'well' are allowed to make the speech more natural.",
-        speed: 1.5,
+        instructions,
+        speed: 1.2,
         input: text,
     });
     const blob = await response.blob();

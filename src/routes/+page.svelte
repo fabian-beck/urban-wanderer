@@ -7,20 +7,16 @@
 		errorMessage,
 		storyTexts,
 		loadingMessage,
-		audioState,
-		preferences,
-		heading
+		heading,
+		events
 	} from '../stores.js';
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
 	import Nearby from '../components/Nearby.svelte';
-	import Story from '../components/Story.svelte';
 	import { Alert, CloseButton, Spinner, Toast } from 'flowbite-svelte';
-	import { VolumeUpSolid } from 'flowbite-svelte-icons';
 	import { appName } from '../constants.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
-	import History from '../components/History.svelte';
 	import Map from '../components/Map.svelte';
 
 	let loading = false;
@@ -39,6 +35,7 @@
 			places.reset();
 			coordinates.reset();
 			$storyTexts = [];
+			$events = [];
 			loadingMessage.set('Updating location ...');
 			await coordinates.update(coords);
 			await updateUrlParamsWithCoordinates();
@@ -88,9 +85,6 @@
 		<Here />
 		<hr class="m-4" />
 		<Nearby />
-		<hr class="m-4" />
-		<Story />
-		<History />
 	{:else}
 		<div class="m-6 mt-20 flex justify-center">
 			<img src="urban-wanderer-icon.png" alt="logo" class="w-24" />
@@ -107,22 +101,3 @@
 	{/if}
 </main>
 <Location {loading} update={() => update(false)} />
-{#if $preferences.audio}
-	<Toast
-		type="info"
-		class="fixed left-0 top-0 m-1 h-12 transform"
-		toastStatus={$audioState !== 'paused'}
-		color="red"
-		on:close={() => audioState.set('paused')}
-	>
-		<svelte:fragment slot="icon">
-			{#if $audioState === 'loading'}
-				<Spinner size="6" />
-			{/if}
-			{#if $audioState === 'playing'}
-				<VolumeUpSolid />
-			{/if}
-		</svelte:fragment>
-		Audio {$audioState}
-	</Toast>
-{/if}

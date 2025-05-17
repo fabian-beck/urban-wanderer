@@ -180,6 +180,9 @@ export const placesNearby = derived(
 // story
 export const storyTexts = writable([]);
 
+// events
+export const events = writable([]);
+
 // error store
 export const errorMessage = writable(null);
 

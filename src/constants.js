@@ -173,7 +173,7 @@ export const GUIDE_CHARACTERS = [
     "friendly and helpful",
     "funny and witty",
     "serious and professional",
-    "kid-friendly (simple language) and pedagogical",
+    "kid-friendly (enthusiastic and using simple terms)",
     "romantic and poetic",
     "adventurous and curious",
     "sarcastic and ironic"
