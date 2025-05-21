@@ -11,8 +11,8 @@
 </div>
 
 {#if $placesHere?.length > 0}
-	<Listgroup items={$placesHere} let:item itemDefaultClass="!px-0">
-		<PlaceItem {item} />
+	<Listgroup items={$placesHere} let:item={place} itemDefaultClass="!px-0">
+		<PlaceItem {place} />
 	</Listgroup>
 {:else}
 	<Alert color="primary"
@@ -24,7 +24,7 @@
 {/if}
 {#if $placesSurrounding.length > 0}
 	<div class="mb-1 mt-2">You are in:</div>
-	<Listgroup items={$placesSurrounding} let:item>
-		<PlaceItem {item} hideRating />
+	<Listgroup items={$placesSurrounding} let:item={place}>
+		<PlaceItem {place} hideRating />
 	</Listgroup>
 {/if}

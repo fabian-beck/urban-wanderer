@@ -61,7 +61,6 @@
 	{/each}
 	<Label>Search radius ({$preferences.radius}&nbsp;m)</Label>
 	<Range id="range1" bind:value={$preferences.radius} min="100" max="3000" step="100" />
-	<!-- Audio on/off toggle -->
 	<Label>Audio (autoplay)</Label>
 	<Toggle bind:checked={$preferences.audio} />
 </Modal>

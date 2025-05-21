@@ -306,6 +306,59 @@ Answer as a list links, consisting each of a short summary of the information ("
     return JSON.parse(response.output_text).links;
 }
 
+// search for a data facts about a place
+export async function searchPlaceFacts(place, factsProperties) {
+    const initialMessage = `
+You are a chat assistant helping a user to find facts about a place in the provided JSON format.
+
+The place of interest is ${place.title} (${place.cls}) located near ${get(coordinates).address}. 
+
+Extract and search for relevant facts and data about the place. Answer in language '${get(preferences).lang}'.
+
+The facts should be relevant for a current touristic visitor of the place. 
+Avoid redundancies; do not repeat the same information in different ways in properties and other facts.
+Directions are not necessary as the user is at the place already. 
+Avoid any general description of the place and do not provide general information about the city or region. 
+Your answer is directly provided to the user.
+But do not address the user directly or ask for feedback. 
+Answer in the shortest possible way, but do not use abbreviations or acronyms.
+Use null for missing values.
+
+You may also use the following description of the place to find relevant facts.
+Only if you cannot extract a sufficient number of facts from the description, you may search the web for more information.
+
+${place.article || place.description || place.snippet || "[no description available]"}
+`;
+    console.log("Search facts instructions", [initialMessage]);
+    const response = await openai.responses.create({
+        model: "gpt-4.1",
+        tools: [{ type: "web_search_preview" }],
+        input: initialMessage,
+        text: {
+            format: {
+                type: "json_schema",
+                name: "facts",
+                schema: {
+                    type: "object",
+                    properties: {
+                        facts: {
+                            type: "object",
+                            properties: factsProperties,
+                            required: Object.keys(factsProperties),
+                            additionalProperties: false,
+                        }
+                    },
+                    required: ["facts"],
+                    additionalProperties: false,
+                }
+            }
+        }
+    });
+    console.log("Web search fact response:", JSON.parse(response.output_text).facts);
+    return JSON.parse(response.output_text).facts;
+}
+
+
 // ----------------------------------------------
 
 // generate story about the user position

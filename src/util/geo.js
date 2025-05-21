@@ -336,23 +336,24 @@ export function latLonToY(lat, lon, centerLat, centerLon) {
 
 // water map 
 export async function loadWaterMap() {
-    const increaseWaterLevel = (x, y, value) => {
-        if (value < 0.1) {
-            return;
-        }
-        if (x >= 0 && x < 80 && y >= 0 && y < 80) {
-            waterMapTmp[x][y] += value;
-            if (waterMapTmp[x][y] > 1) {
-                waterMapTmp[x][y] = 1;
+    try {
+        const increaseWaterLevel = (x, y, value) => {
+            if (value < 0.1) {
+                return;
             }
-            increaseWaterLevel(x + 1, y, value / 4);
-            increaseWaterLevel(x - 1, y, value / 4);
-            increaseWaterLevel(x, y + 1, value / 4);
-            increaseWaterLevel(x, y - 1, value / 4);
-        }
-    }
+            if (x >= 0 && x < 80 && y >= 0 && y < 80) {
+                waterMapTmp[x][y] += value;
+                if (waterMapTmp[x][y] > 1) {
+                    waterMapTmp[x][y] = 1;
+                }
+                increaseWaterLevel(x + 1, y, value / 4);
+                increaseWaterLevel(x - 1, y, value / 4);
+                increaseWaterLevel(x, y + 1, value / 4);
+                increaseWaterLevel(x, y - 1, value / 4);
+            }
+        };
 
-    const overpassQuery = `
+        const overpassQuery = `
 [out:json];
 (
     // Search for water bodies
@@ -364,62 +365,65 @@ out body;
 >;
 out skel qt;
 `;
-    const response = await fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: `data=${encodeURIComponent(overpassQuery)}`
-    });
-    const data = await response.json();
-    console.log('Water map response:', data);
-    const waterPolylines = data.elements.filter(element => element.type === "way" && element.tags?.name).map(element => {
-        const nodes = element.nodes.map(nodeId => {
-            const node = data.elements.find(el => el.type === "node" && el.id === nodeId);
+        const response = await fetch("https://overpass-api.de/api/interpreter", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: `data=${encodeURIComponent(overpassQuery)}`
+        });
+        const data = await response.json();
+        console.log('Water map response:', data);
+        const waterPolylines = data.elements.filter(element => element.type === "way" && element.tags?.name).map(element => {
+            const nodes = element.nodes.map(nodeId => {
+                const node = data.elements.find(el => el.type === "node" && el.id === nodeId);
+                return {
+                    lat: node.lat,
+                    lon: node.lon
+                };
+            });
             return {
-                lat: node.lat,
-                lon: node.lon
+                type: "polyline",
+                name: element.tags?.name,
+                nodes: nodes
             };
         });
-        return {
-            type: "polyline",
-            name: element.tags?.name,
-            nodes: nodes
-        };
-    });
-    console.log('Water polylines:', waterPolylines);
-    const waterMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
-    for (const polyline of waterPolylines) {
-        for (let i = 0; i < polyline.nodes.length - 1; i++) {
-            const lat1 = polyline.nodes[i].lat;
-            const lon1 = polyline.nodes[i].lon;
-            const lat2 = polyline.nodes[i + 1].lat;
-            const lon2 = polyline.nodes[i + 1].lon;
-            // calculate x and y coordinates in the grid
-            const x1 = Math.floor(latLonToX(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
-            const y1 = Math.floor(latLonToY(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
-            const x2 = Math.floor(latLonToX(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
-            const y2 = Math.floor(latLonToY(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
-            increaseWaterLevel(x1, y1, 1);
-            // set all cells in between to 1 accoring to the Bresenham line algorithm
-            let x = x1;
-            let y = y1;
-            const dx = Math.abs(x2 - x1);
-            const dy = Math.abs(y2 - y1);
-            const sx = x1 < x2 ? 1 : -1;
-            const sy = y1 < y2 ? 1 : -1;
-            let err = dx - dy;
+        console.log('Water polylines:', waterPolylines);
+        const waterMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
+        for (const polyline of waterPolylines) {
+            for (let i = 0; i < polyline.nodes.length - 1; i++) {
+                const lat1 = polyline.nodes[i].lat;
+                const lon1 = polyline.nodes[i].lon;
+                const lat2 = polyline.nodes[i + 1].lat;
+                const lon2 = polyline.nodes[i + 1].lon;
+                // calculate x and y coordinates in the grid
+                const x1 = Math.floor(latLonToX(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
+                const y1 = Math.floor(latLonToY(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
+                const x2 = Math.floor(latLonToX(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
+                const y2 = Math.floor(latLonToY(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40);
+                increaseWaterLevel(x1, y1, 1);
+                // set all cells in between to 1 according to the Bresenham line algorithm
+                let x = x1;
+                let y = y1;
+                const dx = Math.abs(x2 - x1);
+                const dy = Math.abs(y2 - y1);
+                const sx = x1 < x2 ? 1 : -1;
+                const sy = y1 < y2 ? 1 : -1;
+                let err = dx - dy;
 
-            while (x !== x2 || y !== y2) {
-                if (!((x === x1 && y === y1) || (x === x2 && y === y2))) {
-                    increaseWaterLevel(x, y, 1);   // mark intermediate cells
+                while (x !== x2 || y !== y2) {
+                    if (!((x === x1 && y === y1) || (x === x2 && y === y2))) {
+                        increaseWaterLevel(x, y, 1);   // mark intermediate cells
+                    }
+                    const e2 = 2 * err;
+                    if (e2 > -dy) { err -= dy; x += sx; }
+                    if (e2 < dx) { err += dx; y += sy; }
                 }
-                const e2 = 2 * err;
-                if (e2 > -dy) { err -= dy; x += sx; }
-                if (e2 < dx) { err += dx; y += sy; }
             }
         }
+        waterMap.set(waterMapTmp);
+    } catch (error) {
+        console.error("Error loading water map:", error);
     }
-    waterMap.set(waterMapTmp);
 }
 

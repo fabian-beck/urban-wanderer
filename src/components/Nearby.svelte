@@ -18,8 +18,8 @@
 			></Alert
 		>
 	{:else}
-		<Listgroup items={$placesNearby} let:item>
-			<PlaceItem {item} showDistance />
+		<Listgroup items={$placesNearby} let:item={place}>
+			<PlaceItem {place} showDistance />
 		</Listgroup>
 	{/if}
 {/if}
