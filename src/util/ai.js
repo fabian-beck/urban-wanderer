@@ -3,8 +3,6 @@ import { OPENAI_API_KEY } from "../.openai_api_key.js";
 import { placesHere, placesNearby, coordinates, preferences, places, placesSurrounding, audioState } from "../stores.js";
 import { get } from "svelte/store";
 import { LABELS, CLASSES } from "../constants.js";
-import { z } from "zod";
-import { zodResponseFormat } from "openai/helpers/zod"
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
@@ -32,24 +30,33 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then
     translation: "A"
 }
 `;
-    const Translation = z.object({
-        title: z.string(),
-        translation: z.string()
-    });
-    const completion = await openai.beta.chat.completions.parse({
-        model: "gpt-4.1-mini",
-        messages: [
-            {
-                role: "system", content: instructions,
-            },
-            {
-                role: "user",
-                content: place.title,
-            },
+    const response = await openai.responses.create({
+        model: "gpt-5-mini",
+        reasoning: {
+            effort: "minimal"
+        },
+        input: [
+            { role: "system", content: instructions },
+            { role: "user", content: place.title },
         ],
-        response_format: zodResponseFormat(Translation, 'translation')
+        text: {
+            format: {
+                type: "json_schema",
+                name: "translation",
+                schema: {
+                    type: "object",
+                    properties: {
+                        title: { type: "string" },
+                        translation: { type: "string" },
+                    },
+                    required: ["title", "translation"],
+                    additionalProperties: false,
+                },
+                strict: true,
+            },
+        },
     });
-    const translation = completion.choices[0].message.parsed;
+    const translation = JSON.parse(response.output_text);
     return translation;
 }
 
@@ -193,9 +200,12 @@ FURTHER INSTRUCTIONS:
 * Geographic places like rivers or lakes, that are not a specific location, should be labeled only as "GEOGRAPHY" and have a very low importance as they can be accessed from many locations.
 `;
     const dataString = `* ${place.title}  (${place.type || ""}): ${place.snippet || place.description || ""}`;
-    console.log("Place analysis instructions", [instructions, dataString]);
+    // console.log("Place analysis instructions", [instructions, dataString]);
     const response = await openai.responses.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-5-mini",
+        reasoning: {
+            effort: "minimal"
+        },
         input: [
             {
                 role: "system", content: instructions,
@@ -246,19 +256,21 @@ export async function summarizeArticle(article) {
     if (summaryCache[article]) {
         return summaryCache[article];
     }
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
+    const response = await openai.responses.create({
+        model: "gpt-5-mini",
+        reasoning: {
+            effort: "minimal"
+        },
+        input: [
             {
                 role: "system", content: `You are a chat assistant providing a summary description for a place.
-                
-                Describe the following place in a short paragraph. Answer in language '${get(preferences).lang}'.
 
-    ${article} `,
+                Describe the following place in a short paragraph. Answer in language '${get(preferences).lang}'.
+${article} `,
             },
-        ]
+        ],
     });
-    const summary = completion.choices[0].message.content;
+    const summary = response.output_text;
     summaryCache[article] = summary;
     return summary;
 }
@@ -266,7 +278,7 @@ export async function summarizeArticle(article) {
 // web search for a place
 export async function searchPlaceWeb(place) {
     const response = await openai.responses.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-5-mini",
         tools: [{ type: "web_search_preview" }],
         input: `You are a chat assistant helping a user to find more information and links about a place.
 
@@ -331,7 +343,7 @@ ${place.article || place.description || place.snippet || "[no description availa
 `;
     console.log("Search facts instructions", [initialMessage]);
     const response = await openai.responses.create({
-        model: "gpt-4.1",
+        model: "gpt-5",
         tools: [{ type: "web_search_preview" }],
         input: initialMessage,
         text: {
@@ -451,11 +463,14 @@ Give the text a headline marked in bold font.
 ` });
     }
     console.log("Story writing instructions", messages);
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4.1",
-        messages: messages,
+    const response = await openai.responses.create({
+        model: "gpt-5",
+        reasoning: {
+            effort: "minimal"
+        },
+        input: messages,
     });
-    return completion.choices[0].message.content;
+    return response.output_text;
 }
 
 // ----------------------------------------------
@@ -491,7 +506,7 @@ If the list of places is empty or the text is too short, leave the list of event
 `;
     console.log("Historic events instructions", [instructions]);
     const response = await openai.responses.create({
-        model: "gpt-4.1",
+        model: "gpt-5",
         input: [
             {
                 role: "system", content: instructions,
@@ -536,7 +551,10 @@ Answer in language '${get(preferences).lang}'.
 `;
     console.log("Extract facts instructions", [instructions]);
     const response = await openai.responses.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-5-mini",
+        reasoning: {
+            effort: "minimal"
+        },
         input: [
             {
                 role: "system", content: instructions,
