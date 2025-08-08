@@ -12,9 +12,19 @@ let audio = null;
 // ----------------------------------------------
 
 async function translatePlaceName(place) {
-    const instructions = `You are a chat assistant helping a user to translate place names to ${get(preferences).lang}.
+    const prefs = get(preferences);
+    const hasMultipleSourceLanguages = prefs.sourceLanguages && prefs.sourceLanguages.length > 1;
+    const isDifferentLanguage = place.lang && place.lang !== prefs.lang;
 
-You must skip places that are difficult to translate or are already in the targeted language (${get(preferences).lang}). Generally, skip place names in English.
+    // Only translate if source from multiple languages are considered or presentation language not equals source language
+    if (!hasMultipleSourceLanguages && !isDifferentLanguage) {
+        return { title: place.title, translation: place.title };
+    }
+
+    const instructions = `You are a chat assistant helping a user to translate place names to ${prefs.lang}.
+
+You must skip places that are difficult to translate or are already in the targeted language (${prefs.lang}). 
+Generally, skip place names in English.
 
 For a place "A" output a JSON object like this:
 
