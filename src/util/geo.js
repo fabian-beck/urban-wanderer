@@ -289,7 +289,14 @@ async function wikipediaNameSearchForPlace(name) {
         );
         const data3 = await response3.json();
         const pageid = Object.keys(data3.query.pages)[0];
-        const coords = data3.query.pages[pageid].coordinates[0];
+        const page = data3.query.pages[pageid];
+        
+        // Skip if page has no coordinates
+        if (!page.coordinates || page.coordinates.length === 0) {
+            continue;
+        }
+        
+        const coords = page.coordinates[0];
         // calculate distance
         const distance = Math.sqrt(
             Math.pow(coords.lat - get(coordinates).latitude, 2) +
