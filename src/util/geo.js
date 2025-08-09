@@ -1,4 +1,4 @@
-import { coordinates, preferences, places, waterMap } from '../stores.js';
+import { coordinates, preferences, places, waterMap, greenMap } from '../stores.js';
 import { nArticles } from '../constants.js';
 import { get } from 'svelte/store';
 import { extractFactsFromArticle } from './ai.js';
@@ -478,5 +478,123 @@ out skel qt;
 		waterMap.set(waterMapTmp);
 	} catch (error) {
 		console.error('Error loading water map:', error);
+	}
+}
+
+// green map
+export async function loadGreenMap() {
+	try {
+		const increaseGreenLevel = (x, y, value) => {
+			if (value < 0.05) {
+				return;
+			}
+			if (x >= 0 && x < 80 && y >= 0 && y < 80) {
+				greenMapTmp[x][y] += value;
+				if (greenMapTmp[x][y] > 1) {
+					greenMapTmp[x][y] = 1;
+				}
+				increaseGreenLevel(x + 1, y, value / 6);
+				increaseGreenLevel(x - 1, y, value / 6);
+				increaseGreenLevel(x, y + 1, value / 6);
+				increaseGreenLevel(x, y - 1, value / 6);
+			}
+		};
+
+		const overpassQuery = `
+[out:json];
+(
+    // Search for green spaces and natural areas
+    relation[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    
+    relation[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    
+    relation[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    
+    // Individual trees
+    node[natural="tree"](around:400,${get(coordinates).latitude},${get(coordinates).longitude});
+);
+out body;
+>;
+out skel qt;
+`;
+		const response = await fetch('https://overpass-api.de/api/interpreter', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: `data=${encodeURIComponent(overpassQuery)}`
+		});
+		const data = await response.json();
+		console.log('Green map response:', data);
+		
+		const greenMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
+		
+		// Process areas (ways and relations)
+		const greenAreas = data.elements
+			.filter((element) => element.type === 'way' && element.nodes)
+			.map((element) => {
+				const nodes = element.nodes.map((nodeId) => {
+					const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
+					return node ? {
+						lat: node.lat,
+						lon: node.lon
+					} : null;
+				}).filter(node => node !== null);
+				
+				return {
+					type: 'area',
+					name: element.tags?.name || 'Green space',
+					category: element.tags?.landuse || element.tags?.leisure || element.tags?.natural || 'green',
+					nodes: nodes
+				};
+			});
+
+		// Process individual trees
+		const trees = data.elements
+			.filter((element) => element.type === 'node' && element.tags?.natural === 'tree')
+			.map((element) => ({
+				type: 'tree',
+				lat: element.lat,
+				lon: element.lon,
+				name: element.tags?.name || 'Tree'
+			}));
+
+		console.log('Green areas:', greenAreas);
+		console.log('Trees:', trees);
+
+		// Fill in green areas
+		for (const area of greenAreas) {
+			if (area.nodes.length > 2) {
+				// For polygon areas, we'll mark all points along the perimeter
+				for (let i = 0; i < area.nodes.length; i++) {
+					const node = area.nodes[i];
+					const x = Math.floor(
+						latLonToX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
+					);
+					const y = Math.floor(
+						latLonToY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
+					);
+					increaseGreenLevel(x, y, 0.8);
+				}
+			}
+		}
+
+		// Fill in individual trees
+		for (const tree of trees) {
+			const x = Math.floor(
+				latLonToX(tree.lat, tree.lon, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
+			);
+			const y = Math.floor(
+				latLonToY(tree.lat, tree.lon, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
+			);
+			increaseGreenLevel(x, y, 0.6);
+		}
+
+		greenMap.set(greenMapTmp);
+	} catch (error) {
+		console.error('Error loading green map:', error);
 	}
 }
