@@ -425,25 +425,112 @@ out skel qt;
 		});
 		const data = await response.json();
 		console.log('Water map response:', data);
+		// Helper function to determine waterway width based on OSM data
+		const getWaterwayWidth = (tags) => {
+			// Use explicit width if available
+			if (tags.width) {
+				const width = parseFloat(tags.width);
+				if (!isNaN(width)) {
+					return Math.min(Math.max(width / 10, 0.3), 3.0); // Scale to 0.3-3.0 range
+				}
+			}
+			
+			// Base width on waterway type (adjusted for radius-based rendering)
+			const waterwayType = tags.waterway;
+			switch (waterwayType) {
+				case 'river':
+					// Check for navigation hints for major rivers
+					if (tags.boat === 'yes' || tags.motorboat === 'yes' || tags.ship === 'yes') {
+						return 2.4; // Major navigable river
+					}
+					return 1.8; // Regular river
+				case 'stream':
+					return 0.8; // Stream
+				case 'canal':
+					return tags.boat === 'yes' ? 2.0 : 1.2; // Navigable vs regular canal
+				case 'ditch':
+				case 'drain':
+					return 0.6; // Small drainage
+				case 'weir':
+				case 'dam':
+					return 1.4; // Water structure
+				default:
+					return 1.0; // Default
+			}
+		};
+
 		const waterPolylines = data.elements
-			.filter((element) => element.type === 'way' && element.tags?.name)
+			.filter((element) => element.type === 'way' && element.tags?.waterway)
 			.map((element) => {
 				const nodes = element.nodes.map((nodeId) => {
 					const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
-					return {
+					return node ? {
 						lat: node.lat,
 						lon: node.lon
-					};
-				});
+					} : null;
+				}).filter(node => node !== null);
+				
+				const width = getWaterwayWidth(element.tags);
+				
 				return {
 					type: 'polyline',
-					name: element.tags?.name,
+					name: element.tags?.name || `${element.tags.waterway}`,
+					waterway: element.tags.waterway,
+					width: width,
 					nodes: nodes
 				};
 			});
 		console.log('Water polylines:', waterPolylines);
+		// Helper function to draw a thick line by filling all points within radius
+		const drawThickLine = (x1, y1, x2, y2, radius, intensity) => {
+			// Bresenham line algorithm to get the center line points
+			const centerPoints = [];
+			let x = x1;
+			let y = y1;
+			const dx = Math.abs(x2 - x1);
+			const dy = Math.abs(y2 - y1);
+			const sx = x1 < x2 ? 1 : -1;
+			const sy = y1 < y2 ? 1 : -1;
+			let err = dx - dy;
+
+			while (true) {
+				centerPoints.push({ x, y });
+				if (x === x2 && y === y2) break;
+				
+				const e2 = 2 * err;
+				if (e2 > -dy) {
+					err -= dy;
+					x += sx;
+				}
+				if (e2 < dx) {
+					err += dx;
+					y += sy;
+				}
+			}
+
+			// For each center point, fill a circle around it
+			for (const point of centerPoints) {
+				const radiusInt = Math.ceil(radius);
+				for (let dy = -radiusInt; dy <= radiusInt; dy++) {
+					for (let dx = -radiusInt; dx <= radiusInt; dx++) {
+						const distance = Math.sqrt(dx * dx + dy * dy);
+						if (distance <= radius) {
+							const px = point.x + dx;
+							const py = point.y + dy;
+							// Fade intensity based on distance from center
+							const fadeIntensity = intensity * (1 - distance / (radius + 0.5));
+							increaseWaterLevel(px, py, fadeIntensity);
+						}
+					}
+				}
+			}
+		};
+
 		const waterMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
 		for (const polyline of waterPolylines) {
+			const waterwayRadius = polyline.width / 2.0; // Convert width to radius
+			const waterIntensity = Math.min(1.0, polyline.width / 1.5); // Scale intensity
+			
 			for (let i = 0; i < polyline.nodes.length - 1; i++) {
 				const lat1 = polyline.nodes[i].lat;
 				const lon1 = polyline.nodes[i].lon;
@@ -454,30 +541,9 @@ out skel qt;
 				const y1 = coordsToGridY(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude);
 				const x2 = coordsToGridX(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude);
 				const y2 = coordsToGridY(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude);
-				increaseWaterLevel(x1, y1, 1);
-				// set all cells in between to 1 according to the Bresenham line algorithm
-				let x = x1;
-				let y = y1;
-				const dx = Math.abs(x2 - x1);
-				const dy = Math.abs(y2 - y1);
-				const sx = x1 < x2 ? 1 : -1;
-				const sy = y1 < y2 ? 1 : -1;
-				let err = dx - dy;
-
-				while (x !== x2 || y !== y2) {
-					if (!((x === x1 && y === y1) || (x === x2 && y === y2))) {
-						increaseWaterLevel(x, y, 1); // mark intermediate cells
-					}
-					const e2 = 2 * err;
-					if (e2 > -dy) {
-						err -= dy;
-						x += sx;
-					}
-					if (e2 < dx) {
-						err += dx;
-						y += sy;
-					}
-				}
+				
+				// Draw thick line between the two points
+				drawThickLine(x1, y1, x2, y2, waterwayRadius, waterIntensity);
 			}
 		}
 		waterMap.set(waterMapTmp);
