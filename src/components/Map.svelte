@@ -136,6 +136,23 @@
 						{/each}
 					{/each}
 				</g>
+				<!-- radius circles (below places) -->
+				<g class="radius-circles">
+					<circle
+						cx="0"
+						cy="0"
+						r="100"
+						class="here-circle stroke-current stroke-2 text-gray-400"
+						fill="none"
+					/>
+					<circle
+						cx="0"
+						cy="0"
+						r="399"
+						class="clip-circle stroke-current stroke-2 text-gray-400"
+						fill="none"
+					/>
+				</g>
 				<!-- places -->
 				<g class="places">
 					{#each $placesToHighlight as place}
@@ -181,20 +198,6 @@
 						stroke-width="4"
 					/>
 					<circle cx="0" cy="0" r="10" class="position-circle" stroke-width="2" />
-					<circle
-						cx="0"
-						cy="0"
-						r="100"
-						class="here-circle stroke-current stroke-2 text-gray-300"
-						fill="none"
-					/>
-					<circle
-						cx="0"
-						cy="0"
-						r="399"
-						class="clip-circle stroke-current stroke-2 text-gray-300"
-						fill="none"
-					/>
 				</g>
 			</g>
 			<g class="labels">
