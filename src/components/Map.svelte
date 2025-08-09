@@ -7,11 +7,18 @@
 		heading,
 		placeDetailsVisible,
 		waterMap,
-		greenMap
+		greenMap,
+		preferences
 	} from '../stores.js';
 
 	import { derived } from 'svelte/store';
-	import { haversineDistance, latLonToX, latLonToY, coordsToGridX, coordsToGridY } from '../util/geo.js';
+	import {
+		haversineDistance,
+		latLonToX,
+		latLonToY,
+		coordsToGridX,
+		coordsToGridY
+	} from '../util/geo.js';
 
 	const placesToHighlight = derived(places, ($places) => {
 		const highlighted = [];
@@ -56,27 +63,177 @@
 		return highlighted;
 	});
 
-	const layoutLabel = (label) => {
-		// Cut long labels and add "..."
-		if (label.length > 20) {
-			label = label.substring(0, 17) + '...';
+	const tryHyphenate = (word, lang) => {
+		const hyphenationPatterns = {
+			en: [
+				'street',
+				'church',
+				'school',
+				'center',
+				'centre',
+				'station',
+				'building',
+				'hospital',
+				'university',
+				'library',
+				'museum'
+			],
+			de: [
+				'kloster',
+				'kirche',
+				'schule',
+				'straße',
+				'strasse',
+				'platz',
+				'gasse',
+				'zentrum',
+				'bahnhof',
+				'gebäude',
+				'krankenhaus',
+				'universität',
+				'bibliothek',
+				'gymnasium',
+				'brunnen',
+				'denkmal',
+				'anstalt',
+				'museum',
+				'park',
+				'hof',
+				'schloss',
+				'haus',
+				'hafen',
+				'allee',
+				'weg',
+				'markt',
+				'passage',
+				'steg',
+				'brücke',
+				'feld',
+				'anger',
+				'graben',
+				'steig',
+				'steige',
+				'wall',
+				'kamp',
+				'garten',
+				'terrasse',
+				'promenade',
+				'chaussee',
+				'kai',
+				'ufer',
+				'stieg',
+				'viertel',
+				'koppel',
+				'ried',
+				'forst',
+				'wald',
+				'moor',
+				'teich',
+				'see',
+				'weiher',
+				'acker',
+				'landwehr',
+				'holz',
+				'heide'
+			]
+		};
+
+		const patterns = hyphenationPatterns[lang] || hyphenationPatterns.en;
+
+		// Remove "..." if present at the end to check the actual word
+		const cleanWord = word.endsWith('...') ? word.slice(0, -3) : word;
+		const lowerWord = cleanWord.toLowerCase();
+
+		for (const suffix of patterns) {
+			if (lowerWord.endsWith(suffix) && lowerWord.length > suffix.length) {
+				const prefixLength = cleanWord.length - suffix.length;
+				const prefix = cleanWord.substring(0, prefixLength);
+				const suffixPart = cleanWord.substring(prefixLength);
+
+				// Only hyphenate if there's actually a prefix (compound word)
+				if (prefix.length > 0) {
+					const hyphenated = prefix + '-' + suffixPart;
+					return word.endsWith('...') ? hyphenated + '...' : hyphenated;
+				}
+			}
 		}
-		// Prefer splitting at word boundary for line breaks
+
+		return null;
+	};
+
+	const layoutLabel = (label) => {
+
+		// Step 1: If longer than 25, try to cut at word boundary to get below 25
+		if (label.length > 25) {
+			// Try to cut at word boundary first
+			const words = label.split(' ');
+			if (words.length > 1) {
+				let result = '';
+				for (let i = 0; i < words.length; i++) {
+					const test = result + (i > 0 ? ' ' : '') + words[i];
+					if (test.length > 25) break;
+					result = test;
+				}
+				if (result.length > 0) {
+					label = result + '...';
+				} else {
+					// Single word longer than 25, cut at 15
+					label = label.substring(0, 15) + '...';
+				}
+			} else {
+				// Try to cut at hyphen boundary
+				const parts = label.split('-');
+				if (parts.length > 1) {
+					let result = '';
+					for (let i = 0; i < parts.length; i++) {
+						const test = result + (i > 0 ? '-' : '') + parts[i];
+						if (test.length > 25) break;
+						result = test;
+					}
+					if (result.length > 0) {
+						label = result + '...';
+					} else {
+						// Single part longer than 25, cut at 15
+						label = label.substring(0, 15) + '...';
+					}
+				} else {
+					// No word or hyphen boundary, cut at 15
+					label = label.substring(0, 15) + '...';
+				}
+			}
+		}
+
+		// Step 2: Try to make two lines if multiple words/parts
 		if (label.length > 10) {
+			// First: Try splitting at word boundary
 			const words = label.split(' ');
 			if (words.length > 1) {
 				const mid = Math.floor(words.length / 2);
 				return words.slice(0, mid).join(' ') + '\n' + words.slice(mid).join(' ');
 			}
-		}
-		// If no word boundary, split at hyphen
-		if (label.includes('-')) {
+
+			// Second: Try splitting at existing hyphen
 			const parts = label.split('-');
 			if (parts.length > 1) {
 				const mid = Math.floor(parts.length / 2);
 				return parts.slice(0, mid).join('-') + '-\n' + parts.slice(mid).join('-');
 			}
+
+			// Third: Try simple hyphenation for single long compound words
+			const hyphenated = tryHyphenate(label, $preferences.lang);
+			if (hyphenated && hyphenated.includes('-')) {
+				const hyphenParts = hyphenated.split('-');
+				if (hyphenParts.length === 2) {
+					return hyphenParts[0] + '-\n' + hyphenParts[1];
+				}
+			}
+
+			// Final fallback: If single word/part longer than 15, truncate at 15
+			if (label.length > 15) {
+				label = label.substring(0, 15) + '...';
+			}
 		}
+
 		return label;
 	};
 </script>
