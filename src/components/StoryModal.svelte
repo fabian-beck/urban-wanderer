@@ -3,7 +3,7 @@
 	import { marked } from 'marked';
 	import { generateStory, textToSpeech } from '../util/ai.js';
 	import { markPlacesInText } from '../util/text.js';
-	import { errorMessage, storyTexts, audioState, preferences } from '../stores.js';
+	import { errorMessage, storyTexts, storyLoading, audioState, preferences } from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
 	import { Button, Spinner, Alert, CloseButton } from 'flowbite-svelte';
 
@@ -25,7 +25,7 @@
 		loading = false;
 	};
 
-	$: if (visible && $storyTexts.length === 0) {
+	$: if (visible && $storyTexts.length === 0 && !$storyLoading) {
 		updateStory();
 	}
 
@@ -49,7 +49,7 @@
 			</div>
 			<div class="ml-1 flex-auto text-xl">Story</div>
 			<div class="ml-4 flex-none text-sm">
-				{#if loading}
+				{#if loading || $storyLoading}
 					<Alert type="info" class="flex p-2 text-xs">
 						<svelte:fragment slot="icon">
 							<Spinner size="4" />

@@ -1,7 +1,7 @@
 import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
 import { CLASSES, LABELS } from './constants.js';
-import { analyzePlaces, groupDuplicatePlaces } from './util/ai.js';
+import { analyzePlaces, groupDuplicatePlaces, generateStory } from './util/ai.js';
 import {
 	loadWikipediaPlaces as loadWikipediaPlaces,
 	loadArticleTexts,
@@ -126,7 +126,18 @@ function createPlaces() {
 					((Date.now() - startTime) / 1000).toFixed(2)
 				);
 				rate();
-				loadMetadata();
+				// Load facts before story generation
+				await loadMetadata();
+				// Pregenerate first story part in background
+				storyTexts.set([]); // Clear previous stories
+				storyLoading.set(true);
+				generateStory([]).then(firstStory => {
+					storyTexts.set([firstStory]);
+					storyLoading.set(false);
+				}).catch(error => {
+					console.error('Background story generation failed:', error);
+					storyLoading.set(false);
+				});
 			} catch (error) {
 				console.error(error);
 				errorMessage.set('Could not load places: ' + error);
@@ -197,6 +208,7 @@ export const placesNearby = derived(
 
 // story
 export const storyTexts = writable([]);
+export const storyLoading = writable(false);
 
 // events
 export const events = writable([]);
@@ -260,8 +272,8 @@ function rate() {
 async function loadMetadata() {
 	loadWikipediaImageUrls('imageThumb', 100);
 	loadWikipediaImageUrls('image', 500);
-	loadArticleTexts(get(placesHere));
-	loadArticleTexts(get(placesSurrounding));
+	await loadArticleTexts(get(placesHere));
+	await loadArticleTexts(get(placesSurrounding));
 }
 
 function mergePlaces(placesTmp, placesOsm) {
