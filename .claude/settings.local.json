@@ -5,7 +5,10 @@
       "Bash(npm run format:*)",
       "Bash(npx eslint:*)",
       "Bash(magick:*)",
-      "Bash(convert:*)"
+      "Bash(convert:*)",
+      "WebFetch(domain:www.wikidata.org)",
+      "WebFetch(domain:flowbite-svelte-icons.codewithshin.com)",
+      "WebFetch(domain:flowbite.com)"
     ],
     "deny": []
   }

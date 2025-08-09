@@ -46,10 +46,17 @@ export async function loadArticleTexts(places) {
 				return;
 			}
 			const response = await fetch(
-				`https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=revisions&rvprop=content&rvslots=main`
+				`https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=revisions|pageprops&rvprop=content&rvslots=main&ppprop=wikibase_item`
 			);
 			const data = await response.json();
-			place.article = data.query.pages[place.pageid].revisions[0].slots.main['*'];
+			const pageData = data.query.pages[place.pageid];
+			place.article = pageData.revisions[0].slots.main['*'];
+
+			// Extract WikiData ID if available
+			if (pageData.pageprops?.wikibase_item) {
+				place.wikidata = pageData.pageprops.wikibase_item;
+				console.log(`📋 Found WikiData ID from Wikipedia: ${place.title} → ${place.wikidata}`);
+			}
 			// delete all wiki tables
 			place.article = place.article.replace(/\{\|[\s\S]*?\|\}/g, '');
 			place.article = place.article.replace(/\{\{[\s\S]*?\}\}/g, '');
@@ -240,21 +247,24 @@ out skel qt;
 						tags.leisure,
 					url: tags['contact:website'] || tags.website,
 					wikipedia: tags.wikipedia,
+					wikidata: tags.wikidata,
 					lat: element.lat,
 					lon: element.lon,
 					dist:
 						Math.sqrt(
 							Math.pow(element.lat - $coordinates.latitude, 2) +
-								Math.pow(element.lon - $coordinates.longitude, 2)
+							Math.pow(element.lon - $coordinates.longitude, 2)
 						) * 111139 // convert degrees to meters
 				};
 			});
+
 		console.log('OSM places:', places);
 		return places;
 	} catch (error) {
 		console.error('Could not load OSM places:', error);
 	}
 }
+
 
 export async function loadAddressData(coords) {
 	const lang = get(preferences).lang;
@@ -318,7 +328,7 @@ async function wikipediaNameSearchForPlace(name) {
 		const distance =
 			Math.sqrt(
 				Math.pow(coords.lat - get(coordinates).latitude, 2) +
-					Math.pow(coords.lon - get(coordinates).longitude, 2)
+				Math.pow(coords.lon - get(coordinates).longitude, 2)
 			) * 111139; // convert degrees to meters
 		// if close enough, return place
 		if (distance < 10000) {

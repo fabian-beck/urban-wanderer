@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { Button, Modal } from 'flowbite-svelte';
-	import { FileOutline, MapPinAltOutline, GlobeOutline } from 'flowbite-svelte-icons';
+	import { FileOutline, MapPinAltOutline, GlobeOutline, DatabaseOutline } from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai.js';
 	import { coordinates, placesSurrounding, preferences, placeDetailsVisible } from '../stores.js';
 	import PlaceStars from './PlaceStars.svelte';
@@ -87,31 +87,40 @@
 		</div>
 	</div>
 	<svelte:fragment slot="footer">
-		<div class="flex w-full text-xs">
-			{#if place.pageid}
-				<a
-					href={`https://${place.lang || $preferences.lang}.m.wikipedia.org/?curid=${place.pageid}`}
-					target="_blank"
-					class="flex flex-auto"
-				>
-					<FileOutline class="!mr-2" />Wikipedia
-				</a>
-			{:else if place.wikipedia}
-				<!-- item.wikipedia="de:name" -> "https://de.wikipedia.org/wiki/name" -->
-				<a
-					href={`https://${place.wikipedia.split(':')[0]}.wikipedia.org/wiki/${place.wikipedia.split(':')[1]}`}
-					target="_blank"
-					class="flex flex-auto"
-				>
-					<FileOutline class="!mr-1" />Wikipedia
-				</a>
-			{:else if place.url}
-				<a href={place.url} target="_blank" class="flex flex-auto">
-					<GlobeOutline class="!mr-1" />Page
-				</a>
-			{:else}
-				<span class="flex flex-auto"></span>
-			{/if}
+		<div class="flex w-full text-xs justify-between">
+			<div class="flex">
+				{#if place.pageid}
+					<a
+						href={`https://${place.lang || $preferences.lang}.m.wikipedia.org/?curid=${place.pageid}`}
+						target="_blank"
+						class="flex mr-3"
+					>
+						<FileOutline class="!mr-1" />Wikipedia
+					</a>
+				{:else if place.wikipedia}
+					<!-- item.wikipedia="de:name" -> "https://de.wikipedia.org/wiki/name" -->
+					<a
+						href={`https://${place.wikipedia.split(':')[0]}.wikipedia.org/wiki/${place.wikipedia.split(':')[1]}`}
+						target="_blank"
+						class="flex mr-3"
+					>
+						<FileOutline class="!mr-1" />Wikipedia
+					</a>
+				{:else if place.url}
+					<a href={place.url} target="_blank" class="flex mr-3">
+						<GlobeOutline class="!mr-1" />Page
+					</a>
+				{/if}
+				{#if place.wikidata}
+					<a
+						href={`https://www.wikidata.org/wiki/${place.wikidata}`}
+						target="_blank"
+						class="flex"
+					>
+						<DatabaseOutline class="!mr-1" />WikiData
+					</a>
+				{/if}
+			</div>
 			{#if place.lon && place.lat}
 				<a
 					href={`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`}
