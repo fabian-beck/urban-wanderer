@@ -498,10 +498,60 @@ export async function loadGreenMap() {
 				if (greenMapTmp[x][y] > 1) {
 					greenMapTmp[x][y] = 1;
 				}
-				increaseGreenLevel(x + 1, y, value / 6);
-				increaseGreenLevel(x - 1, y, value / 6);
-				increaseGreenLevel(x, y + 1, value / 6);
-				increaseGreenLevel(x, y - 1, value / 6);
+				// Stronger propagation for better area coverage
+				if (value > 0.3) {
+					increaseGreenLevel(x + 1, y, value / 4);
+					increaseGreenLevel(x - 1, y, value / 4);
+					increaseGreenLevel(x, y + 1, value / 4);
+					increaseGreenLevel(x, y - 1, value / 4);
+				}
+			}
+		};
+
+		// Simple polygon fill algorithm using scan line
+		const fillPolygon = (nodes, value) => {
+			if (nodes.length < 3) return;
+			
+			// Convert nodes to grid coordinates
+			const gridNodes = nodes.map(node => ({
+				x: coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude),
+				y: coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude)
+			})).filter(node => node.x >= 0 && node.x < 80 && node.y >= 0 && node.y < 80);
+
+			if (gridNodes.length < 3) return;
+
+			// Find bounding box
+			const minY = Math.max(0, Math.min(...gridNodes.map(n => n.y)));
+			const maxY = Math.min(79, Math.max(...gridNodes.map(n => n.y)));
+
+			// Scan line algorithm
+			for (let y = minY; y <= maxY; y++) {
+				const intersections = [];
+				
+				// Find intersections with polygon edges
+				for (let i = 0; i < gridNodes.length; i++) {
+					const j = (i + 1) % gridNodes.length;
+					const p1 = gridNodes[i];
+					const p2 = gridNodes[j];
+					
+					if ((p1.y <= y && p2.y > y) || (p2.y <= y && p1.y > y)) {
+						const x = p1.x + (y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y);
+						intersections.push(x);
+					}
+				}
+				
+				// Sort intersections and fill between pairs
+				intersections.sort((a, b) => a - b);
+				for (let i = 0; i < intersections.length; i += 2) {
+					if (i + 1 < intersections.length) {
+						const startX = Math.max(0, Math.ceil(intersections[i]));
+						const endX = Math.min(79, Math.floor(intersections[i + 1]));
+						
+						for (let x = startX; x <= endX; x++) {
+							increaseGreenLevel(x, y, value);
+						}
+					}
+				}
 			}
 		};
 
@@ -537,23 +587,51 @@ out skel qt;
 		
 		const greenMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
 		
+		// Helper function to extract nodes from ways
+		const getNodesFromWay = (way) => {
+			return way.nodes?.map((nodeId) => {
+				const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
+				return node ? { lat: node.lat, lon: node.lon } : null;
+			}).filter(node => node !== null) || [];
+		};
+
+		// Helper function to extract nodes from relations
+		const getNodesFromRelation = (relation) => {
+			const allNodes = [];
+			relation.members?.forEach(member => {
+				if (member.type === 'way' && member.role === 'outer') {
+					const way = data.elements.find(el => el.type === 'way' && el.id === member.ref);
+					if (way) {
+						allNodes.push(...getNodesFromWay(way));
+					}
+				}
+			});
+			return allNodes;
+		};
+
 		// Process areas (ways and relations)
 		const greenAreas = data.elements
-			.filter((element) => element.type === 'way' && element.nodes)
+			.filter((element) => 
+				(element.type === 'way' && element.nodes) || 
+				(element.type === 'relation' && element.members)
+			)
 			.map((element) => {
-				const nodes = element.nodes.map((nodeId) => {
-					const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
-					return node ? {
-						lat: node.lat,
-						lon: node.lon
-					} : null;
-				}).filter(node => node !== null);
+				let nodes = [];
+				if (element.type === 'way') {
+					nodes = getNodesFromWay(element);
+				} else if (element.type === 'relation') {
+					nodes = getNodesFromRelation(element);
+				}
+				
+				const category = element.tags?.landuse || element.tags?.leisure || element.tags?.natural || 'green';
+				const isLargeArea = ['forest', 'park', 'nature_reserve', 'wood', 'meadow'].includes(category);
 				
 				return {
-					type: 'area',
+					type: element.type,
 					name: element.tags?.name || 'Green space',
-					category: element.tags?.landuse || element.tags?.leisure || element.tags?.natural || 'green',
-					nodes: nodes
+					category: category,
+					nodes: nodes,
+					isLargeArea: isLargeArea
 				};
 			});
 
@@ -573,12 +651,17 @@ out skel qt;
 		// Fill in green areas
 		for (const area of greenAreas) {
 			if (area.nodes.length > 2) {
-				// For polygon areas, we'll mark all points along the perimeter
-				for (let i = 0; i < area.nodes.length; i++) {
-					const node = area.nodes[i];
-					const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
-					const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
-					increaseGreenLevel(x, y, 0.8);
+				if (area.isLargeArea) {
+					// Use polygon fill for large areas like forests and parks
+					fillPolygon(area.nodes, 0.8);
+				} else {
+					// For smaller areas, mark perimeter with stronger propagation
+					for (let i = 0; i < area.nodes.length; i++) {
+						const node = area.nodes[i];
+						const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						increaseGreenLevel(x, y, 0.7);
+					}
 				}
 			}
 		}

@@ -106,21 +106,6 @@
 						/>
 					{/each}</g
 				>
-				<!-- water map -->
-				<g class="water-map">
-					{#each $waterMap as row, rowIndex}
-						{#each row as cell, colIndex}
-							{#if cell}
-								<circle
-									cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
-									cy={colIndex * 10 - 400}
-									r={5 * Math.min(1, cell)}
-									class="water-circle fill-current text-blue-300 opacity-100"
-								/>
-							{/if}
-						{/each}
-					{/each}
-				</g>
 				<!-- green map -->
 				<g class="green-map">
 					{#each $greenMap as row, rowIndex}
@@ -131,6 +116,21 @@
 									cy={colIndex * 10 - 400}
 									r={4 * Math.min(1, cell)}
 									class="green-circle fill-current text-green-400 opacity-40"
+								/>
+							{/if}
+						{/each}
+					{/each}
+				</g>
+				<!-- water map -->
+				<g class="water-map">
+					{#each $waterMap as row, rowIndex}
+						{#each row as cell, colIndex}
+							{#if cell}
+								<circle
+									cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
+									cy={colIndex * 10 - 400}
+									r={5 * Math.min(1, cell)}
+									class="water-circle fill-current text-blue-300 opacity-100"
 								/>
 							{/if}
 						{/each}
