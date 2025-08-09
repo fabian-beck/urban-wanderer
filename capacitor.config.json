@@ -1,5 +1,5 @@
 {
-  "appId": "com.fbeck.urbanwanderer",
-  "appName": "Urban Wanderer",
-  "webDir": "build"
+	"appId": "com.fbeck.urbanwanderer",
+	"appName": "Urban Wanderer",
+	"webDir": "build"
 }

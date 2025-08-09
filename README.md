@@ -41,4 +41,3 @@ npx cap sync
 ```
 
 Use Android Studio to run or build the app (`android` directory).
-

@@ -6,7 +6,7 @@
 @import 'tailwindcss/utilities';
 
 .uw-font {
-  font-family: "Permanent Marker", cursive;
-  font-weight: 400;
-  font-style: normal;
+	font-family: 'Permanent Marker', cursive;
+	font-weight: 400;
+	font-style: normal;
 }

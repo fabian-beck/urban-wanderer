@@ -7,12 +7,14 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 ## Architecture
 
 ### Frontend Framework
+
 - **SvelteKit**: Modern web framework for the main application
 - **Capacitor**: Cross-platform native runtime for mobile deployment
 - **Tailwind CSS + Flowbite**: UI styling and components
 - **Vite**: Build tool and development server
 
 ### Key Features
+
 - **Real-time Location Services**: Uses Capacitor Geolocation API
 - **AI-Powered Place Analysis**: Integrates OpenAI API for intelligent content generation
 - **Wikipedia Integration**: Fetches articles and metadata for nearby places
@@ -24,23 +26,28 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 ## Core Components
 
 ### State Management (`src/stores.js`)
+
 - **coordinates**: User location and address data
 - **places**: Nearby places with Wikipedia and OSM data
 - **preferences**: User settings (radius, interests, language)
 - **Derived stores**: Categorized places (here, nearby, surrounding)
 
 ### Place Classification (`src/constants.js`)
+
 Comprehensive classification system with 25+ place types:
+
 - Buildings, landmarks, cultural sites
 - Transportation hubs, parks, waterbodies
 - Each class has emoji, description, radius, and properties
 
 ### Utility Modules (`src/util/`)
+
 - **ai.js**: OpenAI integration for place analysis and content generation
 - **geo.js**: Wikipedia and OSM API integration, location utilities
 - **text.js**: Text processing utilities
 
 ### UI Components (`src/components/`)
+
 - **Map.svelte**: Interactive map display
 - **PlaceDetailsModal.svelte**: Detailed place information
 - **StoryModal.svelte**: AI-generated stories about places
@@ -70,6 +77,7 @@ npx cap sync          # Sync web code to native projects
 ## Mobile Deployment
 
 The app is configured for Android deployment through Capacitor:
+
 - **App ID**: com.fbeck.urbanwanderer
 - **Build Directory**: `build/`
 - **Android Project**: `android/` directory
@@ -78,17 +86,20 @@ The app is configured for Android deployment through Capacitor:
 ## Data Sources
 
 ### Wikipedia API
+
 - Nearby articles based on coordinates
 - Article extracts and full content
 - Image URLs and metadata
 - Multi-language support
 
 ### OpenStreetMap (Nominatim)
+
 - Reverse geocoding for addresses
 - Additional place data and metadata
 - Overpass API for detailed place information
 
 ### OpenAI Integration
+
 - GPT-powered place analysis and storytelling
 - Content generation based on user preferences
 - Intelligent place categorization and rating
@@ -96,6 +107,7 @@ The app is configured for Android deployment through Capacitor:
 ## User Personalization
 
 ### Preferences System
+
 - **Interests**: Architecture, Culture, Geography, History, Religion, Sports, Transportation
 - **Search Radius**: Configurable distance for place discovery
 - **Guide Character**: Different AI personality styles
@@ -103,7 +115,9 @@ The app is configured for Android deployment through Capacitor:
 - **Language Settings**: Interface and content language
 
 ### Place Rating System
+
 Star-based rating combining:
+
 - Wikipedia article availability (+1 star)
 - Place importance (+1-2 stars)
 - User interest matching (+1-2 stars)
@@ -128,7 +142,7 @@ static/               # Static assets
 ## Performance Considerations
 
 - Efficient place loading with parallel API calls
-- Image lazy loading and thumbnail optimization  
+- Image lazy loading and thumbnail optimization
 - Local caching of user preferences
 - Progressive place analysis with loading states
 - Optimized bundle size with Vite

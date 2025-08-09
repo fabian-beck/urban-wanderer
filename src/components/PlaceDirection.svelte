@@ -1,5 +1,4 @@
 <script>
-	import { onMount } from 'svelte';
 	import { coordinates } from '../stores.js';
 
 	export let item;

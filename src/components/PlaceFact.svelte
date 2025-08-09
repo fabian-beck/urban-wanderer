@@ -10,6 +10,7 @@
 >
 	<span class="text-xs">{label}:</span>
 	<span class="ml-1 text-gray-800" class:text-xl={value?.toString().length < 15}>
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 		{@html marked(typeof value === 'number' ? value.toString() : value)}
 	</span>
 </div>

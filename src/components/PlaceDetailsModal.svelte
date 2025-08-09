@@ -1,8 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
-	import { Button, Modal, Spinner } from 'flowbite-svelte';
+	import { Button, Modal } from 'flowbite-svelte';
 	import { FileOutline, MapPinAltOutline, GlobeOutline } from 'flowbite-svelte-icons';
-	import { summarizeArticle, searchPlaceWeb, searchPlaceFacts } from '../util/ai.js';
+	import { summarizeArticle } from '../util/ai.js';
 	import { coordinates, placesSurrounding, preferences, placeDetailsVisible } from '../stores.js';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
@@ -17,8 +17,6 @@
 
 	$: isSurroundingPlace = $placesSurrounding.find((place) => place.title === place.title);
 	let summary = '';
-	let weblinks = '';
-	let weblinksLoading = false;
 
 	onMount(() => {
 		(async () => {
@@ -34,12 +32,6 @@
 			}
 		})();
 	});
-
-	const loadWeblinks = async () => {
-		weblinksLoading = true;
-		weblinks = await searchPlaceWeb(place.title);
-		weblinksLoading = false;
-	};
 </script>
 
 <Modal

@@ -5,7 +5,7 @@
 	import { markPlacesInText } from '../util/text.js';
 	import { errorMessage, events } from '../stores.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';
-	import { Button, Spinner, Alert, CloseButton } from 'flowbite-svelte';
+	import { Spinner, Alert } from 'flowbite-svelte';
 
 	export let visible = false;
 
@@ -90,6 +90,7 @@
 						{#each $events as event}
 							<li class="mt-2">
 								<span class="text-sm font-bold text-primary-800">{event.date_string}</span>
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								{@html marked(markPlacesInText(event.text))}
 								<div
 									class="line mt-2"

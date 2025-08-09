@@ -80,7 +80,7 @@
 	};
 </script>
 
-<div class="mb-2 flex flex items-center text-primary-800">
+<div class="mb-2 flex items-center text-primary-800">
 	<GlobeOutline />
 	<h2 class="ml-2 flex-auto text-xl">Map</h2>
 </div>

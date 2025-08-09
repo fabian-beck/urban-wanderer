@@ -13,7 +13,7 @@
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
 	import Nearby from '../components/Nearby.svelte';
-	import { Alert, CloseButton, Spinner, Toast } from 'flowbite-svelte';
+	import { Alert, CloseButton, Spinner } from 'flowbite-svelte';
 	import { appName } from '../constants.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';

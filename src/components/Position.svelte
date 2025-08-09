@@ -9,7 +9,6 @@
 	import { coordinates } from '../stores.js';
 	import StoryModal from './StoryModal.svelte';
 	import HistoryModal from './HistoryModal.svelte';
-	import { sineIn } from 'svelte/easing';
 
 	export let loading = false;
 	export let update;

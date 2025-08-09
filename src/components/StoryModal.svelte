@@ -79,6 +79,7 @@
 			{#if $storyTexts.length > 0}
 				{#each $storyTexts as storyText}
 					<div>
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 						{@html marked(markPlacesInText(storyText)).replaceAll('<p>', '<p class="mt-2">')}
 					</div>
 					<div class="mb-2 flex justify-end">

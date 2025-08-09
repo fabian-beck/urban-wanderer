@@ -8,7 +8,8 @@
 	{#if item.starDescriptions?.length > 0}
 		{#each item.starDescriptions as starDescription}
 			<div class="flex">
-				{#each Array(starDescription.number) as _}
+				<!-- eslint-disable-next-line no-unused-vars -->
+				{#each Array(starDescription.number).fill() as _}
 					<StarSolid size="xs" class="text-primary-800" />
 				{/each}
 				{#if detail}
