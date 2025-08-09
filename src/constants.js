@@ -430,3 +430,17 @@ export const FAMILIARITY = [
 	{ value: 'somewhat_familiar', name: "somewhat familiar (I've been there before)" },
 	{ value: 'familiar', name: 'familiar (I know the place)' }
 ];
+
+export const AI_MODELS = {
+	SIMPLE: [
+		{ value: 'gpt-5-nano', name: 'GPT-5 Nano (fastest)' },
+		{ value: 'gpt-5-mini', name: 'GPT-5 Mini (default)' },
+		{ value: 'gpt-5', name: 'GPT-5 (best quality)' }
+	],
+	ADVANCED: [
+		{ value: 'gpt-5-mini', name: 'GPT-5 Mini (faster)' },
+		{ value: 'gpt-5', name: 'GPT-5 (default)' }
+	],
+	DEFAULT_SIMPLE: 'gpt-5-mini',
+	DEFAULT_ADVANCED: 'gpt-5'
+};

@@ -56,7 +56,9 @@ export const preferences = writable({
 	familiarity: 'unfamiliar',
 	lang: 'de',
 	sourceLanguages: ['de', 'en'],
-	audio: true
+	audio: true,
+	aiModelSimple: 'gpt-5-mini',
+	aiModelAdvanced: 'gpt-5'
 });
 
 // Function to save preferences to local storage

@@ -2,7 +2,7 @@
 	import { Label, Range, Checkbox, Modal, Select, Toggle } from 'flowbite-svelte';
 	import { preferences } from '../stores.js';
 	import { places } from '../stores.js';
-	import { LABELS, LANGUAGES, GUIDE_CHARACTERS, FAMILIARITY } from '../constants.js';
+	import { LABELS, LANGUAGES, GUIDE_CHARACTERS, FAMILIARITY, AI_MODELS } from '../constants.js';
 
 	export let visible = false;
 	const langOptions = [
@@ -63,4 +63,8 @@
 	<Range id="range1" bind:value={$preferences.radius} min="100" max="3000" step="100" />
 	<Label>Audio (autoplay)</Label>
 	<Toggle bind:checked={$preferences.audio} />
+	<Label>AI Model for Simple Tasks</Label>
+	<Select bind:value={$preferences.aiModelSimple} items={AI_MODELS.SIMPLE} />
+	<Label>AI Model for Advanced Tasks</Label>
+	<Select bind:value={$preferences.aiModelAdvanced} items={AI_MODELS.ADVANCED} />
 </Modal>

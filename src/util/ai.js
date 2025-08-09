@@ -10,11 +10,22 @@ import {
 	audioState
 } from '../stores.js';
 import { get } from 'svelte/store';
-import { LABELS, CLASSES } from '../constants.js';
+import { LABELS, CLASSES, AI_MODELS } from '../constants.js';
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });
 
 let audio = null;
+
+// Helper function to get AI model with fallback
+function getAiModel(type) {
+	const prefs = get(preferences);
+	if (type === 'simple') {
+		return prefs?.aiModelSimple || AI_MODELS.DEFAULT_SIMPLE;
+	} else if (type === 'advanced') {
+		return prefs?.aiModelAdvanced || AI_MODELS.DEFAULT_ADVANCED;
+	}
+	return AI_MODELS.DEFAULT_SIMPLE;
+}
 
 // ----------------------------------------------
 
@@ -48,7 +59,7 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then
 }
 `;
 	const response = await openai.responses.create({
-		model: 'gpt-5-mini',
+		model: getAiModel('simple'),
 		reasoning: {
 			effort: 'minimal'
 		},
@@ -229,7 +240,7 @@ FURTHER INSTRUCTIONS:
 	const dataString = `* ${place.title}  (${place.type || ''}): ${place.snippet || place.description || ''}`;
 	// console.log("Place analysis instructions", [instructions, dataString]);
 	const response = await openai.responses.create({
-		model: 'gpt-5-mini',
+		model: getAiModel('simple'),
 		reasoning: {
 			effort: 'minimal'
 		},
@@ -284,7 +295,7 @@ export async function summarizeArticle(article) {
 		return summaryCache[article];
 	}
 	const response = await openai.responses.create({
-		model: 'gpt-5-mini',
+		model: getAiModel('simple'),
 		reasoning: {
 			effort: 'minimal'
 		},
@@ -306,7 +317,7 @@ ${article} `
 // web search for a place
 export async function searchPlaceWeb(place) {
 	const response = await openai.responses.create({
-		model: 'gpt-5-mini',
+		model: getAiModel('simple'),
 		tools: [{ type: 'web_search_preview' }],
 		input: `You are a chat assistant helping a user to find more information and links about a place.
 
@@ -371,7 +382,7 @@ ${place.article || place.description || place.snippet || '[no description availa
 `;
 	console.log('Search facts instructions', [initialMessage]);
 	const response = await openai.responses.create({
-		model: 'gpt-5',
+		model: getAiModel('advanced'),
 		tools: [{ type: 'web_search_preview' }],
 		input: initialMessage,
 		text: {
@@ -506,7 +517,7 @@ Give the text a headline marked in bold font.
 	}
 	console.log('Story writing instructions', messages);
 	const response = await openai.responses.create({
-		model: 'gpt-5',
+		model: getAiModel('advanced'),
 		reasoning: {
 			effort: 'minimal'
 		},
@@ -549,7 +560,7 @@ If the list of places is empty or the text is too short, leave the list of event
 `;
 	console.log('Historic events instructions', [instructions]);
 	const response = await openai.responses.create({
-		model: 'gpt-5',
+		model: getAiModel('advanced'),
 		input: [
 			{
 				role: 'system',
@@ -595,7 +606,7 @@ Answer in language '${get(preferences).lang}'.
 `;
 	console.log('Extract facts instructions', [instructions]);
 	const response = await openai.responses.create({
-		model: 'gpt-5-mini',
+		model: getAiModel('simple'),
 		reasoning: {
 			effort: 'minimal'
 		},
