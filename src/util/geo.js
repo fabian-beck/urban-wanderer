@@ -372,6 +372,19 @@ export function latLonToY(lat, lon, centerLat, centerLon) {
 	return haversineDistance(centerLat, centerLon, lat, centerLon) * (lat >= centerLat ? -1 : 1);
 }
 
+// Convert coordinates to grid position accounting for alternating row offset
+export function coordsToGridX(lat, lon, centerLat, centerLon) {
+	const baseX = latLonToX(lat, lon, centerLat, centerLon) / 10 + 40;
+	const y = Math.floor(latLonToY(lat, lon, centerLat, centerLon) / 10 + 40);
+	// Account for the alternating row offset when converting back to grid coordinates
+	const offsetX = baseX - (y % 2) * 0.5;
+	return Math.floor(offsetX);
+}
+
+export function coordsToGridY(lat, lon, centerLat, centerLon) {
+	return Math.floor(latLonToY(lat, lon, centerLat, centerLon) / 10 + 40);
+}
+
 // water map
 export async function loadWaterMap() {
 	try {
@@ -437,18 +450,10 @@ out skel qt;
 				const lat2 = polyline.nodes[i + 1].lat;
 				const lon2 = polyline.nodes[i + 1].lon;
 				// calculate x and y coordinates in the grid
-				const x1 = Math.floor(
-					latLonToX(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
-				);
-				const y1 = Math.floor(
-					latLonToY(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
-				);
-				const x2 = Math.floor(
-					latLonToX(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
-				);
-				const y2 = Math.floor(
-					latLonToY(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
-				);
+				const x1 = coordsToGridX(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude);
+				const y1 = coordsToGridY(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude);
+				const x2 = coordsToGridX(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude);
+				const y2 = coordsToGridY(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude);
 				increaseWaterLevel(x1, y1, 1);
 				// set all cells in between to 1 according to the Bresenham line algorithm
 				let x = x1;
@@ -571,12 +576,8 @@ out skel qt;
 				// For polygon areas, we'll mark all points along the perimeter
 				for (let i = 0; i < area.nodes.length; i++) {
 					const node = area.nodes[i];
-					const x = Math.floor(
-						latLonToX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
-					);
-					const y = Math.floor(
-						latLonToY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
-					);
+					const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+					const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
 					increaseGreenLevel(x, y, 0.8);
 				}
 			}
@@ -584,12 +585,8 @@ out skel qt;
 
 		// Fill in individual trees
 		for (const tree of trees) {
-			const x = Math.floor(
-				latLonToX(tree.lat, tree.lon, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
-			);
-			const y = Math.floor(
-				latLonToY(tree.lat, tree.lon, get(coordinates).latitude, get(coordinates).longitude) / 10 + 40
-			);
+			const x = coordsToGridX(tree.lat, tree.lon, get(coordinates).latitude, get(coordinates).longitude);
+			const y = coordsToGridY(tree.lat, tree.lon, get(coordinates).latitude, get(coordinates).longitude);
 			increaseGreenLevel(x, y, 0.6);
 		}
 

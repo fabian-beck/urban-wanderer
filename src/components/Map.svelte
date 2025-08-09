@@ -11,7 +11,7 @@
 	} from '../stores.js';
 
 	import { derived } from 'svelte/store';
-	import { haversineDistance, latLonToX, latLonToY } from '../util/geo.js';
+	import { haversineDistance, latLonToX, latLonToY, coordsToGridX, coordsToGridY } from '../util/geo.js';
 
 	const placesToHighlight = derived(places, ($places) => {
 		const highlighted = [];
@@ -112,7 +112,7 @@
 						{#each row as cell, colIndex}
 							{#if cell}
 								<circle
-									cx={rowIndex * 10 - 400}
+									cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
 									cy={colIndex * 10 - 400}
 									r={5 * Math.min(1, cell)}
 									class="water-circle fill-current text-blue-300 opacity-100"
@@ -127,7 +127,7 @@
 						{#each row as cell, colIndex}
 							{#if cell}
 								<circle
-									cx={rowIndex * 10 - 400}
+									cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
 									cy={colIndex * 10 - 400}
 									r={4 * Math.min(1, cell)}
 									class="green-circle fill-current text-green-400 opacity-40"
