@@ -248,6 +248,12 @@
 			<clipPath id="circleClip">
 				<circle cx="0" cy="0" r="400" />
 			</clipPath>
+			<radialGradient id="textGradient" cx="50%" cy="50%" r="75%">
+				<stop offset="0%" style="stop-color:white;stop-opacity:0.7" />
+				<stop offset="35%" style="stop-color:white;stop-opacity:0.3" />
+				<stop offset="70%" style="stop-color:white;stop-opacity:0.05" />
+				<stop offset="100%" style="stop-color:white;stop-opacity:0" />
+			</radialGradient>
 		</defs>
 		<g transform="translate(400, 400)">
 			<g clip-path="url(#circleClip)">
@@ -325,6 +331,15 @@
 							on:click={() => placeDetailsVisible.set(place.title)}
 							style="cursor: pointer;"
 						>
+							<ellipse
+								cx="0"
+								cy="{layoutLabel(place.title).includes('\n') ? 28 : 25}"
+								rx="{layoutLabel(place.title).includes('\n') 
+									? Math.max(70, Math.max(...layoutLabel(place.title).split('\n').map(line => line.length)) * 7)
+									: Math.max(55, layoutLabel(place.title).length * 6)}"
+								ry="{layoutLabel(place.title).includes('\n') ? 35 : 22}"
+								fill="url(#textGradient)"
+							/>
 							<circle
 								cx="0"
 								cy="0"
