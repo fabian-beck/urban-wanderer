@@ -293,8 +293,17 @@
 									cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
 									cy={colIndex * 10 - 400}
 									r={5 * Math.min(1, cell)}
-									class="water-circle fill-current text-blue-300 opacity-100"
-								/>
+									class="water-circle fill-current text-blue-300"
+									opacity="0.8"
+								>
+									<animate
+										attributeName="opacity"
+										values="0.3;0.9;0.4;0.8;0.3"
+										dur="{3 + (rowIndex + colIndex) % 4}s"
+										repeatCount="indefinite"
+										begin="{(rowIndex * colIndex) % 100 / 20}s"
+									/>
+								</circle>
 							{/if}
 						{/each}
 					{/each}
