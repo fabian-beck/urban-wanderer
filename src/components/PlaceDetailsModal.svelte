@@ -69,8 +69,10 @@
 					{/if}
 				</div>
 			{/if}
-			<hr class="my-4" />
-			<PlaceStars item={place} detail />
+			{#if !isSurroundingPlace}
+				<hr class="my-4" />
+				<PlaceStars item={place} detail />
+			{/if}
 			{#if !isSurroundingPlace}
 				{#if place.labels}
 					<hr class="my-4" />
