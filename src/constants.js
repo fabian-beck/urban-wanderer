@@ -406,10 +406,13 @@ export const LANGUAGES = [
 ];
 
 export const LABELS = [
+	'ACTIVITIES',
 	'ARCHITECTURE',
 	'CULTURE',
+	'EDUCATION',
 	'GEOGRAPHY',
 	'HISTORY',
+	'NATURE',
 	'RELIGION',
 	'SPORTS',
 	'TRANSPORTATION'

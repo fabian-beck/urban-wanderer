@@ -316,6 +316,7 @@
 					{/each}</g
 				>
 				<!-- green map -->
+				{#if $preferences.labels?.includes('NATURE')}
 				<g class="green-map">
 					{#each $greenMap as row, rowIndex}
 						{#each row as cell, colIndex}
@@ -330,6 +331,7 @@
 						{/each}
 					{/each}
 				</g>
+				{/if}
 				<!-- water map -->
 				<g class="water-map">
 					{#each $waterMap as row, rowIndex}
@@ -356,6 +358,7 @@
 					{/each}
 				</g>
 				<!-- activity map -->
+				{#if $preferences.labels?.includes('ACTIVITIES')}
 				<g class="activity-map">
 					{#each $activityMap as row, rowIndex}
 						{#each row as cell, colIndex}
@@ -382,6 +385,7 @@
 						{/each}
 					{/each}
 				</g>
+				{/if}
 				<!-- radius circles (below places) -->
 				<g class="radius-circles">
 					<circle
@@ -519,17 +523,21 @@
 
 				<!-- legend right - green, water and activity areas -->
 				<g class="legend-right" transform="translate(260,340)">
-					<!-- Green areas -->
-					<circle cx="10" cy="0" r="5" class="fill-current text-green-300" />
-					<text x="20" y="5" class="text-lg" text-anchor="start">Green areas</text>
-
+					{#if $preferences.labels?.includes('NATURE')}
+						<!-- Green areas -->
+						<circle cx="10" cy="0" r="5" class="fill-current text-green-300" />
+						<text x="20" y="5" class="text-lg" text-anchor="start">Green areas</text>
+					{/if}
+					
 					<!-- Water areas -->
-					<circle cx="10" cy="25" r="5" class="fill-current text-blue-300" />
-					<text x="20" y="30" class="text-lg" text-anchor="start">Water areas</text>
-
-					<!-- Activity areas -->
-					<circle cx="10" cy="50" r="5" class="fill-current text-purple-300" />
-					<text x="20" y="55" class="text-lg" text-anchor="start">Activity areas</text>
+					<circle cx="10" cy={$preferences.labels?.includes('NATURE') ? 25 : 0} r="5" class="fill-current text-blue-300" />
+					<text x="20" y={$preferences.labels?.includes('NATURE') ? 30 : 5} class="text-lg" text-anchor="start">Water areas</text>
+					
+					{#if $preferences.labels?.includes('ACTIVITIES')}
+						<!-- Activity areas -->
+						<circle cx="10" cy={$preferences.labels?.includes('NATURE') ? 50 : 25} r="5" class="fill-current text-purple-300" />
+						<text x="20" y={$preferences.labels?.includes('NATURE') ? 55 : 30} class="text-lg" text-anchor="start">Activity areas</text>
+					{/if}
 				</g>
 			</g></g
 		></svg
