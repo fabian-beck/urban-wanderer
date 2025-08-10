@@ -17,7 +17,7 @@
 			hideNavUl = !hideNavUl;
 		}}
 	/>
-	<NavUl hidden={hideNavUl} classUl="bg-white">
+	<NavUl hidden={hideNavUl} classUl="bg-white" slideParams={{ duration: 150, delay: 0 }}>
 		<NavLi
 			class="bg-white"
 			on:click={() => {
@@ -38,3 +38,4 @@
 </Navbar>
 
 <UserPreferences bind:visible={preferencesVisible} />
+

@@ -9,7 +9,8 @@
       "WebFetch(domain:www.wikidata.org)",
       "WebFetch(domain:flowbite-svelte-icons.codewithshin.com)",
       "WebFetch(domain:flowbite.com)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebFetch(domain:flowbite-svelte.com)"
     ],
     "deny": []
   }
