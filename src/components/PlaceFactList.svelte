@@ -66,9 +66,9 @@
 
 		// More conservative thresholds for better layout
 		let width;
-		if (totalLength > 55 || valueStr.length > 35)
+		if (totalLength > 75 || valueStr.length > 45)
 			width = 4; // full width - only for very long content
-		else if (totalLength > 45 || valueStr.length > 28)
+		else if (totalLength > 55 || valueStr.length > 35)
 			width = 3; // three-quarter width - rare
 		else if (totalLength > 20 || valueStr.length > 12)
 			width = 2; // half width
@@ -126,7 +126,7 @@
 								expanded = true;
 							}
 						}
-						
+
 						// If still space remaining, try to expand any item
 						if (remainingSpace > 0) {
 							for (let j = 0; j < row.length && remainingSpace > 0; j++) {
@@ -159,7 +159,7 @@
 
 				// Collect all facts with their width spans
 				Object.entries(facts).forEach(([key, value]) => {
-					if (key !== 'other_facts' && value && PROPERTIES[key]) {
+					if (key !== 'other_facts' && value && value !== 'null' && PROPERTIES[key]) {
 						const propDefinition = PROPERTIES[key];
 						const label = formatLabel(key);
 						const displayValue =
@@ -170,7 +170,7 @@
 
 				if (facts?.other_facts && Array.isArray(facts.other_facts)) {
 					facts.other_facts.forEach((fact, index) => {
-						if (fact.label && fact.description) {
+						if (fact.label && fact.description && fact.description !== 'null') {
 							allFacts.push({
 								key: `other_${index}`,
 								label: fact.label,

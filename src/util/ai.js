@@ -347,6 +347,10 @@ Avoid redundancies; do not repeat the same information in different ways in prop
 Directions, address, location are not necessary as the user is at the place already. 
 Avoid any general description of the place and do not provide general information about the city or region. 
 Use null for missing values.
+Keep the language as concise as possible and factual, do not use acronyms or abbreviations. 
+Descriptions should not be full sentences, but short phrases or single words.
+Use unicode icons for properties where possible, e.g., 🏛️ for "building", 🏞️ for "park", etc.
+Keep list short or empty if there are no relevant facts.
 
 You may use the following sources of information about the place:
 ${place.article || place.description || place.snippet || '[no description available]'}${wikidataContext}
@@ -354,6 +358,9 @@ ${place.article || place.description || place.snippet || '[no description availa
     console.log('Search facts instructions', [initialMessage]);
     const response = await openai.responses.create({
         model: getAiModel('advanced'),
+        reasoning: {
+            effort: 'minimal'
+        },
         input: initialMessage,
         text: {
             format: {
