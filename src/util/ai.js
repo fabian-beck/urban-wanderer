@@ -230,9 +230,9 @@ To best best characterize the place answer with
 For a place "A" and its description output a JSON object like this:
 
 {
-    cls: "CLASS1",
-        labels: ["LABEL1", "LABEL2"]
-    importance: 5
+    "cls": "CLASS1",
+    "labels": ["LABEL1", "LABEL2"],
+    "importance": 5
 }
     
 FURTHER INSTRUCTIONS:
@@ -393,14 +393,10 @@ Use null for missing values.
 
 You may use the following sources of information about the place:
 ${place.article || place.description || place.snippet || '[no description available]'}${wikidataContext}
-
-Use the structured WikiData facts when available, as they are highly reliable.
-Only if you cannot extract sufficient facts from the provided information, you may search the web for more details.
 `;
     console.log('Search facts instructions', [initialMessage]);
     const response = await openai.responses.create({
         model: getAiModel('advanced'),
-        tools: [{ type: 'web_search_preview' }],
         input: initialMessage,
         text: {
             format: {
