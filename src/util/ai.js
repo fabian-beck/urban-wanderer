@@ -261,7 +261,21 @@ FURTHER INSTRUCTIONS:
             }
         }
     });
-    const json = JSON.parse(response.output_text);
+    let json;
+    try {
+        // Extract JSON from response, handling potential extra text
+        const text = response.output_text.trim();
+        const jsonStart = text.indexOf('{');
+        const jsonEnd = text.lastIndexOf('}') + 1;
+        const jsonText = jsonStart !== -1 && jsonEnd > jsonStart ? text.slice(jsonStart, jsonEnd) : text;
+        json = JSON.parse(jsonText);
+    } catch (parseError) {
+        console.error('JSON parse error for place:', place.title);
+        console.error('Response text:', response.output_text);
+        console.error('Parse error:', parseError);
+        // Fallback to empty analysis
+        json = { cls: 'other', labels: [], importance: 0 };
+    }
     // update cache
     analysisCache[place.title] = json;
 }

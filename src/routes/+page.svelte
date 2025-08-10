@@ -13,13 +13,14 @@
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
 	import Nearby from '../components/Nearby.svelte';
-	import { Alert, CloseButton, Spinner } from 'flowbite-svelte';
+	import { Alert, CloseButton, Spinner, Button } from 'flowbite-svelte';
 	import { appName } from '../constants.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
 	import Map from '../components/Map.svelte';
 
 	let loading = false;
+	let urlCoordinates = null;
 
 	const updateUrlParamsWithCoordinates = async () => {
 		const newUrl = new URL($page.url);
@@ -51,12 +52,19 @@
 		}
 	};
 
+	const jumpToUrlCoordinates = () => {
+		if (urlCoordinates) {
+			update(urlCoordinates);
+			urlCoordinates = null;
+		}
+	};
+
 	onMount(() => {
 		const urlParams = $page.url.searchParams;
 		const lat = parseFloat(urlParams.get('lat'));
 		const lon = parseFloat(urlParams.get('lon'));
 		if (lat && lon) {
-			update({ latitude: lat, longitude: lon });
+			urlCoordinates = { latitude: lat, longitude: lon };
 		}
 		// set heading listener for device orientation
 		window.addEventListener(
@@ -71,6 +79,13 @@
 
 <Header updateRandom={() => update('random')} />
 <main id="main" class="mx-auto mb-10 max-w-lg p-4 pb-24 pt-20">
+	{#if urlCoordinates}
+		<div class="mb-4">
+			<Button on:click={jumpToUrlCoordinates} class="w-full">
+				Jump to {urlCoordinates.latitude.toFixed(4)}, {urlCoordinates.longitude.toFixed(4)}
+			</Button>
+		</div>
+	{/if}
 	{#if $errorMessage}
 		<Alert type="danger" class="mb-4 flex text-xs">
 			<div class="flex-auto overflow-hidden">
