@@ -13,7 +13,11 @@
 			if (dLat === 0 && dLon === 0) {
 				return '';
 			}
-			const angle = (Math.atan2(dLon, dLat) * 180) / Math.PI + 360;
+			// Calculate bearing from user to place (0° = North, clockwise)
+			// Math.atan2(dLon, dLat) gives us the angle where 0° = North, but we need to convert to compass bearing
+			let angle = Math.atan2(dLon, dLat) * 180 / Math.PI;
+			// Normalize to 0-360° range
+			angle = (angle + 360) % 360;
 			const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 			const index = Math.round(angle / 45) % 8;
 			return directions[index];
@@ -23,11 +27,15 @@
 
 	// Calculate direction matching level: 'exact', 'partial', or 'none'
 	$: directionMatch = (() => {
-		if (!direction || $heading === undefined) return 'none';
+		if (!direction || $heading === undefined || $heading === null) return 'none';
 		
 		const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 		const placeIndex = directions.indexOf(direction);
-		const headingIndex = Math.round($heading / 45) % 8;
+		
+		// Convert device heading to the same 8-direction system
+		// Device heading: 0° = North, clockwise
+		const normalizedHeading = ($heading + 360) % 360;
+		const headingIndex = Math.round(normalizedHeading / 45) % 8;
 		
 		// Calculate the shortest angular distance between directions
 		const diff = Math.abs(placeIndex - headingIndex);
