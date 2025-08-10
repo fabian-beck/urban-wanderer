@@ -1,7 +1,12 @@
 <script>
 	import { onMount } from 'svelte';
 	import { Button, Modal } from 'flowbite-svelte';
-	import { FileOutline, MapPinAltOutline, GlobeOutline, DatabaseOutline } from 'flowbite-svelte-icons';
+	import {
+		FileOutline,
+		MapPinAltOutline,
+		GlobeOutline,
+		DatabaseOutline
+	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai.js';
 	import { coordinates, placesSurrounding, preferences, placeDetailsVisible } from '../stores.js';
 	import PlaceStars from './PlaceStars.svelte';
@@ -59,11 +64,13 @@
 				</div>
 			{/if}
 			<hr class="my-4" />
+			<PlaceStars item={place} detail />
+			<hr class="my-4" />
 			<h3 class="mb-2 text-lg">Facts</h3>
 			<PlaceFactList {place} />
-			<hr class="my-4" />
 			{#if !isSurroundingPlace}
 				{#if place.labels}
+					<hr class="my-4" />
 					<div class="flex flex-wrap">
 						{#each place.labels as label}
 							<div class="mb-1 mr-2 rounded-full bg-primary-100 px-2 text-xs text-primary-800">
@@ -72,8 +79,6 @@
 						{/each}
 					</div>
 				{/if}
-				<hr class="my-4" />
-				<PlaceStars item={place} detail />
 			{/if}
 			{#if place.lon && place.lat}
 				<hr class="my-4" />
@@ -87,13 +92,13 @@
 		</div>
 	</div>
 	<svelte:fragment slot="footer">
-		<div class="flex w-full text-xs justify-between">
+		<div class="flex w-full justify-between text-xs">
 			<div class="flex">
 				{#if place.pageid}
 					<a
 						href={`https://${place.lang || $preferences.lang}.m.wikipedia.org/?curid=${place.pageid}`}
 						target="_blank"
-						class="flex mr-3"
+						class="mr-3 flex"
 					>
 						<FileOutline class="!mr-1" />Wikipedia
 					</a>
@@ -102,21 +107,17 @@
 					<a
 						href={`https://${place.wikipedia.split(':')[0]}.wikipedia.org/wiki/${place.wikipedia.split(':')[1]}`}
 						target="_blank"
-						class="flex mr-3"
+						class="mr-3 flex"
 					>
 						<FileOutline class="!mr-1" />Wikipedia
 					</a>
 				{:else if place.url}
-					<a href={place.url} target="_blank" class="flex mr-3">
+					<a href={place.url} target="_blank" class="mr-3 flex">
 						<GlobeOutline class="!mr-1" />Page
 					</a>
 				{/if}
 				{#if place.wikidata}
-					<a
-						href={`https://www.wikidata.org/wiki/${place.wikidata}`}
-						target="_blank"
-						class="flex"
-					>
+					<a href={`https://www.wikidata.org/wiki/${place.wikidata}`} target="_blank" class="flex">
 						<DatabaseOutline class="!mr-1" />WikiData
 					</a>
 				{/if}

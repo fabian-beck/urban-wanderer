@@ -29,6 +29,16 @@
 				{/if}
 			</div>
 		{/each}
+	{:else if item.stars > 0}
+		<div class="flex">
+			<!-- eslint-disable-next-line no-unused-vars -->
+			{#each Array(item.stars).fill() as _, starIndex}
+				<StarSolid size="xs" class="{getStarColor(starIndex)}" />
+			{/each}
+			{#if detail}
+				<div class="ml-2">{item.stars} star{item.stars === 1 ? '' : 's'}</div>
+			{/if}
+		</div>
 	{:else}
 		...
 	{/if}
