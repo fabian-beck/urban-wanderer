@@ -53,7 +53,7 @@ export const coordinates = createCoordinates();
 // Uers preferences store
 export const preferences = writable({
     radius: 500,
-    labels: LABELS,
+    labels: LABELS.map(label => label.value),
     guideCharacter: 'friendly and helpful',
     familiarity: 'unfamiliar',
     lang: 'de',

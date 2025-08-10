@@ -9,6 +9,7 @@
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai.js';
 	import { coordinates, placesSurrounding, preferences, placeDetailsVisible } from '../stores.js';
+	import { LABELS } from '../constants.js';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import { derived } from 'svelte/store';
@@ -23,6 +24,12 @@
 	$: isSurroundingPlace = $placesSurrounding.find((p) => p.title === place.title);
 	let summary = '';
 	let placeFactListComponent;
+
+	// Helper function to get label name by value, returns null for invalid labels
+	const getLabelName = (labelValue) => {
+		const label = LABELS.find(l => l.value === labelValue);
+		return label ? label.name : null;
+	};
 
 	// Trigger fact loading when modal becomes visible
 	$: if ($visible && placeFactListComponent) {
@@ -78,6 +85,7 @@
 					<hr class="my-4" />
 					<div class="flex flex-wrap">
 						{#each place.labels
+							.filter(label => getLabelName(label) !== null)
 							.sort((a, b) => {
 								const aMatches = $preferences.labels?.includes(a);
 								const bMatches = $preferences.labels?.includes(b);
@@ -88,7 +96,7 @@
 							<div class={$preferences.labels?.includes(label) 
 								? "mb-1 mr-2 rounded-full bg-primary-100 px-2 text-xs text-primary-800"
 								: "mb-1 mr-2 rounded-full bg-gray-100 px-2 text-xs text-gray-600"}>
-								{label}
+								{getLabelName(label)}
 							</div>
 						{/each}
 					</div>

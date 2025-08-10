@@ -195,7 +195,7 @@ ${Object.keys(CLASSES)
             .join('\n')}
         
 Available LABELS are:
-${LABELS.map((label) => `- ${label}`).join('\n')}
+${LABELS.map((label) => `- ${label.value}: ${label.description}`).join('\n')}
 
 Available IMPORTANCE values are:
 1: very low

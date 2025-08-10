@@ -17,21 +17,26 @@
 
 <Modal title="Preferences" bind:open={visible} autoclose on:close={places.update}>
 	<Label>My Interests</Label>
-	{#each LABELS as label}
-		<Checkbox
-			id={label}
-			checked={$preferences.labels?.includes(label)}
-			on:change={() => {
-				if ($preferences.labels?.includes(label)) {
-					$preferences.labels = $preferences.labels.filter((l) => l !== label);
-				} else {
-					$preferences.labels = [...$preferences.labels, label];
-				}
-			}}
-		>
-			{label}
-		</Checkbox>
-	{/each}
+	<div class="grid grid-cols-2 gap-4">
+		{#each LABELS as label}
+			<Checkbox
+				id={label.value}
+				checked={$preferences.labels?.includes(label.value)}
+				on:change={() => {
+					if ($preferences.labels?.includes(label.value)) {
+						$preferences.labels = $preferences.labels.filter((l) => l !== label.value);
+					} else {
+						$preferences.labels = [...$preferences.labels, label.value];
+					}
+				}}
+			>
+				<div>
+					<div class="font-bold">{label.name}</div>
+					<div class="text-xs text-gray-500">{label.description}</div>
+				</div>
+			</Checkbox>
+		{/each}
+	</div>
 	<Label>Guide character</Label>
 	<Select bind:value={$preferences.guideCharacter} items={characterOptions} />
 	<Label>Familiarity with the area</Label>
