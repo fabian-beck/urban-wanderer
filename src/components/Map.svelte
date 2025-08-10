@@ -357,6 +357,7 @@
 								class="place-circle"
 								fill={place.stars === 1 ? '#FFD5CC' : place.stars === 2 ? '#FFBCAD' : place.stars === 3 ? '#FE795D' : place.stars === 4 ? '#EF562F' : '#CC4522'}
 								stroke="black"
+								style="filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));"
 							/>
 							<text
 								x="0"
