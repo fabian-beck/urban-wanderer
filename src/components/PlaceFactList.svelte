@@ -13,7 +13,7 @@
 	let facts = null;
 	let factsLoading = false;
 
-	const loadFacts = async () => {
+	export const loadFacts = async () => {
 		factsLoading = true;
 
 		const factsProperties = {

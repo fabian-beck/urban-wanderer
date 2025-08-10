@@ -22,6 +22,12 @@
 
 	$: isSurroundingPlace = $placesSurrounding.find((p) => p.title === place.title);
 	let summary = '';
+	let placeFactListComponent;
+
+	// Trigger fact loading when modal becomes visible
+	$: if ($visible && placeFactListComponent) {
+		placeFactListComponent.loadFacts();
+	}
 
 	onMount(() => {
 		(async () => {
@@ -79,7 +85,7 @@
 			{/if}
 			<hr class="my-4" />
 			<h3 class="mb-2 text-lg">Facts</h3>
-			<PlaceFactList {place} />
+			<PlaceFactList {place} bind:this={placeFactListComponent} />
 			{#if place.lon && place.lat}
 				<hr class="my-4" />
 				<Button
