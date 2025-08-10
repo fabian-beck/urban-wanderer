@@ -63,6 +63,28 @@
 		return highlighted;
 	});
 
+	const animatedWaterStipples = derived(waterMap, ($waterMap) => {
+		if (!$waterMap) return new Set();
+		
+		const candidates = [];
+		$waterMap.forEach((row, rowIndex) => {
+			row.forEach((cell, colIndex) => {
+				if (cell && cell > 0.1) {
+					const x = rowIndex * 10 - 400 + (colIndex % 2) * 5;
+					const y = colIndex * 10 - 400;
+					const distanceFromCenter = Math.sqrt(x * x + y * y);
+					if (distanceFromCenter < 450) {
+						candidates.push(`${rowIndex}-${colIndex}`);
+					}
+				}
+			});
+		});
+		
+		// Shuffle and take up to 200
+		const shuffled = candidates.sort(() => 0.5 - Math.random());
+		return new Set(shuffled.slice(0, 200));
+	});
+
 	const tryHyphenate = (word, lang) => {
 		const hyphenationPatterns = {
 			en: [
@@ -289,22 +311,20 @@
 				<g class="water-map">
 					{#each $waterMap as row, rowIndex}
 						{#each row as cell, colIndex}
-							{#if cell}
+							{#if cell && cell > 0.1}
+								{@const x = rowIndex * 10 - 400 + (colIndex % 2) * 5}
+								{@const y = colIndex * 10 - 400}
+								{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
+								{@const isVisible = distanceFromCenter < 450}
+								{@const shouldAnimate = $animatedWaterStipples.has(`${rowIndex}-${colIndex}`)}
 								<circle
-									cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
-									cy={colIndex * 10 - 400}
+									cx={x}
+									cy={y}
 									r={5 * Math.min(1, cell)}
-									class="water-circle fill-current text-blue-300"
-									opacity="0.8"
-								>
-									<animate
-										attributeName="opacity"
-										values="0.3;0.9;0.4;0.8;0.3"
-										dur="{3 + (rowIndex + colIndex) % 4}s"
-										repeatCount="indefinite"
-										begin="{(rowIndex * colIndex) % 100 / 20}s"
-									/>
-								</circle>
+									class="water-circle fill-current text-blue-300 {shouldAnimate ? 'animate' : ''}"
+									style="--animation-duration: {3 + (rowIndex + colIndex) % 4}s; --animation-delay: {(rowIndex * colIndex) % 100 / 20}s;"
+									opacity={shouldAnimate ? undefined : 0.6}
+								/>
 							{/if}
 						{/each}
 					{/each}
@@ -418,4 +438,16 @@
 </div>
 
 <style>
+	@keyframes water-shimmer {
+		0%, 100% { opacity: 0.3; }
+		20% { opacity: 0.9; }
+		40% { opacity: 0.4; }
+		60% { opacity: 0.8; }
+		80% { opacity: 0.3; }
+	}
+	
+	.water-circle.animate {
+		animation: water-shimmer var(--animation-duration) infinite linear;
+		animation-delay: var(--animation-delay);
+	}
 </style>
