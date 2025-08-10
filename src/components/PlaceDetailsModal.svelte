@@ -20,7 +20,7 @@
 		($placeDetailsVisible) => $placeDetailsVisible === place.title
 	);
 
-	$: isSurroundingPlace = $placesSurrounding.find((place) => place.title === place.title);
+	$: isSurroundingPlace = $placesSurrounding.find((p) => p.title === place.title);
 	let summary = '';
 
 	onMount(() => {
@@ -65,9 +65,6 @@
 			{/if}
 			<hr class="my-4" />
 			<PlaceStars item={place} detail />
-			<hr class="my-4" />
-			<h3 class="mb-2 text-lg">Facts</h3>
-			<PlaceFactList {place} />
 			{#if !isSurroundingPlace}
 				{#if place.labels}
 					<hr class="my-4" />
@@ -80,6 +77,9 @@
 					</div>
 				{/if}
 			{/if}
+			<hr class="my-4" />
+			<h3 class="mb-2 text-lg">Facts</h3>
+			<PlaceFactList {place} />
 			{#if place.lon && place.lat}
 				<hr class="my-4" />
 				<Button
