@@ -38,4 +38,3 @@
 </Navbar>
 
 <UserPreferences bind:visible={preferencesVisible} />
-

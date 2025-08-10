@@ -27,7 +27,7 @@
 
 	// Helper function to get label name by value, returns null for invalid labels
 	const getLabelName = (labelValue) => {
-		const label = LABELS.find(l => l.value === labelValue);
+		const label = LABELS.find((l) => l.value === labelValue);
 		return label ? label.name : null;
 	};
 
@@ -85,7 +85,7 @@
 					<hr class="my-4" />
 					<div class="flex flex-wrap">
 						{#each place.labels
-							.filter(label => getLabelName(label) !== null)
+							.filter((label) => getLabelName(label) !== null)
 							.sort((a, b) => {
 								const aMatches = $preferences.labels?.includes(a);
 								const bMatches = $preferences.labels?.includes(b);
@@ -93,9 +93,11 @@
 								if (!aMatches && bMatches) return 1;
 								return 0;
 							}) as label}
-							<div class={$preferences.labels?.includes(label) 
-								? "mb-1 mr-2 rounded-full bg-primary-100 px-2 text-xs text-primary-800"
-								: "mb-1 mr-2 rounded-full bg-gray-100 px-2 text-xs text-gray-600"}>
+							<div
+								class={$preferences.labels?.includes(label)
+									? 'mb-1 mr-2 rounded-full bg-primary-100 px-2 text-xs text-primary-800'
+									: 'mb-1 mr-2 rounded-full bg-gray-100 px-2 text-xs text-gray-600'}
+							>
 								{getLabelName(label)}
 							</div>
 						{/each}

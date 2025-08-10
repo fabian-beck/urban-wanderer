@@ -253,7 +253,7 @@ out skel qt;
 					dist:
 						Math.sqrt(
 							Math.pow(element.lat - $coordinates.latitude, 2) +
-							Math.pow(element.lon - $coordinates.longitude, 2)
+								Math.pow(element.lon - $coordinates.longitude, 2)
 						) * 111139 // convert degrees to meters
 				};
 			});
@@ -264,7 +264,6 @@ out skel qt;
 		console.error('Could not load OSM places:', error);
 	}
 }
-
 
 export async function loadAddressData(coords) {
 	const lang = get(preferences).lang;
@@ -328,7 +327,7 @@ async function wikipediaNameSearchForPlace(name) {
 		const distance =
 			Math.sqrt(
 				Math.pow(coords.lat - get(coordinates).latitude, 2) +
-				Math.pow(coords.lon - get(coordinates).longitude, 2)
+					Math.pow(coords.lon - get(coordinates).longitude, 2)
 			) * 111139; // convert degrees to meters
 		// if close enough, return place
 		if (distance < 10000) {
@@ -434,7 +433,7 @@ out skel qt;
 					return Math.min(Math.max(width / 10, 0.3), 3.0); // Scale to 0.3-3.0 range
 				}
 			}
-			
+
 			// Base width on waterway type (adjusted for radius-based rendering)
 			const waterwayType = tags.waterway;
 			switch (waterwayType) {
@@ -462,16 +461,20 @@ out skel qt;
 		const waterPolylines = data.elements
 			.filter((element) => element.type === 'way' && element.tags?.waterway)
 			.map((element) => {
-				const nodes = element.nodes.map((nodeId) => {
-					const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
-					return node ? {
-						lat: node.lat,
-						lon: node.lon
-					} : null;
-				}).filter(node => node !== null);
-				
+				const nodes = element.nodes
+					.map((nodeId) => {
+						const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
+						return node
+							? {
+									lat: node.lat,
+									lon: node.lon
+								}
+							: null;
+					})
+					.filter((node) => node !== null);
+
 				const width = getWaterwayWidth(element.tags);
-				
+
 				return {
 					type: 'polyline',
 					name: element.tags?.name || `${element.tags.waterway}`,
@@ -496,7 +499,7 @@ out skel qt;
 			while (true) {
 				centerPoints.push({ x, y });
 				if (x === x2 && y === y2) break;
-				
+
 				const e2 = 2 * err;
 				if (e2 > -dy) {
 					err -= dy;
@@ -530,7 +533,7 @@ out skel qt;
 		for (const polyline of waterPolylines) {
 			const waterwayRadius = polyline.width / 2.0; // Convert width to radius
 			const waterIntensity = Math.min(1.0, polyline.width / 1.5); // Scale intensity
-			
+
 			for (let i = 0; i < polyline.nodes.length - 1; i++) {
 				const lat1 = polyline.nodes[i].lat;
 				const lon1 = polyline.nodes[i].lon;
@@ -541,7 +544,7 @@ out skel qt;
 				const y1 = coordsToGridY(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude);
 				const x2 = coordsToGridX(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude);
 				const y2 = coordsToGridY(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude);
-				
+
 				// Draw thick line between the two points
 				drawThickLine(x1, y1, x2, y2, waterwayRadius, waterIntensity);
 			}
@@ -577,42 +580,54 @@ export async function loadGreenMap() {
 		// Simple polygon fill algorithm using scan line
 		const fillPolygon = (nodes, value) => {
 			if (nodes.length < 3) return;
-			
+
 			// Convert nodes to grid coordinates
-			const gridNodes = nodes.map(node => ({
-				x: coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude),
-				y: coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude)
-			})).filter(node => node.x >= 0 && node.x < 80 && node.y >= 0 && node.y < 80);
+			const gridNodes = nodes
+				.map((node) => ({
+					x: coordsToGridX(
+						node.lat,
+						node.lon,
+						get(coordinates).latitude,
+						get(coordinates).longitude
+					),
+					y: coordsToGridY(
+						node.lat,
+						node.lon,
+						get(coordinates).latitude,
+						get(coordinates).longitude
+					)
+				}))
+				.filter((node) => node.x >= 0 && node.x < 80 && node.y >= 0 && node.y < 80);
 
 			if (gridNodes.length < 3) return;
 
 			// Find bounding box
-			const minY = Math.max(0, Math.min(...gridNodes.map(n => n.y)));
-			const maxY = Math.min(79, Math.max(...gridNodes.map(n => n.y)));
+			const minY = Math.max(0, Math.min(...gridNodes.map((n) => n.y)));
+			const maxY = Math.min(79, Math.max(...gridNodes.map((n) => n.y)));
 
 			// Scan line algorithm
 			for (let y = minY; y <= maxY; y++) {
 				const intersections = [];
-				
+
 				// Find intersections with polygon edges
 				for (let i = 0; i < gridNodes.length; i++) {
 					const j = (i + 1) % gridNodes.length;
 					const p1 = gridNodes[i];
 					const p2 = gridNodes[j];
-					
+
 					if ((p1.y <= y && p2.y > y) || (p2.y <= y && p1.y > y)) {
-						const x = p1.x + (y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y);
+						const x = p1.x + ((y - p1.y) * (p2.x - p1.x)) / (p2.y - p1.y);
 						intersections.push(x);
 					}
 				}
-				
+
 				// Sort intersections and fill between pairs
 				intersections.sort((a, b) => a - b);
 				for (let i = 0; i < intersections.length; i += 2) {
 					if (i + 1 < intersections.length) {
 						const startX = Math.max(0, Math.ceil(intersections[i]));
 						const endX = Math.min(79, Math.floor(intersections[i + 1]));
-						
+
 						for (let x = startX; x <= endX; x++) {
 							increaseGreenLevel(x, y, value);
 						}
@@ -650,23 +665,27 @@ out skel qt;
 		});
 		const data = await response.json();
 		console.log('Green map response:', data);
-		
+
 		const greenMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
-		
+
 		// Helper function to extract nodes from ways
 		const getNodesFromWay = (way) => {
-			return way.nodes?.map((nodeId) => {
-				const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
-				return node ? { lat: node.lat, lon: node.lon } : null;
-			}).filter(node => node !== null) || [];
+			return (
+				way.nodes
+					?.map((nodeId) => {
+						const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
+						return node ? { lat: node.lat, lon: node.lon } : null;
+					})
+					.filter((node) => node !== null) || []
+			);
 		};
 
 		// Helper function to extract nodes from relations
 		const getNodesFromRelation = (relation) => {
 			const allNodes = [];
-			relation.members?.forEach(member => {
+			relation.members?.forEach((member) => {
 				if (member.type === 'way' && member.role === 'outer') {
-					const way = data.elements.find(el => el.type === 'way' && el.id === member.ref);
+					const way = data.elements.find((el) => el.type === 'way' && el.id === member.ref);
 					if (way) {
 						allNodes.push(...getNodesFromWay(way));
 					}
@@ -677,9 +696,10 @@ out skel qt;
 
 		// Process areas (ways and relations)
 		const greenAreas = data.elements
-			.filter((element) => 
-				(element.type === 'way' && element.nodes) || 
-				(element.type === 'relation' && element.members)
+			.filter(
+				(element) =>
+					(element.type === 'way' && element.nodes) ||
+					(element.type === 'relation' && element.members)
 			)
 			.map((element) => {
 				let nodes = [];
@@ -688,10 +708,13 @@ out skel qt;
 				} else if (element.type === 'relation') {
 					nodes = getNodesFromRelation(element);
 				}
-				
-				const category = element.tags?.landuse || element.tags?.leisure || element.tags?.natural || 'green';
-				const isLargeArea = ['forest', 'park', 'nature_reserve', 'wood', 'meadow'].includes(category);
-				
+
+				const category =
+					element.tags?.landuse || element.tags?.leisure || element.tags?.natural || 'green';
+				const isLargeArea = ['forest', 'park', 'nature_reserve', 'wood', 'meadow'].includes(
+					category
+				);
+
 				return {
 					type: element.type,
 					name: element.tags?.name || 'Green space',
@@ -724,8 +747,18 @@ out skel qt;
 					// For smaller areas, mark perimeter with stronger propagation
 					for (let i = 0; i < area.nodes.length; i++) {
 						const node = area.nodes[i];
-						const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
-						const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						const x = coordsToGridX(
+							node.lat,
+							node.lon,
+							get(coordinates).latitude,
+							get(coordinates).longitude
+						);
+						const y = coordsToGridY(
+							node.lat,
+							node.lon,
+							get(coordinates).latitude,
+							get(coordinates).longitude
+						);
 						increaseGreenLevel(x, y, 0.7);
 					}
 				}
@@ -734,8 +767,18 @@ out skel qt;
 
 		// Fill in individual trees
 		for (const tree of trees) {
-			const x = coordsToGridX(tree.lat, tree.lon, get(coordinates).latitude, get(coordinates).longitude);
-			const y = coordsToGridY(tree.lat, tree.lon, get(coordinates).latitude, get(coordinates).longitude);
+			const x = coordsToGridX(
+				tree.lat,
+				tree.lon,
+				get(coordinates).latitude,
+				get(coordinates).longitude
+			);
+			const y = coordsToGridY(
+				tree.lat,
+				tree.lon,
+				get(coordinates).latitude,
+				get(coordinates).longitude
+			);
 			increaseGreenLevel(x, y, 0.6);
 		}
 
@@ -804,24 +847,32 @@ out skel qt;
 
 		// Helper function to extract nodes from ways
 		const getNodesFromWay = (way) => {
-			return way.nodes?.map(nodeId => {
-				const node = data.elements.find(el => el.id === nodeId && el.type === 'node');
-				return node ? { lat: node.lat, lon: node.lon } : null;
-			}).filter(Boolean) || [];
+			return (
+				way.nodes
+					?.map((nodeId) => {
+						const node = data.elements.find((el) => el.id === nodeId && el.type === 'node');
+						return node ? { lat: node.lat, lon: node.lon } : null;
+					})
+					.filter(Boolean) || []
+			);
 		};
 
 		// Process commercial areas and shops
 		const activityAreas = data.elements
-			.filter((element) => (element.type === 'way' || element.type === 'relation') && 
-				(element.tags?.landuse === 'commercial' || 
-				 element.tags?.landuse === 'retail' ||
-				 element.tags?.shop ||
-				 element.tags?.amenity))
+			.filter(
+				(element) =>
+					(element.type === 'way' || element.type === 'relation') &&
+					(element.tags?.landuse === 'commercial' ||
+						element.tags?.landuse === 'retail' ||
+						element.tags?.shop ||
+						element.tags?.amenity)
+			)
 			.map((element) => {
 				const nodes = element.type === 'way' ? getNodesFromWay(element) : [];
-				const isLargeArea = nodes.length > 10 || 
-					(element.tags?.landuse === 'commercial') ||
-					(element.tags?.landuse === 'retail');
+				const isLargeArea =
+					nodes.length > 10 ||
+					element.tags?.landuse === 'commercial' ||
+					element.tags?.landuse === 'retail';
 				return {
 					type: element.tags?.shop || element.tags?.amenity || element.tags?.landuse,
 					nodes: nodes,
@@ -831,8 +882,7 @@ out skel qt;
 
 		// Process individual nodes (shops, restaurants, bars, etc.)
 		const activityNodes = data.elements
-			.filter((element) => element.type === 'node' && 
-				(element.tags?.shop || element.tags?.amenity))
+			.filter((element) => element.type === 'node' && (element.tags?.shop || element.tags?.amenity))
 			.map((element) => ({
 				type: element.tags?.shop || element.tags?.amenity,
 				lat: element.lat,
@@ -850,16 +900,36 @@ out skel qt;
 					// Fill large commercial areas with lighter coverage
 					for (let i = 0; i < area.nodes.length; i++) {
 						const node = area.nodes[i];
-						const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
-						const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						const x = coordsToGridX(
+							node.lat,
+							node.lon,
+							get(coordinates).latitude,
+							get(coordinates).longitude
+						);
+						const y = coordsToGridY(
+							node.lat,
+							node.lon,
+							get(coordinates).latitude,
+							get(coordinates).longitude
+						);
 						increaseActivityLevel(x, y, 0.4);
 					}
 				} else {
 					// Mark perimeter for smaller areas
 					for (let i = 0; i < area.nodes.length; i++) {
 						const node = area.nodes[i];
-						const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
-						const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						const x = coordsToGridX(
+							node.lat,
+							node.lon,
+							get(coordinates).latitude,
+							get(coordinates).longitude
+						);
+						const y = coordsToGridY(
+							node.lat,
+							node.lon,
+							get(coordinates).latitude,
+							get(coordinates).longitude
+						);
 						increaseActivityLevel(x, y, 0.6);
 					}
 				}
@@ -868,8 +938,18 @@ out skel qt;
 
 		// Fill in individual activity nodes
 		for (const node of activityNodes) {
-			const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
-			const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+			const x = coordsToGridX(
+				node.lat,
+				node.lon,
+				get(coordinates).latitude,
+				get(coordinates).longitude
+			);
+			const y = coordsToGridY(
+				node.lat,
+				node.lon,
+				get(coordinates).latitude,
+				get(coordinates).longitude
+			);
 			// Higher intensity for individual shops/restaurants/bars
 			increaseActivityLevel(x, y, 0.8);
 		}

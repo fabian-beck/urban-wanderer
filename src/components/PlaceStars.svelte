@@ -4,12 +4,17 @@
 	export let detail = false;
 
 	const getStarColor = (starIndex) => {
-		switch(starIndex) {
-			case 0: return 'text-[#FE795D]';
-			case 1: return 'text-[#EF562F]';
-			case 2: return 'text-[#EB4F27]';
-			case 3: return 'text-[#CC4522]';
-			default: return 'text-[#A5371B]';
+		switch (starIndex) {
+			case 0:
+				return 'text-[#FE795D]';
+			case 1:
+				return 'text-[#EF562F]';
+			case 2:
+				return 'text-[#EB4F27]';
+			case 3:
+				return 'text-[#CC4522]';
+			default:
+				return 'text-[#A5371B]';
 		}
 	};
 </script>
@@ -18,11 +23,13 @@
 	{#if item.starDescriptions?.length > 0}
 		{@const allStars = item.starDescriptions.reduce((acc, desc) => acc + desc.number, 0)}
 		{#each item.starDescriptions as starDescription, groupIndex}
-			{@const starOffset = item.starDescriptions.slice(0, groupIndex).reduce((acc, desc) => acc + desc.number, 0)}
+			{@const starOffset = item.starDescriptions
+				.slice(0, groupIndex)
+				.reduce((acc, desc) => acc + desc.number, 0)}
 			<div class="flex">
 				<!-- eslint-disable-next-line no-unused-vars -->
 				{#each Array(starDescription.number).fill() as _, localIndex}
-					<StarSolid size="xs" class="{getStarColor(starOffset + localIndex)}" />
+					<StarSolid size="xs" class={getStarColor(starOffset + localIndex)} />
 				{/each}
 				{#if detail}
 					<div class="ml-2">{starDescription.text}</div>
@@ -33,7 +40,7 @@
 		<div class="flex">
 			<!-- eslint-disable-next-line no-unused-vars -->
 			{#each Array(item.stars).fill() as _, starIndex}
-				<StarSolid size="xs" class="{getStarColor(starIndex)}" />
+				<StarSolid size="xs" class={getStarColor(starIndex)} />
 			{/each}
 			{#if detail}
 				<div class="ml-2">{item.stars} star{item.stars === 1 ? '' : 's'}</div>

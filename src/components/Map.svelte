@@ -317,20 +317,20 @@
 				>
 				<!-- green map -->
 				{#if $preferences.labels?.includes('NATURE')}
-				<g class="green-map">
-					{#each $greenMap as row, rowIndex}
-						{#each row as cell, colIndex}
-							{#if cell}
-								<circle
-									cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
-									cy={colIndex * 10 - 400}
-									r={4 * Math.min(1, cell)}
-									class="green-circle fill-current text-green-400 opacity-40"
-								/>
-							{/if}
+					<g class="green-map">
+						{#each $greenMap as row, rowIndex}
+							{#each row as cell, colIndex}
+								{#if cell}
+									<circle
+										cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
+										cy={colIndex * 10 - 400}
+										r={4 * Math.min(1, cell)}
+										class="green-circle fill-current text-green-400 opacity-40"
+									/>
+								{/if}
+							{/each}
 						{/each}
-					{/each}
-				</g>
+					</g>
 				{/if}
 				<!-- water map -->
 				<g class="water-map">
@@ -359,32 +359,32 @@
 				</g>
 				<!-- activity map -->
 				{#if $preferences.labels?.includes('ACTIVITIES')}
-				<g class="activity-map">
-					{#each $activityMap as row, rowIndex}
-						{#each row as cell, colIndex}
-							{#if cell && cell > 0.1}
-								{@const x = rowIndex * 10 - 400 + (colIndex % 2) * 5}
-								{@const y = colIndex * 10 - 400}
-								{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
-								{@const isVisible = distanceFromCenter < 450}
-								{@const shouldAnimate = $animatedActivityStipples.has(`${rowIndex}-${colIndex}`)}
-								<circle
-									cx={x}
-									cy={y}
-									r={4 * Math.min(1, cell)}
-									class="activity-circle fill-current text-purple-400 {shouldAnimate
-										? 'animate-activity'
-										: ''}"
-									style="--animation-duration: {2.5 +
-										((rowIndex + colIndex) % 3)}s; --animation-delay: {((rowIndex * colIndex) %
-										150) /
-										25}s;"
-									opacity={shouldAnimate ? undefined : 0.5}
-								/>
-							{/if}
+					<g class="activity-map">
+						{#each $activityMap as row, rowIndex}
+							{#each row as cell, colIndex}
+								{#if cell && cell > 0.1}
+									{@const x = rowIndex * 10 - 400 + (colIndex % 2) * 5}
+									{@const y = colIndex * 10 - 400}
+									{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
+									{@const isVisible = distanceFromCenter < 450}
+									{@const shouldAnimate = $animatedActivityStipples.has(`${rowIndex}-${colIndex}`)}
+									<circle
+										cx={x}
+										cy={y}
+										r={4 * Math.min(1, cell)}
+										class="activity-circle fill-current text-purple-400 {shouldAnimate
+											? 'animate-activity'
+											: ''}"
+										style="--animation-duration: {2.5 +
+											((rowIndex + colIndex) % 3)}s; --animation-delay: {((rowIndex * colIndex) %
+											150) /
+											25}s;"
+										opacity={shouldAnimate ? undefined : 0.5}
+									/>
+								{/if}
+							{/each}
 						{/each}
-					{/each}
-				</g>
+					</g>
 				{/if}
 				<!-- radius circles (below places) -->
 				<g class="radius-circles">
@@ -528,15 +528,35 @@
 						<circle cx="10" cy="0" r="5" class="fill-current text-green-300" />
 						<text x="20" y="5" class="text-lg" text-anchor="start">Green areas</text>
 					{/if}
-					
+
 					<!-- Water areas -->
-					<circle cx="10" cy={$preferences.labels?.includes('NATURE') ? 25 : 0} r="5" class="fill-current text-blue-300" />
-					<text x="20" y={$preferences.labels?.includes('NATURE') ? 30 : 5} class="text-lg" text-anchor="start">Water areas</text>
-					
+					<circle
+						cx="10"
+						cy={$preferences.labels?.includes('NATURE') ? 25 : 0}
+						r="5"
+						class="fill-current text-blue-300"
+					/>
+					<text
+						x="20"
+						y={$preferences.labels?.includes('NATURE') ? 30 : 5}
+						class="text-lg"
+						text-anchor="start">Water areas</text
+					>
+
 					{#if $preferences.labels?.includes('ACTIVITIES')}
 						<!-- Activity areas -->
-						<circle cx="10" cy={$preferences.labels?.includes('NATURE') ? 50 : 25} r="5" class="fill-current text-purple-300" />
-						<text x="20" y={$preferences.labels?.includes('NATURE') ? 55 : 30} class="text-lg" text-anchor="start">Activity areas</text>
+						<circle
+							cx="10"
+							cy={$preferences.labels?.includes('NATURE') ? 50 : 25}
+							r="5"
+							class="fill-current text-purple-300"
+						/>
+						<text
+							x="20"
+							y={$preferences.labels?.includes('NATURE') ? 55 : 30}
+							class="text-lg"
+							text-anchor="start">Activity areas</text
+						>
 					{/if}
 				</g>
 			</g></g

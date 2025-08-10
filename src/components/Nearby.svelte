@@ -10,7 +10,7 @@
 	<h2 class="ml-2 flex-auto text-xl">Nearby</h2>
 </div>
 {#if $placesNearby}
-	{@const filteredPlaces = $placesNearby.filter(place => place.stars > 1)}
+	{@const filteredPlaces = $placesNearby.filter((place) => place.stars > 1)}
 	{#if filteredPlaces.length === 0}
 		<Alert color="primary"
 			><i
