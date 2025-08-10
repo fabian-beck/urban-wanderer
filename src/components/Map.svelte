@@ -8,6 +8,7 @@
 		placeDetailsVisible,
 		waterMap,
 		greenMap,
+		activityMap,
 		preferences
 	} from '../stores.js';
 
@@ -83,6 +84,29 @@
 		// Shuffle and take up to 200
 		const shuffled = candidates.sort(() => 0.5 - Math.random());
 		return new Set(shuffled.slice(0, 200));
+	});
+
+	const animatedActivityStipples = derived(activityMap, ($activityMap) => {
+		if (!$activityMap) return new Set();
+
+		const animated = new Set();
+		$activityMap.forEach((row, rowIndex) => {
+			row.forEach((cell, colIndex) => {
+				if (cell && cell > 0.1) {
+					const x = rowIndex * 10 - 400 + (colIndex % 2) * 5;
+					const y = colIndex * 10 - 400;
+					const distanceFromCenter = Math.sqrt(x * x + y * y);
+					if (distanceFromCenter < 450) {
+						// Use deterministic pattern: every 4th point in both directions for fewer animated points
+						if (rowIndex % 4 === 1 && colIndex % 4 === 1) {
+							animated.add(`${rowIndex}-${colIndex}`);
+						}
+					}
+				}
+			});
+		});
+
+		return animated;
 	});
 
 	const tryHyphenate = (word, lang) => {
@@ -331,6 +355,33 @@
 						{/each}
 					{/each}
 				</g>
+				<!-- activity map -->
+				<g class="activity-map">
+					{#each $activityMap as row, rowIndex}
+						{#each row as cell, colIndex}
+							{#if cell && cell > 0.1}
+								{@const x = rowIndex * 10 - 400 + (colIndex % 2) * 5}
+								{@const y = colIndex * 10 - 400}
+								{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
+								{@const isVisible = distanceFromCenter < 450}
+								{@const shouldAnimate = $animatedActivityStipples.has(`${rowIndex}-${colIndex}`)}
+								<circle
+									cx={x}
+									cy={y}
+									r={4 * Math.min(1, cell)}
+									class="activity-circle fill-current text-purple-400 {shouldAnimate
+										? 'animate-activity'
+										: ''}"
+									style="--animation-duration: {2.5 +
+										((rowIndex + colIndex) % 3)}s; --animation-delay: {((rowIndex * colIndex) %
+										150) /
+										25}s;"
+									opacity={shouldAnimate ? undefined : 0.5}
+								/>
+							{/if}
+						{/each}
+					{/each}
+				</g>
 				<!-- radius circles (below places) -->
 				<g class="radius-circles">
 					<circle
@@ -466,8 +517,8 @@
 					<text x="35" y="90" class="text-lg" text-anchor="start">5 star places</text>
 				</g>
 
-				<!-- legend right - green and water areas -->
-				<g class="legend-right" transform="translate(270,360)">
+				<!-- legend right - green, water and activity areas -->
+				<g class="legend-right" transform="translate(260,340)">
 					<!-- Green areas -->
 					<circle cx="10" cy="0" r="5" class="fill-current text-green-300" />
 					<text x="20" y="5" class="text-lg" text-anchor="start">Green areas</text>
@@ -475,6 +526,10 @@
 					<!-- Water areas -->
 					<circle cx="10" cy="25" r="5" class="fill-current text-blue-300" />
 					<text x="20" y="30" class="text-lg" text-anchor="start">Water areas</text>
+
+					<!-- Activity areas -->
+					<circle cx="10" cy="50" r="5" class="fill-current text-purple-300" />
+					<text x="20" y="55" class="text-lg" text-anchor="start">Activity areas</text>
 				</g>
 			</g></g
 		></svg
@@ -504,5 +559,23 @@
 	.water-circle.animate {
 		animation: water-shimmer var(--animation-duration) infinite linear;
 		animation-delay: var(--animation-delay);
+	}
+
+	@keyframes activity-pulse {
+		0%,
+		100% {
+			opacity: 0.4;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.6;
+			transform: scale(1.02);
+		}
+	}
+
+	.activity-circle.animate-activity {
+		animation: activity-pulse var(--animation-duration) infinite ease-in-out;
+		animation-delay: var(--animation-delay);
+		transform-origin: center;
 	}
 </style>

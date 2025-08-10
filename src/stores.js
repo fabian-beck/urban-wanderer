@@ -11,7 +11,8 @@ import {
     getRandomPlaceCoordinates,
     loadWikipediaImageUrls,
     loadWaterMap,
-    loadGreenMap
+    loadGreenMap,
+    loadActivityMap
 } from './util/geo.js';
 
 let prefsInitialized = false;
@@ -107,6 +108,7 @@ function createPlaces() {
                 loadingMessage.set('Loading places ...');
                 loadWaterMap();
                 loadGreenMap();
+                loadActivityMap();
                 let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
                 set(mergePlaces(placesTmp, placesOsm));
                 console.log('Time to load places (s):', ((Date.now() - startTime) / 1000).toFixed(2));
@@ -320,3 +322,6 @@ export const waterMap = writable([]);
 
 // green map
 export const greenMap = writable([]);
+
+// activity map
+export const activityMap = writable([]);

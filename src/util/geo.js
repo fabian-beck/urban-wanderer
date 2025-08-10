@@ -1,4 +1,4 @@
-import { coordinates, preferences, places, waterMap, greenMap } from '../stores.js';
+import { coordinates, preferences, places, waterMap, greenMap, activityMap } from '../stores.js';
 import { nArticles } from '../constants.js';
 import { get } from 'svelte/store';
 import { extractFactsFromArticle } from './ai.js';
@@ -742,5 +742,140 @@ out skel qt;
 		greenMap.set(greenMapTmp);
 	} catch (error) {
 		console.error('Error loading green map:', error);
+	}
+}
+
+export async function loadActivityMap() {
+	try {
+		const increaseActivityLevel = (x, y, value) => {
+			if (value < 0.05) {
+				return;
+			}
+			if (x >= 0 && x < 80 && y >= 0 && y < 80) {
+				activityMapTmp[x][y] += value;
+				if (activityMapTmp[x][y] > 1) {
+					activityMapTmp[x][y] = 1;
+				}
+				// Light propagation for activity areas
+				if (value > 0.3) {
+					increaseActivityLevel(x + 1, y, value / 5);
+					increaseActivityLevel(x - 1, y, value / 5);
+					increaseActivityLevel(x, y + 1, value / 5);
+					increaseActivityLevel(x, y - 1, value / 5);
+				}
+			}
+		};
+
+		const overpassQuery = `
+[out:json];
+(
+    // Shopping areas
+    way[shop~"mall|supermarket|department_store|bakery|butcher|clothes|convenience|general|gift|jewelry|shoes|sports|toys|electronics|furniture|florist|bookshop|chemist|optician|hairdresser|beauty|bicycle|car|mobile_phone"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    node[shop~"mall|supermarket|department_store|bakery|butcher|clothes|convenience|general|gift|jewelry|shoes|sports|toys|electronics|furniture|florist|bookshop|chemist|optician|hairdresser|beauty|bicycle|car|mobile_phone"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    
+    // Restaurants and food
+    way[amenity~"restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    node[amenity~"restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    
+    // Entertainment and nightlife
+    way[amenity~"nightclub|casino|cinema|theatre|arts_centre|community_centre"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    node[amenity~"nightclub|casino|cinema|theatre|arts_centre|community_centre"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    
+    // Commercial areas
+    way[landuse="commercial"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[landuse="retail"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+);
+out body;
+>;
+out skel qt;
+`;
+
+		const response = await fetch('https://overpass-api.de/api/interpreter', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: `data=${encodeURIComponent(overpassQuery)}`
+		});
+		const data = await response.json();
+		console.log('Activity map response:', data);
+
+		const activityMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
+
+		// Helper function to extract nodes from ways
+		const getNodesFromWay = (way) => {
+			return way.nodes?.map(nodeId => {
+				const node = data.elements.find(el => el.id === nodeId && el.type === 'node');
+				return node ? { lat: node.lat, lon: node.lon } : null;
+			}).filter(Boolean) || [];
+		};
+
+		// Process commercial areas and shops
+		const activityAreas = data.elements
+			.filter((element) => (element.type === 'way' || element.type === 'relation') && 
+				(element.tags?.landuse === 'commercial' || 
+				 element.tags?.landuse === 'retail' ||
+				 element.tags?.shop ||
+				 element.tags?.amenity))
+			.map((element) => {
+				const nodes = element.type === 'way' ? getNodesFromWay(element) : [];
+				const isLargeArea = nodes.length > 10 || 
+					(element.tags?.landuse === 'commercial') ||
+					(element.tags?.landuse === 'retail');
+				return {
+					type: element.tags?.shop || element.tags?.amenity || element.tags?.landuse,
+					nodes: nodes,
+					isLargeArea: isLargeArea
+				};
+			});
+
+		// Process individual nodes (shops, restaurants, bars, etc.)
+		const activityNodes = data.elements
+			.filter((element) => element.type === 'node' && 
+				(element.tags?.shop || element.tags?.amenity))
+			.map((element) => ({
+				type: element.tags?.shop || element.tags?.amenity,
+				lat: element.lat,
+				lon: element.lon,
+				name: element.tags?.name || 'Activity'
+			}));
+
+		console.log('Activity areas:', activityAreas);
+		console.log('Activity nodes:', activityNodes);
+
+		// Fill in activity areas
+		for (const area of activityAreas) {
+			if (area.nodes.length > 2) {
+				if (area.isLargeArea) {
+					// Fill large commercial areas with lighter coverage
+					for (let i = 0; i < area.nodes.length; i++) {
+						const node = area.nodes[i];
+						const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						increaseActivityLevel(x, y, 0.4);
+					}
+				} else {
+					// Mark perimeter for smaller areas
+					for (let i = 0; i < area.nodes.length; i++) {
+						const node = area.nodes[i];
+						const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+						increaseActivityLevel(x, y, 0.6);
+					}
+				}
+			}
+		}
+
+		// Fill in individual activity nodes
+		for (const node of activityNodes) {
+			const x = coordsToGridX(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+			const y = coordsToGridY(node.lat, node.lon, get(coordinates).latitude, get(coordinates).longitude);
+			// Higher intensity for individual shops/restaurants/bars
+			increaseActivityLevel(x, y, 0.8);
+		}
+
+		activityMap.set(activityMapTmp);
+	} catch (error) {
+		console.error('Error loading activity map:', error);
 	}
 }
