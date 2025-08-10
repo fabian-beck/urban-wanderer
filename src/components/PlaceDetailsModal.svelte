@@ -77,8 +77,17 @@
 				{#if place.labels}
 					<hr class="my-4" />
 					<div class="flex flex-wrap">
-						{#each place.labels as label}
-							<div class="mb-1 mr-2 rounded-full bg-primary-100 px-2 text-xs text-primary-800">
+						{#each place.labels
+							.sort((a, b) => {
+								const aMatches = $preferences.labels?.includes(a);
+								const bMatches = $preferences.labels?.includes(b);
+								if (aMatches && !bMatches) return -1;
+								if (!aMatches && bMatches) return 1;
+								return 0;
+							}) as label}
+							<div class={$preferences.labels?.includes(label) 
+								? "mb-1 mr-2 rounded-full bg-primary-100 px-2 text-xs text-primary-800"
+								: "mb-1 mr-2 rounded-full bg-gray-100 px-2 text-xs text-gray-600"}>
 								{label}
 							</div>
 						{/each}
