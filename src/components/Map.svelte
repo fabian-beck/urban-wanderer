@@ -264,8 +264,8 @@
 							cx={latLonToX(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
 							cy={latLonToY(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
 							r={10 * place.stars}
-							class="place-circle fill-current opacity-100"
-							fill={place.stars === 1 ? '#FFD5CC' : place.stars === 2 ? '#FFBCAD' : place.stars === 3 ? '#FE795D' : place.stars === 4 ? '#EF562F' : '#CC4522'}
+							fill="#F59E0B"
+							opacity={place.stars * 0.2}
 							style="filter: blur(70px);"
 						/>
 					{/each}</g
