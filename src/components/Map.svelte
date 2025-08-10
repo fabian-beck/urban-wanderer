@@ -369,7 +369,9 @@
 						transform="rotate(-{$heading})"
 						stroke-width="4"
 					/>
-					<circle cx="0" cy="0" r="10" class="position-circle" stroke-width="2" />
+					<circle cx="0" cy="0" r="10" class="position-circle" stroke-width="2">
+						<animate attributeName="r" values="10;12;10" dur="2s" repeatCount="indefinite" />
+					</circle>
 				</g>
 			</g>
 			<g class="labels">
