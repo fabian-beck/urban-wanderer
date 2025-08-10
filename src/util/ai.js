@@ -329,49 +329,6 @@ ${article} `
     return summary;
 }
 
-// web search for a place
-export async function searchPlaceWeb(place) {
-    const response = await openai.responses.create({
-        model: getAiModel('simple'),
-        tools: [{ type: 'web_search_preview' }],
-        input: `You are a chat assistant helping a user to find more information and links about a place.
-
-Search the web for detailed information, current events, opening hours, or other relevant links about the following place. Keep the search restricted to the specific place. Answer in language '${get(preferences).lang}'.
-
-PLACE: ${place} located near ${get(coordinates).address}. The user is currently at the place.
-
-Answer as a list links, consisting each of a short summary of the information ("text" without url), with additional properties for "url" and "source_domain". The links should include only information relevant for a current touristic visitor of the place. Avoid redundancies. Directions are not necessary as the user is at the place already. Avoid any general description of the place and do not provide general information about the city or region. Do not address the user directly or ask for feedback. Do not list businesses, restaurants, or similar places unless they are of historical or cultural significance. Do not list events or activities that are not directly related to the place. Do not list general travel information or general tourist information.`,
-        text: {
-            format: {
-                type: 'json_schema',
-                name: 'links',
-                schema: {
-                    type: 'object',
-                    properties: {
-                        links: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: {
-                                    url: { type: 'string' },
-                                    text: { type: 'string' },
-                                    source_domain: { type: 'string' }
-                                },
-                                required: ['url', 'text', 'source_domain'],
-                                additionalProperties: false
-                            }
-                        }
-                    },
-                    required: ['links'],
-                    additionalProperties: false
-                }
-            }
-        }
-    });
-    console.log('Web search response:', response.output_text);
-    return JSON.parse(response.output_text).links;
-}
-
 
 // search for a data facts about a place
 export async function searchPlaceFacts(place, factsProperties) {
@@ -418,7 +375,7 @@ ${place.article || place.description || place.snippet || '[no description availa
             }
         }
     });
-    console.log('Web search fact response:', JSON.parse(response.output_text).facts);
+    console.log('Search fact response:', JSON.parse(response.output_text).facts);
     return JSON.parse(response.output_text).facts;
 }
 
