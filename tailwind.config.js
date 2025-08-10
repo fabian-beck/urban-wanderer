@@ -7,6 +7,12 @@ export default {
 		'./src/**/*.{html,js,svelte,ts}',
 		'./node_modules/flowbite-svelte/**/*.{html,js,svelte,ts}'
 	],
+	safelist: [
+		'col-span-1',
+		'col-span-2', 
+		'col-span-3',
+		'col-span-4'
+	],
 	darkMode: 'selector',
 	theme: {
 		extend: {

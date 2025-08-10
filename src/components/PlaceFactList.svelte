@@ -62,16 +62,15 @@
 		const labelStr = label?.toString() || '';
 		const valueStr = value?.toString() || '';
 
-		// Realistic width calculation based on visual space needed
 		const totalLength = labelStr.length + valueStr.length;
 
-		// Be much more conservative with larger widths
+		// More conservative thresholds for better layout
 		let width;
-		if (totalLength > 50 || valueStr.length > 30)
+		if (totalLength > 55 || valueStr.length > 35)
 			width = 4; // full width - only for very long content
-		else if (totalLength > 40 || valueStr.length > 25)
+		else if (totalLength > 45 || valueStr.length > 28)
 			width = 3; // three-quarter width - rare
-		else if (totalLength > 18 || valueStr.length > 10)
+		else if (totalLength > 20 || valueStr.length > 12)
 			width = 2; // half width
 		else width = 1; // quarter width
 
@@ -109,14 +108,35 @@
 				let remainingSpace = 4 - rowWidth;
 
 				if (remainingSpace > 0) {
-					// We have gaps to fill - distribute the extra space
-					for (let j = row.length - 1; j >= 0 && remainingSpace > 0; j--) {
-						const item = row[j];
+					// Distribute remaining space more intelligently
+					if (row.length === 1) {
+						// Single item in row - expand it to fill remaining space
+						const item = row[0];
 						const maxExpansion = Math.min(remainingSpace, 4 - item.minWidth);
-						if (maxExpansion > 0) {
-							item.minWidth += maxExpansion;
-							remainingSpace -= maxExpansion;
-							break; // Expand only the last item for simplicity
+						item.minWidth += maxExpansion;
+					} else {
+						// Multiple items - try to expand the largest item that can grow
+						let expanded = false;
+						for (let j = row.length - 1; j >= 0 && remainingSpace > 0 && !expanded; j--) {
+							const item = row[j];
+							const maxExpansion = Math.min(remainingSpace, 4 - item.minWidth);
+							if (maxExpansion > 0) {
+								item.minWidth += maxExpansion;
+								remainingSpace -= maxExpansion;
+								expanded = true;
+							}
+						}
+						
+						// If still space remaining, try to expand any item
+						if (remainingSpace > 0) {
+							for (let j = 0; j < row.length && remainingSpace > 0; j++) {
+								const item = row[j];
+								if (item.minWidth < 4) {
+									const expansion = Math.min(remainingSpace, 1);
+									item.minWidth += expansion;
+									remainingSpace -= expansion;
+								}
+							}
 						}
 					}
 				}
@@ -161,10 +181,8 @@
 					});
 				}
 
-				// Sort by minimum width span (smallest first) to put short facts first
-				allFacts.sort(
-					(a, b) => getMinWidthSpan(a.label, a.value) - getMinWidthSpan(b.label, b.value)
-				);
+				// Keep facts in original order for better layout
+				// (sorting by width can cause layout issues)
 
 				return simpleLayout(allFacts);
 			})()
