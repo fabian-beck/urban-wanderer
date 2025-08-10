@@ -11,10 +11,10 @@
 </div>
 
 {#if $placesHere?.length > 0}
-	<Listgroup items={$placesHere} let:item={place} itemDefaultClass="!px-0">
+	<Listgroup items={$placesHere.filter(place => place.stars > 1)} let:item={place} itemDefaultClass="!px-0">
 		<PlaceItem {place} />
 	</Listgroup>
-{:else}
+{:else if $placesHere?.filter(place => place.stars > 1).length === 0}
 	<Alert color="primary"
 		><i
 			>No places found directly at your position&mdash;maybe, walk a bit to find some interesting

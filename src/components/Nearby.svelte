@@ -10,7 +10,8 @@
 	<h2 class="ml-2 flex-auto text-xl">Nearby</h2>
 </div>
 {#if $placesNearby}
-	{#if $placesNearby.length === 0}
+	{@const filteredPlaces = $placesNearby.filter(place => place.stars > 1)}
+	{#if filteredPlaces.length === 0}
 		<Alert color="primary"
 			><i
 				>No further places found within {$preferences.radius}&nbsp;m radius&mdash;you can increase
@@ -18,7 +19,7 @@
 			></Alert
 		>
 	{:else}
-		<Listgroup items={$placesNearby} let:item={place}>
+		<Listgroup items={filteredPlaces} let:item={place}>
 			<PlaceItem {place} showDistance />
 		</Listgroup>
 	{/if}
