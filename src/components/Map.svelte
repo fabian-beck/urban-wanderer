@@ -65,7 +65,7 @@
 
 	const animatedWaterStipples = derived(waterMap, ($waterMap) => {
 		if (!$waterMap) return new Set();
-		
+
 		const candidates = [];
 		$waterMap.forEach((row, rowIndex) => {
 			row.forEach((cell, colIndex) => {
@@ -79,7 +79,7 @@
 				}
 			});
 		});
-		
+
 		// Shuffle and take up to 200
 		const shuffled = candidates.sort(() => 0.5 - Math.random());
 		return new Set(shuffled.slice(0, 200));
@@ -184,7 +184,6 @@
 	};
 
 	const layoutLabel = (label) => {
-
 		// Step 1: If longer than 25, try to cut at word boundary to get below 25
 		if (label.length > 25) {
 			// Try to cut at word boundary first
@@ -322,7 +321,10 @@
 									cy={y}
 									r={5 * Math.min(1, cell)}
 									class="water-circle fill-current text-blue-300 {shouldAnimate ? 'animate' : ''}"
-									style="--animation-duration: {3 + (rowIndex + colIndex) % 4}s; --animation-delay: {(rowIndex * colIndex) % 100 / 20}s;"
+									style="--animation-duration: {3 +
+										((rowIndex + colIndex) % 4)}s; --animation-delay: {((rowIndex * colIndex) %
+										100) /
+										20}s;"
 									opacity={shouldAnimate ? undefined : 0.6}
 								/>
 							{/if}
@@ -363,11 +365,18 @@
 						>
 							<ellipse
 								cx="0"
-								cy="{layoutLabel(place.title).includes('\n') ? 28 : 25}"
-								rx="{layoutLabel(place.title).includes('\n') 
-									? Math.max(70, Math.max(...layoutLabel(place.title).split('\n').map(line => line.length)) * 7)
-									: Math.max(55, layoutLabel(place.title).length * 6)}"
-								ry="{layoutLabel(place.title).includes('\n') ? 35 : 22}"
+								cy={layoutLabel(place.title).includes('\n') ? 28 : 25}
+								rx={layoutLabel(place.title).includes('\n')
+									? Math.max(
+											70,
+											Math.max(
+												...layoutLabel(place.title)
+													.split('\n')
+													.map((line) => line.length)
+											) * 7
+										)
+									: Math.max(55, layoutLabel(place.title).length * 6)}
+								ry={layoutLabel(place.title).includes('\n') ? 35 : 22}
 								fill="url(#textGradient)"
 							/>
 							<circle
@@ -375,7 +384,15 @@
 								cy="0"
 								r={6 + place.stars * 1.5}
 								class="place-circle"
-								fill={place.stars === 1 ? '#FFD5CC' : place.stars === 2 ? '#FFBCAD' : place.stars === 3 ? '#FE795D' : place.stars === 4 ? '#EF562F' : '#CC4522'}
+								fill={place.stars === 1
+									? '#FFD5CC'
+									: place.stars === 2
+										? '#FFBCAD'
+										: place.stars === 3
+											? '#FE795D'
+											: place.stars === 4
+												? '#EF562F'
+												: '#CC4522'}
 								stroke="black"
 								style="filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));"
 							/>
@@ -432,6 +449,33 @@
 						dominant-baseline="middle">N</text
 					>
 				</g>
+				<!-- legend left - locations and places -->
+				<g class="legend-left" transform="translate(-400,300)">
+					<!-- Position marker -->
+					<circle cx="15" cy="0" r="6" class="position-circle" stroke-width="2" />
+					<text x="25" y="5" class="text-lg" text-anchor="start">Your location</text>
+
+					<!-- Places by star rating -->
+					<circle cx="15" cy="25" r="7.5" fill="#FFD5CC" stroke="black" />
+					<text x="25" y="30" class="text-lg" text-anchor="start">1-2 star places</text>
+
+					<circle cx="15" cy="55" r="10.5" fill="#FE795D" stroke="black" />
+					<text x="30" y="60" class="text-lg" text-anchor="start">3-4 star places</text>
+
+					<circle cx="15" cy="85" r="13.5" fill="#CC4522" stroke="black" />
+					<text x="35" y="90" class="text-lg" text-anchor="start">5 star places</text>
+				</g>
+
+				<!-- legend right - green and water areas -->
+				<g class="legend-right" transform="translate(270,360)">
+					<!-- Green areas -->
+					<circle cx="10" cy="0" r="5" class="fill-current text-green-300" />
+					<text x="20" y="5" class="text-lg" text-anchor="start">Green areas</text>
+
+					<!-- Water areas -->
+					<circle cx="10" cy="25" r="5" class="fill-current text-blue-300" />
+					<text x="20" y="30" class="text-lg" text-anchor="start">Water areas</text>
+				</g>
 			</g></g
 		></svg
 	>
@@ -439,13 +483,24 @@
 
 <style>
 	@keyframes water-shimmer {
-		0%, 100% { opacity: 0.3; }
-		20% { opacity: 0.9; }
-		40% { opacity: 0.4; }
-		60% { opacity: 0.8; }
-		80% { opacity: 0.3; }
+		0%,
+		100% {
+			opacity: 0.3;
+		}
+		20% {
+			opacity: 0.9;
+		}
+		40% {
+			opacity: 0.4;
+		}
+		60% {
+			opacity: 0.8;
+		}
+		80% {
+			opacity: 0.3;
+		}
 	}
-	
+
 	.water-circle.animate {
 		animation: water-shimmer var(--animation-duration) infinite linear;
 		animation-delay: var(--animation-delay);
