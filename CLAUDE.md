@@ -155,3 +155,5 @@ static/               # Static assets
 - User preferences stored in local storage
 
 This application demonstrates modern web-to-mobile development patterns, AI integration, and location-based service architecture.
+
+- avoid redundant comments that stated obvious things or unnecessary historical context.

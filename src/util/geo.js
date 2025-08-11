@@ -1,5 +1,5 @@
 import { coordinates, preferences, places, waterMap, greenMap, activityMap } from '../stores.js';
-import { nArticles } from '../constants.js';
+import { nArticles, GRID_ARRAY_SIZE, GRID_CELL_SIZE } from '../constants.js';
 import { get } from 'svelte/store';
 import { extractFactsFromArticle } from './ai.js';
 
@@ -373,15 +373,22 @@ export function latLonToY(lat, lon, centerLat, centerLon) {
 
 // Convert coordinates to grid position accounting for alternating row offset
 export function coordsToGridX(lat, lon, centerLat, centerLon) {
-	const baseX = latLonToX(lat, lon, centerLat, centerLon) / 10 + 40;
-	const y = Math.floor(latLonToY(lat, lon, centerLat, centerLon) / 10 + 40);
+	const GRID_CENTER_OFFSET = GRID_ARRAY_SIZE / 2; // Center offset for grid array
+	const baseX =
+		latLonToX(lat, lon, centerLat, centerLon) / GRID_CELL_SIZE + GRID_CENTER_OFFSET;
+	const y = Math.floor(
+		latLonToY(lat, lon, centerLat, centerLon) / GRID_CELL_SIZE + GRID_CENTER_OFFSET
+	);
 	// Account for the alternating row offset when converting back to grid coordinates
 	const offsetX = baseX - (y % 2) * 0.5;
 	return Math.floor(offsetX);
 }
 
 export function coordsToGridY(lat, lon, centerLat, centerLon) {
-	return Math.floor(latLonToY(lat, lon, centerLat, centerLon) / 10 + 40);
+	const GRID_CENTER_OFFSET = GRID_ARRAY_SIZE / 2; // Center offset for grid array
+	return Math.floor(
+		latLonToY(lat, lon, centerLat, centerLon) / GRID_CELL_SIZE + GRID_CENTER_OFFSET
+	);
 }
 
 // water map
@@ -391,7 +398,7 @@ export async function loadWaterMap() {
 			if (value < 0.1) {
 				return;
 			}
-			if (x >= 0 && x < 80 && y >= 0 && y < 80) {
+			if (x >= 0 && x < GRID_ARRAY_SIZE && y >= 0 && y < GRID_ARRAY_SIZE) {
 				waterMapTmp[x][y] += value;
 				if (waterMapTmp[x][y] > 1) {
 					waterMapTmp[x][y] = 1;
@@ -529,7 +536,9 @@ out skel qt;
 			}
 		};
 
-		const waterMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
+		const waterMapTmp = new Array(GRID_ARRAY_SIZE)
+			.fill(0)
+			.map(() => new Array(GRID_ARRAY_SIZE).fill(0));
 		for (const polyline of waterPolylines) {
 			const waterwayRadius = polyline.width / 2.0; // Convert width to radius
 			const waterIntensity = Math.min(1.0, polyline.width / 1.5); // Scale intensity
@@ -562,7 +571,7 @@ export async function loadGreenMap() {
 			if (value < 0.05) {
 				return;
 			}
-			if (x >= 0 && x < 80 && y >= 0 && y < 80) {
+			if (x >= 0 && x < GRID_ARRAY_SIZE && y >= 0 && y < GRID_ARRAY_SIZE) {
 				greenMapTmp[x][y] += value;
 				if (greenMapTmp[x][y] > 1) {
 					greenMapTmp[x][y] = 1;
@@ -597,13 +606,16 @@ export async function loadGreenMap() {
 						get(coordinates).longitude
 					)
 				}))
-				.filter((node) => node.x >= 0 && node.x < 80 && node.y >= 0 && node.y < 80);
+				.filter(
+					(node) =>
+						node.x >= 0 && node.x < GRID_ARRAY_SIZE && node.y >= 0 && node.y < GRID_ARRAY_SIZE
+				);
 
 			if (gridNodes.length < 3) return;
 
 			// Find bounding box
 			const minY = Math.max(0, Math.min(...gridNodes.map((n) => n.y)));
-			const maxY = Math.min(79, Math.max(...gridNodes.map((n) => n.y)));
+			const maxY = Math.min(GRID_ARRAY_SIZE - 1, Math.max(...gridNodes.map((n) => n.y)));
 
 			// Scan line algorithm
 			for (let y = minY; y <= maxY; y++) {
@@ -626,7 +638,7 @@ export async function loadGreenMap() {
 				for (let i = 0; i < intersections.length; i += 2) {
 					if (i + 1 < intersections.length) {
 						const startX = Math.max(0, Math.ceil(intersections[i]));
-						const endX = Math.min(79, Math.floor(intersections[i + 1]));
+						const endX = Math.min(GRID_ARRAY_SIZE - 1, Math.floor(intersections[i + 1]));
 
 						for (let x = startX; x <= endX; x++) {
 							increaseGreenLevel(x, y, value);
@@ -666,7 +678,9 @@ out skel qt;
 		const data = await response.json();
 		console.log('Green map response:', data);
 
-		const greenMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
+		const greenMapTmp = new Array(GRID_ARRAY_SIZE)
+			.fill(0)
+			.map(() => new Array(GRID_ARRAY_SIZE).fill(0));
 
 		// Helper function to extract nodes from ways
 		const getNodesFromWay = (way) => {
@@ -794,7 +808,7 @@ export async function loadActivityMap() {
 			if (value < 0.05) {
 				return;
 			}
-			if (x >= 0 && x < 80 && y >= 0 && y < 80) {
+			if (x >= 0 && x < GRID_ARRAY_SIZE && y >= 0 && y < GRID_ARRAY_SIZE) {
 				activityMapTmp[x][y] += value;
 				if (activityMapTmp[x][y] > 1) {
 					activityMapTmp[x][y] = 1;
@@ -843,7 +857,9 @@ out skel qt;
 		const data = await response.json();
 		console.log('Activity map response:', data);
 
-		const activityMapTmp = new Array(80).fill(0).map(() => new Array(80).fill(0));
+		const activityMapTmp = new Array(GRID_ARRAY_SIZE)
+			.fill(0)
+			.map(() => new Array(GRID_ARRAY_SIZE).fill(0));
 
 		// Helper function to extract nodes from ways
 		const getNodesFromWay = (way) => {

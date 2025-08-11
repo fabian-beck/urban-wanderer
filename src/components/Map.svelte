@@ -13,17 +13,26 @@
 	} from '../stores.js';
 
 	import { derived } from 'svelte/store';
+	import { haversineDistance, latLonToX, latLonToY } from '../util/geo.js';
 	import {
-		haversineDistance,
-		latLonToX,
-		latLonToY,
-		coordsToGridX,
-		coordsToGridY
-	} from '../util/geo.js';
+		GRID_CELL_SIZE,
+		GRID_ARRAY_SIZE,
+		GREEN_STIPPLE_SIZE,
+		WATER_STIPPLE_SIZE,
+		ACTIVITY_STIPPLE_SIZE,
+		PLACE_MIN_DISTANCE
+	} from '../constants.js';
+
+	// Derived constants
+	const SVG_SIZE = GRID_CELL_SIZE * GRID_ARRAY_SIZE;
+	const SVG_CENTER = SVG_SIZE / 2;
+	const GRID_OFFSET_X = SVG_CENTER;
+	const GRID_OFFSET_Y = SVG_CENTER;
+	const GRID_HEX_OFFSET = GRID_CELL_SIZE / 2;
 
 	const placesToHighlight = derived(places, ($places) => {
 		const highlighted = [];
-		const minDistance = 70; // Minimum distance in meters
+		const minDistance = PLACE_MIN_DISTANCE;
 
 		const filteredPlaces = $places?.filter(
 			(place) =>
@@ -71,8 +80,8 @@
 		$waterMap.forEach((row, rowIndex) => {
 			row.forEach((cell, colIndex) => {
 				if (cell && cell > 0.1) {
-					const x = rowIndex * 10 - 400 + (colIndex % 2) * 5;
-					const y = colIndex * 10 - 400;
+					const x = rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET;
+					const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y;
 					const distanceFromCenter = Math.sqrt(x * x + y * y);
 					if (distanceFromCenter < 450) {
 						candidates.push(`${rowIndex}-${colIndex}`);
@@ -93,8 +102,8 @@
 		$activityMap.forEach((row, rowIndex) => {
 			row.forEach((cell, colIndex) => {
 				if (cell && cell > 0.1) {
-					const x = rowIndex * 10 - 400 + (colIndex % 2) * 5;
-					const y = colIndex * 10 - 400;
+					const x = rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET;
+					const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y;
 					const distanceFromCenter = Math.sqrt(x * x + y * y);
 					if (distanceFromCenter < 450) {
 						// Use deterministic pattern: every 4th point in both directions for fewer animated points
@@ -288,10 +297,15 @@
 	<h2 class="ml-2 flex-auto text-xl">Map</h2>
 </div>
 <div>
-	<svg width="100%" height="100%" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+	<svg
+		width="100%"
+		height="100%"
+		viewBox="0 0 {SVG_SIZE} {SVG_SIZE}"
+		xmlns="http://www.w3.org/2000/svg"
+	>
 		<defs>
 			<clipPath id="circleClip">
-				<circle cx="0" cy="0" r="400" />
+				<circle cx="0" cy="0" r={SVG_CENTER} />
 			</clipPath>
 			<radialGradient id="textGradient" cx="50%" cy="50%" r="75%">
 				<stop offset="0%" style="stop-color:white;stop-opacity:0.7" />
@@ -300,7 +314,7 @@
 				<stop offset="100%" style="stop-color:white;stop-opacity:0" />
 			</radialGradient>
 		</defs>
-		<g transform="translate(400, 400)">
+		<g transform="translate({SVG_CENTER}, {SVG_CENTER})">
 			<g clip-path="url(#circleClip)">
 				<!-- background: all places as blurred circles -->
 				<g class="places-bg">
@@ -322,9 +336,11 @@
 							{#each row as cell, colIndex}
 								{#if cell}
 									<circle
-										cx={rowIndex * 10 - 400 + (colIndex % 2) * 5}
-										cy={colIndex * 10 - 400}
-										r={4 * Math.min(1, cell)}
+										cx={rowIndex * GRID_CELL_SIZE -
+											GRID_OFFSET_X +
+											(colIndex % 2) * GRID_HEX_OFFSET}
+										cy={colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
+										r={((GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
 										class="green-circle fill-current text-green-400 opacity-40"
 									/>
 								{/if}
@@ -337,15 +353,16 @@
 					{#each $waterMap as row, rowIndex}
 						{#each row as cell, colIndex}
 							{#if cell && cell > 0.1}
-								{@const x = rowIndex * 10 - 400 + (colIndex % 2) * 5}
-								{@const y = colIndex * 10 - 400}
+								{@const x =
+									rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
+								{@const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
 								{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
 								{@const isVisible = distanceFromCenter < 450}
 								{@const shouldAnimate = $animatedWaterStipples.has(`${rowIndex}-${colIndex}`)}
 								<circle
 									cx={x}
 									cy={y}
-									r={5 * Math.min(1, cell)}
+									r={((WATER_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
 									class="water-circle fill-current text-blue-300 {shouldAnimate ? 'animate' : ''}"
 									style="--animation-duration: {3 +
 										((rowIndex + colIndex) % 4)}s; --animation-delay: {((rowIndex * colIndex) %
@@ -363,15 +380,16 @@
 						{#each $activityMap as row, rowIndex}
 							{#each row as cell, colIndex}
 								{#if cell && cell > 0.1}
-									{@const x = rowIndex * 10 - 400 + (colIndex % 2) * 5}
-									{@const y = colIndex * 10 - 400}
+									{@const x =
+										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
+									{@const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
 									{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
 									{@const isVisible = distanceFromCenter < 450}
 									{@const shouldAnimate = $animatedActivityStipples.has(`${rowIndex}-${colIndex}`)}
 									<circle
 										cx={x}
 										cy={y}
-										r={4 * Math.min(1, cell)}
+										r={((ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
 										class="activity-circle fill-current text-purple-400 {shouldAnimate
 											? 'animate-activity'
 											: ''}"
@@ -398,7 +416,7 @@
 					<circle
 						cx="0"
 						cy="0"
-						r="399"
+						r={SVG_CENTER - 1}
 						class="clip-circle stroke-current stroke-2 text-gray-400"
 						fill="none"
 					/>
@@ -491,10 +509,10 @@
 					y="390"
 					class="clip-label text-lg"
 					text-anchor="right"
-					dominant-baseline="middle">400m</text
+					dominant-baseline="middle">{SVG_CENTER}m</text
 				>
 				<!-- north arrow -->
-				<g transform="translate(380,-380)">
+				<g transform="translate({SVG_CENTER - 20},-{SVG_CENTER - 20})">
 					<polygon points="0,-15 10,15 -10,15" fill="black" />
 					<text
 						x="0"
@@ -505,7 +523,7 @@
 					>
 				</g>
 				<!-- legend left - locations and places -->
-				<g class="legend-left" transform="translate(-400,300)">
+				<g class="legend-left" transform="translate(-{SVG_CENTER},300)">
 					<!-- Position marker -->
 					<circle cx="15" cy="0" r="6" class="position-circle" stroke-width="2" />
 					<text x="25" y="5" class="text-lg" text-anchor="start">Your location</text>
@@ -521,43 +539,51 @@
 					<text x="35" y="90" class="text-lg" text-anchor="start">5 star places</text>
 				</g>
 
-				<!-- legend right - green, water and activity areas -->
+				<!-- legend right - activity, green, water areas -->
 				<g class="legend-right" transform="translate(260,340)">
+					{#if $preferences.labels?.includes('ACTIVITIES')}
+						<!-- Activity areas -->
+						<circle
+							cx="10"
+							cy="0"
+							r={(ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
+							class="fill-current text-purple-300"
+						/>
+						<text x="20" y="5" class="text-lg" text-anchor="start">Activity areas</text>
+					{/if}
+
 					{#if $preferences.labels?.includes('NATURE')}
 						<!-- Green areas -->
-						<circle cx="10" cy="0" r="5" class="fill-current text-green-300" />
-						<text x="20" y="5" class="text-lg" text-anchor="start">Green areas</text>
+						<circle
+							cx="10"
+							cy={$preferences.labels?.includes('ACTIVITIES') ? 25 : 0}
+							r={(GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
+							class="fill-current text-green-300"
+						/>
+						<text
+							x="20"
+							y={$preferences.labels?.includes('ACTIVITIES') ? 30 : 5}
+							class="text-lg"
+							text-anchor="start">Green areas</text
+						>
 					{/if}
 
 					<!-- Water areas -->
 					<circle
 						cx="10"
-						cy={$preferences.labels?.includes('NATURE') ? 25 : 0}
-						r="5"
+						cy={($preferences.labels?.includes('ACTIVITIES') ? 25 : 0) +
+							($preferences.labels?.includes('NATURE') ? 25 : 0)}
+						r={(WATER_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
 						class="fill-current text-blue-300"
 					/>
 					<text
 						x="20"
-						y={$preferences.labels?.includes('NATURE') ? 30 : 5}
+						y={($preferences.labels?.includes('ACTIVITIES') ? 25 : 0) +
+							($preferences.labels?.includes('NATURE') ? 25 : 0) +
+							5}
 						class="text-lg"
 						text-anchor="start">Water areas</text
 					>
-
-					{#if $preferences.labels?.includes('ACTIVITIES')}
-						<!-- Activity areas -->
-						<circle
-							cx="10"
-							cy={$preferences.labels?.includes('NATURE') ? 50 : 25}
-							r="5"
-							class="fill-current text-purple-300"
-						/>
-						<text
-							x="20"
-							y={$preferences.labels?.includes('NATURE') ? 55 : 30}
-							class="text-lg"
-							text-anchor="start">Activity areas</text
-						>
-					{/if}
 				</g>
 			</g></g
 		></svg
