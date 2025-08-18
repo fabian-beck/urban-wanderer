@@ -1,7 +1,7 @@
 import { coordinates, preferences, places, waterMap, greenMap, activityMap } from '../stores.js';
 import { nArticles, GRID_ARRAY_SIZE, GRID_CELL_SIZE } from '../constants.js';
 import { get } from 'svelte/store';
-import { extractFactsFromArticle } from './ai.js';
+import { extractInsightsFromArticle } from './ai.js';
 
 export async function loadWikipediaPlaces() {
 	const $coordinates = get(coordinates);
@@ -66,8 +66,8 @@ export async function loadArticleTexts(places) {
 			if (place.article.length > 20000) {
 				place.article = place.article.substring(0, 20000) + '...';
 			}
-			// extracts facts
-			place.facts = await extractFactsFromArticle(place.article);
+			// extracts insights
+			place.insights = await extractInsightsFromArticle(place.article);
 		})
 	);
 }

@@ -412,7 +412,7 @@ ${get(placesHere)
 			`## ${place.title}: ${place.labels?.join(', ')}    	    
 Rating: ${place.stars}
 
-${place.facts || place.article || place.description || place.snippet || place.type || ''}
+${place.insights || place.article || place.description || place.snippet || place.type || ''}
 `
 	)
 	.join('\n')}
@@ -426,7 +426,7 @@ ${get(placesNearby)
 ## ${place.title} (${place.dist}m): ${place.labels?.join(', ')}
 Rating: ${place.stars}
     
-${place.facts || place.article || place.description || place.snippet || place.type || ''}
+${place.insights || place.article || place.description || place.snippet || place.type || ''}
 `
 	)
 	.join('\n')}
@@ -437,7 +437,7 @@ ${get(placesSurrounding)
 	.map(
 		(place) => `## ${place.title}
     
-${place.facts || place.article || place.description || place.snippet || place.type || ''}
+${place.insights || place.article || place.description || place.snippet || place.type || ''}
     `
 	)
 	.join('\n')}
@@ -575,13 +575,13 @@ If the list of places is empty or the text is too short, leave the list of event
 	return JSON.parse(response.output_text).events;
 }
 
-export async function extractFactsFromArticle(article) {
-	const instructions = `You are a chat assistant helping a user to extract facts from an article, relevant when visiting the place.
+export async function extractInsightsFromArticle(article) {
+	const instructions = `You are a chat assistant helping a user to extract insights from an article, relevant when visiting the place.
 
-Return a list of bullet points, focusing on the most important facts. 
+Return a list of bullet points, focusing on the most important insights. 
 Answer in language '${get(preferences).lang}'.    
 `;
-	console.log('Extract facts instructions', [instructions]);
+	console.log('Extract insights instructions', [instructions]);
 	const response = await openai.responses.create({
 		model: getAiModel('simple'),
 		reasoning: {
@@ -598,7 +598,7 @@ Answer in language '${get(preferences).lang}'.
 			}
 		]
 	});
-	console.log('Extract facts response:', [response.output_text]);
+	console.log('Extract insights response:', [response.output_text]);
 	return response.output_text;
 }
 
