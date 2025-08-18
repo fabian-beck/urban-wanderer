@@ -18,6 +18,7 @@
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
 	import Map from '../components/Map.svelte';
+	import { searchPlaceCoordinates } from '../util/geo.js';
 
 	let loading = false;
 	let urlCoordinates = null;
@@ -59,6 +60,25 @@
 		}
 	};
 
+	const searchForPlace = async (placeName) => {
+		try {
+			loading = true;
+			errorMessage.set(null);
+			loadingMessage.set(`Searching for "${placeName}"...`);
+			
+			const placeData = await searchPlaceCoordinates(placeName);
+			await update({
+				latitude: placeData.latitude,
+				longitude: placeData.longitude
+			});
+		} catch (error) {
+			loading = false;
+			loadingMessage.reset();
+			errorMessage.set(`Error searching for place: ${error.message}`);
+			console.error('Error searching for place:', error);
+		}
+	};
+
 	onMount(() => {
 		const urlParams = $page.url.searchParams;
 		const lat = parseFloat(urlParams.get('lat'));
@@ -77,7 +97,7 @@
 	});
 </script>
 
-<Header updateRandom={() => update('random')} />
+<Header updateRandom={() => update('random')} {searchForPlace} />
 <main id="main" class="mx-auto mb-10 max-w-lg p-4 pb-24 pt-20">
 	{#if urlCoordinates}
 		<div class="mb-4">

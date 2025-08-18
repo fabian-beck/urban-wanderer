@@ -285,6 +285,52 @@ export async function getRandomPlaceCoordinates() {
 	}
 }
 
+export async function searchPlaceCoordinates(placeName) {
+	const lang = get(preferences).lang;
+	
+	// Search for the place on Wikipedia
+	const searchResponse = await fetch(
+		`https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(placeName)}&limit=5&format=json&origin=*`
+	);
+	const searchData = await searchResponse.json();
+	
+	if (!searchData[1] || searchData[1].length === 0) {
+		throw new Error(`No Wikipedia articles found for "${placeName}"`);
+	}
+	
+	// Try each search result until we find one with coordinates
+	for (const title of searchData[1]) {
+		try {
+			// Get page info including coordinates
+			const pageResponse = await fetch(
+				`https://${lang}.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=coordinates|extracts&exintro=1&explaintext=1&exlimit=1&format=json&origin=*`
+			);
+			const pageData = await pageResponse.json();
+			
+			const pages = pageData.query.pages;
+			const pageId = Object.keys(pages)[0];
+			const page = pages[pageId];
+			
+			// Check if this page has coordinates
+			if (page.coordinates && page.coordinates.length > 0) {
+				const coords = page.coordinates[0];
+				console.log(`Found coordinates for "${title}":`, coords);
+				return { 
+					latitude: coords.lat, 
+					longitude: coords.lon,
+					title: title,
+					description: page.extract
+				};
+			}
+		} catch (error) {
+			console.warn(`Error checking coordinates for "${title}":`, error);
+			continue;
+		}
+	}
+	
+	throw new Error(`No geographic coordinates found for "${placeName}"`);
+}
+
 async function wikipediaGeoSearchForPlaces(coordinates, lang) {
 	const response = await fetch(
 		`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.latitude}|${coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`

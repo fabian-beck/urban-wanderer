@@ -157,3 +157,4 @@ static/               # Static assets
 This application demonstrates modern web-to-mobile development patterns, AI integration, and location-based service architecture.
 
 - avoid redundant comments that stated obvious things or unnecessary historical context.
+- Don't start the development server (it is usually already running), use npm run build to test if everything compiles
