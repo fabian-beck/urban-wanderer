@@ -335,13 +335,12 @@
 						{#each $greenMap as row, rowIndex}
 							{#each row as cell, colIndex}
 								{#if cell}
-									<circle
-										cx={rowIndex * GRID_CELL_SIZE -
-											GRID_OFFSET_X +
-											(colIndex % 2) * GRID_HEX_OFFSET}
-										cy={colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
-										r={((GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
-										class="green-circle fill-current text-green-400 opacity-40"
+									{@const triangleX = rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
+									{@const triangleY = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
+									{@const triangleSize = ((GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
+									<polygon
+										points="{triangleX},{triangleY - triangleSize} {triangleX - triangleSize},{triangleY + triangleSize} {triangleX + triangleSize},{triangleY + triangleSize}"
+										class="green-triangle fill-current text-green-400 opacity-40"
 									/>
 								{/if}
 							{/each}
@@ -386,11 +385,12 @@
 									{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
 									{@const isVisible = distanceFromCenter < 450}
 									{@const shouldAnimate = $animatedActivityStipples.has(`${rowIndex}-${colIndex}`)}
-									<circle
-										cx={x}
-										cy={y}
-										r={((ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
-										class="activity-circle fill-current text-purple-400 {shouldAnimate
+									<rect
+										x={x - ((ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
+										y={y - ((ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
+										width={ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE * Math.min(1, cell)}
+										height={ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE * Math.min(1, cell)}
+										class="activity-square fill-current text-purple-400 {shouldAnimate
 											? 'animate-activity'
 											: ''}"
 										style="--animation-duration: {2.5 +
@@ -543,10 +543,11 @@
 				<g class="legend-right" transform="translate(260,340)">
 					{#if $preferences.labels?.includes('ACTIVITIES')}
 						<!-- Activity areas -->
-						<circle
-							cx="10"
-							cy="0"
-							r={(ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
+						<rect
+							x={10 - (ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
+							y={0 - (ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
+							width={ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE}
+							height={ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE}
 							class="fill-current text-purple-300"
 						/>
 						<text x="20" y="5" class="text-lg" text-anchor="start">Activity areas</text>
@@ -554,10 +555,10 @@
 
 					{#if $preferences.labels?.includes('NATURE')}
 						<!-- Green areas -->
-						<circle
-							cx="10"
-							cy={$preferences.labels?.includes('ACTIVITIES') ? 25 : 0}
-							r={(GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
+						{@const legendTriangleY = $preferences.labels?.includes('ACTIVITIES') ? 25 : 0}
+						{@const legendTriangleSize = (GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
+						<polygon
+							points="10,{legendTriangleY - legendTriangleSize} {10 - legendTriangleSize},{legendTriangleY + legendTriangleSize} {10 + legendTriangleSize},{legendTriangleY + legendTriangleSize}"
 							class="fill-current text-green-300"
 						/>
 						<text
@@ -627,7 +628,7 @@
 		}
 	}
 
-	.activity-circle.animate-activity {
+	.activity-square.animate-activity {
 		animation: activity-pulse var(--animation-duration) infinite ease-in-out;
 		animation-delay: var(--animation-delay);
 		transform-origin: center;
