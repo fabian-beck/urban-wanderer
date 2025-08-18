@@ -39,7 +39,7 @@ export async function loadWikipediaPlaces() {
 	return places;
 }
 
-export async function loadArticleTexts(places) {
+export async function loadArticleTexts(places, extractInsights = true) {
 	await Promise.all(
 		places.map(async (place) => {
 			if (!place.pageid) {
@@ -66,8 +66,10 @@ export async function loadArticleTexts(places) {
 			if (place.article.length > 20000) {
 				place.article = place.article.substring(0, 20000) + '...';
 			}
-			// extracts insights
-			place.insights = await extractInsightsFromArticle(place.article);
+			// extracts insights (only if requested)
+			if (extractInsights) {
+				place.insights = await extractInsightsFromArticle(place.article);
+			}
 		})
 	);
 }

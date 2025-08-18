@@ -266,9 +266,11 @@ function rate() {
 async function loadMetadata() {
 	loadWikipediaImageUrls('imageThumb', 100);
 	loadWikipediaImageUrls('image', 500);
-	await loadArticleTexts(get(placesHere));
-	await loadArticleTexts(get(placesSurrounding));
-	await loadArticleTexts(get(placesNearby));
+	await Promise.all([
+		loadArticleTexts(get(placesHere)),
+		loadArticleTexts(get(placesSurrounding)),
+		loadArticleTexts(get(placesNearby), false) // Skip insights extraction for nearby places
+	]);
 }
 
 function mergePlaces(placesTmp, placesOsm) {

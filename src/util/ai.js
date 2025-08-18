@@ -191,8 +191,8 @@ async function analyzeSinglePlace(place) {
 
 Available CLASSES are:
 ${Object.keys(CLASSES)
-	.map((classLabel) => `- ${classLabel}: ${CLASSES[classLabel].description}`)
-	.join('\n')}
+			.map((classLabel) => `- ${classLabel}: ${CLASSES[classLabel].description}`)
+			.join('\n')}
         
 Available LABELS are:
 ${LABELS.map((label) => `- ${label.value}: ${label.description}`).join('\n')}
@@ -407,40 +407,40 @@ ${get(coordinates).address}
 # The position is close to /in:
 
 ${get(placesHere)
-	.map(
-		(place) =>
-			`## ${place.title}: ${place.labels?.join(', ')}    	    
+				.map(
+					(place) =>
+						`## ${place.title}: ${place.labels?.join(', ')}    	    
 Rating: ${place.stars}
 
 ${place.insights || place.article || place.description || place.snippet || place.type || ''}
 `
-	)
-	.join('\n')}
+				)
+				.join('\n')}
 
 # Nearby places are:
 
 ${get(placesNearby)
-	.map(
-		(place) =>
-			`
+				.map(
+					(place) =>
+						`
 ## ${place.title} (${place.dist}m): ${place.labels?.join(', ')}
 Rating: ${place.stars}
     
-${place.insights || place.article || place.description || place.snippet || place.type || ''}
+${place.description || place.snippet || place.type || ''}
 `
-	)
-	.join('\n')}
+				)
+				.join('\n')}
 
 # The user is in:
 
 ${get(placesSurrounding)
-	.map(
-		(place) => `## ${place.title}
+				.map(
+					(place) => `## ${place.title}
     
 ${place.insights || place.article || place.description || place.snippet || place.type || ''}
     `
-	)
-	.join('\n')}
+				)
+				.join('\n')}
 
 
 ----------------------------------------------
@@ -449,8 +449,8 @@ ${place.insights || place.article || place.description || place.snippet || place
 
 User's preferences are the following topics:
 ${get(preferences)
-	.labels?.map((label) => `- ${label}`)
-	.join('\n')}
+				.labels?.map((label) => `- ${label}`)
+				.join('\n')}
 
 The story should be up to ${Math.min(Math.round(0.5 + (get(placesHere).length + get(placesSurrounding).length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places.
 Avoid giving directions or distances.
@@ -483,8 +483,8 @@ ${get(coordinates).address}
 
 The position is close to /in:
 ${get(placesHere)
-	.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`)
-	.join('\n')}
+					.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`)
+					.join('\n')}
 
 Strictly stick to the initially provided instructions and facts about the places.
 Write one to three paragraphs of text. 
@@ -518,13 +518,13 @@ Extract and list historic events from the following text descring nearby places.
 Put more emphasis on higher rated places. Answer in language '${get(preferences).lang}'.
 
 ${relevantPlaces
-	.map(
-		(place) =>
-			`# ${place.title}: ${place.labels?.join(', ')}
+			.map(
+				(place) =>
+					`# ${place.title}: ${place.labels?.join(', ')}
 Rating: ${place.stars}` +
-			`${place.article || place.description || place.snippet || place.type || ''}`
-	)
-	.join('\n\n')}
+					`${place.article || place.description || place.snippet || place.type || ''}`
+			)
+			.join('\n\n')}
 
 Only output a list of events in ascending temporal in JSON format.If events refer to a time range, translate the range to the start year of the range("year"), but give the range description in "date_string".Years BC should be negative.
 
