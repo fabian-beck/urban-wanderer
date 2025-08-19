@@ -2,7 +2,7 @@
 	import { Button } from 'flowbite-svelte';
 	import { ArrowRightOutline } from 'flowbite-svelte-icons';
 	import PlaceFact from './PlaceFact.svelte';
-	import { searchPlaceFacts } from '../util/ai.js';
+	import { searchPlaceFacts } from '../util/ai-facts.js';
 	import { Spinner } from 'flowbite-svelte';
 	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../constants.js';
 	import { preferences } from '../stores.js';

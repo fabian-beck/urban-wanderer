@@ -1,7 +1,8 @@
 <script>
 	import { Modal } from 'flowbite-svelte';
 	import { marked } from 'marked';
-	import { generateStory, textToSpeech } from '../util/ai.js';
+	import { generateStory } from '../util/ai-story.js';
+	import { textToSpeech } from '../util/ai-speech.js';
 	import { markPlacesInText } from '../util/text.js';
 	import { errorMessage, storyTexts, storyLoading, audioState, preferences, preloadedStory, preloadingStory, preloadNextStoryPart } from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';

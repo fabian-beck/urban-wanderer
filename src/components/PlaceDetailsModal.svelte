@@ -7,7 +7,7 @@
 		GlobeOutline,
 		DatabaseOutline
 	} from 'flowbite-svelte-icons';
-	import { summarizeArticle } from '../util/ai.js';
+	import { summarizeArticle } from '../util/ai-facts.js';
 	import { coordinates, placesSurrounding, preferences, placeDetailsVisible } from '../stores.js';
 	import { LABELS } from '../constants.js';
 	import PlaceStars from './PlaceStars.svelte';

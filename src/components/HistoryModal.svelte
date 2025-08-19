@@ -1,7 +1,7 @@
 <script>
 	import { Modal } from 'flowbite-svelte';
 	import { marked } from 'marked';
-	import { extractHistoricEvents } from '../util/ai.js';
+	import { extractHistoricEvents } from '../util/ai-history.js';
 	import { markPlacesInText } from '../util/text.js';
 	import { errorMessage, events } from '../stores.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';

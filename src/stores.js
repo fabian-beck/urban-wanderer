@@ -1,7 +1,10 @@
 import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
 import { CLASSES, LABELS, nArticles } from './constants.js';
-import { analyzePlaces, groupDuplicatePlaces, generateStory, extractInsightsFromArticle } from './util/ai.js';
+import { analyzePlaces } from './util/ai-analysis.js';
+import { groupDuplicatePlaces } from './util/ai-translation.js';
+import { generateStory } from './util/ai-story.js';
+import { extractInsightsFromArticle } from './util/ai-facts.js';
 import {
 	loadWikipediaPlaces,
 	loadWikipediaArticleTexts,
