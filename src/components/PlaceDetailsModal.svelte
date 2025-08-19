@@ -96,8 +96,8 @@ import { get } from 'svelte/store';
 							}) as label}
 							<div
 								class={$preferences.labels?.includes(label)
-									? 'mb-1 mr-2 rounded-full bg-primary-100 px-2 text-xs text-primary-800'
-									: 'mb-1 mr-2 rounded-full bg-gray-100 px-2 text-xs text-gray-600'}
+									? 'mb-1 mr-2 rounded-full bg-primary-100 px-2 text-sm text-primary-800'
+									: 'mb-1 mr-2 rounded-full bg-gray-100 px-2 text-sm text-gray-600'}
 							>
 								{getLabelName(label)}
 							</div>
