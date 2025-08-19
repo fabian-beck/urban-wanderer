@@ -112,13 +112,13 @@ function createPlaces() {
 				let previousTime = startTime;
 				loadingMessage.set('Loading places ...');
 				// Load maps and update stores
-				loadOsmWaterMap(get(coordinates)).then(mapData => waterMap.set(mapData));
-				loadOsmGreenMap(get(coordinates)).then(mapData => greenMap.set(mapData));
-				loadOsmActivityMap(get(coordinates)).then(mapData => activityMap.set(mapData));
+				loadOsmWaterMap(get(coordinates)).then((mapData) => waterMap.set(mapData));
+				loadOsmGreenMap(get(coordinates)).then((mapData) => greenMap.set(mapData));
+				loadOsmActivityMap(get(coordinates)).then((mapData) => activityMap.set(mapData));
 				let [placesTmp, placesOsm] = await Promise.allSettled([
-					loadWikipediaPlaces(get(coordinates), get(preferences), nArticles), 
+					loadWikipediaPlaces(get(coordinates), get(preferences), nArticles),
 					loadOsmPlaces(get(coordinates))
-				]).then(results => [
+				]).then((results) => [
 					results[0].status === 'fulfilled' ? results[0].value : [],
 					results[1].status === 'fulfilled' ? results[1].value : []
 				]);
@@ -126,8 +126,12 @@ function createPlaces() {
 				console.log('Time to load places (s):', ((Date.now() - startTime) / 1000).toFixed(2));
 				previousTime = Date.now();
 				loadingMessage.set('Grouping places ...');
-				const groupedPlaces = await groupDuplicatePlaces(get(places), get(coordinates), get(preferences));
-			set(groupedPlaces);
+				const groupedPlaces = await groupDuplicatePlaces(
+					get(places),
+					get(coordinates),
+					get(preferences)
+				);
+				set(groupedPlaces);
 				console.log('Time to group places (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
 				previousTime = Date.now();
 				loadingMessage.set('Loading article extracts ...');
@@ -136,7 +140,7 @@ function createPlaces() {
 				previousTime = Date.now();
 				loadingMessage.set('Analyzing places ...');
 				const analyzedPlaces = await analyzePlaces(get(places), get(preferences));
-			set(analyzedPlaces);
+				set(analyzedPlaces);
 				console.log('Places after analysis:', get(places));
 				console.log('Time to analyze places (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
 				console.log(
@@ -284,29 +288,35 @@ function rate() {
 
 async function loadMetadata() {
 	// Load images asynchronously and trigger store updates when complete
-	loadWikipediaImageUrls(get(places), 'imageThumb', 100, get(preferences).lang)
-		.then(() => places.set(get(places)));
-	loadWikipediaImageUrls(get(places), 'image', 500, get(preferences).lang)
-		.then(() => places.set(get(places)));
-	
+	loadWikipediaImageUrls(get(places), 'imageThumb', 100, get(preferences).lang).then(() =>
+		places.set(get(places))
+	);
+	loadWikipediaImageUrls(get(places), 'image', 500, get(preferences).lang).then(() =>
+		places.set(get(places))
+	);
+
 	await Promise.all([
 		loadWikipediaArticleTexts(get(placesHere), get(preferences).lang),
 		loadWikipediaArticleTexts(get(placesSurrounding), get(preferences).lang),
 		loadWikipediaArticleTexts(get(placesNearby), get(preferences).lang)
 	]);
-	
+
 	// Extract insights for places that have articles (only for here and surrounding places)
-	const placesWithArticles = [...get(placesHere), ...get(placesSurrounding)].filter(place => place.article);
-	await Promise.all(placesWithArticles.map(async (place) => {
-		place.insights = await extractInsightsFromArticle(place.article, get(preferences));
-	}));
+	const placesWithArticles = [...get(placesHere), ...get(placesSurrounding)].filter(
+		(place) => place.article
+	);
+	await Promise.all(
+		placesWithArticles.map(async (place) => {
+			place.insights = await extractInsightsFromArticle(place.article, get(preferences));
+		})
+	);
 }
 
 function mergePlaces(placesTmp, placesOsm) {
 	// Handle cases where inputs might be null/undefined
 	if (!placesTmp) placesTmp = [];
 	if (!placesOsm) placesOsm = [];
-	
+
 	placesTmp = placesTmp.map((place) => {
 		const osm = placesOsm.find((osm) => osm.title === place.title);
 		if (osm) {
@@ -339,7 +349,14 @@ async function pregenerateStoryInBackground() {
 	preloadingStory.set(false);
 
 	try {
-		const firstStory = await generateStory([], get(placesHere), get(placesNearby), get(placesSurrounding), get(coordinates), get(preferences));
+		const firstStory = await generateStory(
+			[],
+			get(placesHere),
+			get(placesNearby),
+			get(placesSurrounding),
+			get(coordinates),
+			get(preferences)
+		);
 		storyTexts.set([firstStory]);
 		storyLoading.set(false);
 		// Start preloading the next story part immediately
@@ -352,10 +369,17 @@ async function pregenerateStoryInBackground() {
 
 export async function preloadNextStoryPart(currentStories) {
 	if (get(preloadingStory)) return; // Already preloading
-	
+
 	preloadingStory.set(true);
 	try {
-		const nextStory = await generateStory(currentStories, get(placesHere), get(placesNearby), get(placesSurrounding), get(coordinates), get(preferences));
+		const nextStory = await generateStory(
+			currentStories,
+			get(placesHere),
+			get(placesNearby),
+			get(placesSurrounding),
+			get(coordinates),
+			get(preferences)
+		);
 		preloadedStory.set(nextStory);
 	} catch (error) {
 		console.error('Error preloading next story part:', error);
@@ -409,7 +433,7 @@ export async function searchForPlace(placeName) {
 		const { searchWikipediaPlaceCoordinates } = await import('./util/wikipedia.js');
 		loadingMessage.set(`Searching for "${placeName}"...`);
 		const placeData = await searchWikipediaPlaceCoordinates(placeName, get(preferences).lang);
-		
+
 		// Reset loading state and call updateLocation (which will handle its own loading state)
 		loading.set(false);
 		await updateLocation({

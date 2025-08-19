@@ -159,3 +159,5 @@ This application demonstrates modern web-to-mobile development patterns, AI inte
 - avoid redundant comments that stated obvious things or unnecessary historical context.
 - Don't start the development server (it is usually already running), use npm run build to test if everything compiles
 - Contants should be defined in @src\constants.js
+
+- use linter (npm run lint) after substantial code edits

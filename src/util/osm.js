@@ -131,8 +131,7 @@ export function latLonToY(lat, lon, centerLat, centerLon) {
 // Convert coordinates to grid position accounting for alternating row offset
 export function coordsToGridX(lat, lon, centerLat, centerLon) {
 	const GRID_CENTER_OFFSET = GRID_ARRAY_SIZE / 2; // Center offset for grid array
-	const baseX =
-		latLonToX(lat, lon, centerLat, centerLon) / GRID_CELL_SIZE + GRID_CENTER_OFFSET;
+	const baseX = latLonToX(lat, lon, centerLat, centerLon) / GRID_CELL_SIZE + GRID_CENTER_OFFSET;
 	const y = Math.floor(
 		latLonToY(lat, lon, centerLat, centerLon) / GRID_CELL_SIZE + GRID_CENTER_OFFSET
 	);
@@ -350,18 +349,8 @@ export async function loadOsmGreenMap(coordinates) {
 			// Convert nodes to grid coordinates
 			const gridNodes = nodes
 				.map((node) => ({
-					x: coordsToGridX(
-						node.lat,
-						node.lon,
-						coordinates.latitude,
-						coordinates.longitude
-					),
-					y: coordsToGridY(
-						node.lat,
-						node.lon,
-						coordinates.latitude,
-						coordinates.longitude
-					)
+					x: coordsToGridX(node.lat, node.lon, coordinates.latitude, coordinates.longitude),
+					y: coordsToGridY(node.lat, node.lon, coordinates.latitude, coordinates.longitude)
 				}))
 				.filter(
 					(node) =>
@@ -538,18 +527,8 @@ out skel qt;
 
 		// Fill in individual trees
 		for (const tree of trees) {
-			const x = coordsToGridX(
-				tree.lat,
-				tree.lon,
-				coordinates.latitude,
-				coordinates.longitude
-			);
-			const y = coordsToGridY(
-				tree.lat,
-				tree.lon,
-				coordinates.latitude,
-				coordinates.longitude
-			);
+			const x = coordsToGridX(tree.lat, tree.lon, coordinates.latitude, coordinates.longitude);
+			const y = coordsToGridY(tree.lat, tree.lon, coordinates.latitude, coordinates.longitude);
 			increaseGreenLevel(x, y, 0.6);
 		}
 
@@ -711,18 +690,8 @@ out skel qt;
 
 		// Fill in individual activity nodes
 		for (const node of activityNodes) {
-			const x = coordsToGridX(
-				node.lat,
-				node.lon,
-				coordinates.latitude,
-				coordinates.longitude
-			);
-			const y = coordsToGridY(
-				node.lat,
-				node.lon,
-				coordinates.latitude,
-				coordinates.longitude
-			);
+			const x = coordsToGridX(node.lat, node.lon, coordinates.latitude, coordinates.longitude);
+			const y = coordsToGridY(node.lat, node.lon, coordinates.latitude, coordinates.longitude);
 			// Higher intensity for individual shops/restaurants/bars
 			increaseActivityLevel(x, y, 0.8);
 		}

@@ -30,50 +30,53 @@
 	const GRID_OFFSET_Y = SVG_CENTER;
 	const GRID_HEX_OFFSET = GRID_CELL_SIZE / 2;
 
-	const placesToHighlight = derived([places, placesSurrounding], ([$places, $placesSurrounding]) => {
-		const highlighted = [];
-		const minDistance = PLACE_MIN_DISTANCE;
+	const placesToHighlight = derived(
+		[places, placesSurrounding],
+		([$places, $placesSurrounding]) => {
+			const highlighted = [];
+			const minDistance = PLACE_MIN_DISTANCE;
 
-		if (!$places || !$placesSurrounding) return highlighted;
+			if (!$places || !$placesSurrounding) return highlighted;
 
-		const filteredPlaces = $places.filter(
-			(place) =>
-				place.lon &&
-				place.lat &&
-				place.stars > 0 &&
-				!$placesSurrounding.find((p) => p.title === place.title)
-		);
+			const filteredPlaces = $places.filter(
+				(place) =>
+					place.lon &&
+					place.lat &&
+					place.stars > 0 &&
+					!$placesSurrounding.find((p) => p.title === place.title)
+			);
 
-		// sort places by stars (descending; primary) and by place.dist (ascending; secondary)
-		const sortedPlaces = filteredPlaces.sort((a, b) => {
-			if (a.stars !== b.stars) {
-				return b.stars - a.stars; // Sort by stars in descending order
-			} else if (a.dist !== b.dist) {
-				return a.dist - b.dist; // Sort by distance in ascending order
-			}
-			return 0; // No sorting needed if both stars and distance are equal
-		});
-
-		sortedPlaces.forEach((place) => {
-			if (place.lon && place.lat && place.stars > 1) {
-				const isTooClose = highlighted.some((highlightedPlace) => {
-					const distance = haversineDistance(
-						place.lat,
-						place.lon,
-						highlightedPlace.lat,
-						highlightedPlace.lon
-					);
-					return distance < minDistance;
-				});
-
-				if (!isTooClose) {
-					highlighted.push(place);
+			// sort places by stars (descending; primary) and by place.dist (ascending; secondary)
+			const sortedPlaces = filteredPlaces.sort((a, b) => {
+				if (a.stars !== b.stars) {
+					return b.stars - a.stars; // Sort by stars in descending order
+				} else if (a.dist !== b.dist) {
+					return a.dist - b.dist; // Sort by distance in ascending order
 				}
-			}
-		});
+				return 0; // No sorting needed if both stars and distance are equal
+			});
 
-		return highlighted;
-	});
+			sortedPlaces.forEach((place) => {
+				if (place.lon && place.lat && place.stars > 1) {
+					const isTooClose = highlighted.some((highlightedPlace) => {
+						const distance = haversineDistance(
+							place.lat,
+							place.lon,
+							highlightedPlace.lat,
+							highlightedPlace.lon
+						);
+						return distance < minDistance;
+					});
+
+					if (!isTooClose) {
+						highlighted.push(place);
+					}
+				}
+			});
+
+			return highlighted;
+		}
+	);
 
 	const animatedWaterStipples = derived(waterMap, ($waterMap) => {
 		if (!$waterMap) return new Set();
@@ -337,11 +340,15 @@
 						{#each $greenMap as row, rowIndex}
 							{#each row as cell, colIndex}
 								{#if cell}
-									{@const triangleX = rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
+									{@const triangleX =
+										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
 									{@const triangleY = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
-									{@const triangleSize = ((GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
+									{@const triangleSize =
+										((GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
 									<polygon
-										points="{triangleX},{triangleY - triangleSize} {triangleX - triangleSize},{triangleY + triangleSize} {triangleX + triangleSize},{triangleY + triangleSize}"
+										points="{triangleX},{triangleY - triangleSize} {triangleX -
+											triangleSize},{triangleY + triangleSize} {triangleX +
+											triangleSize},{triangleY + triangleSize}"
 										class="green-triangle fill-current text-green-400 opacity-40"
 									/>
 								{/if}
@@ -357,8 +364,6 @@
 								{@const x =
 									rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
 								{@const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
-								{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
-								{@const isVisible = distanceFromCenter < 450}
 								{@const shouldAnimate = $animatedWaterStipples.has(`${rowIndex}-${colIndex}`)}
 								<circle
 									cx={x}
@@ -384,8 +389,6 @@
 									{@const x =
 										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
 									{@const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
-									{@const distanceFromCenter = Math.sqrt(x * x + y * y)}
-									{@const isVisible = distanceFromCenter < 450}
 									{@const shouldAnimate = $animatedActivityStipples.has(`${rowIndex}-${colIndex}`)}
 									<rect
 										x={x - ((ACTIVITY_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
@@ -560,7 +563,9 @@
 						{@const legendTriangleY = $preferences.labels?.includes('ACTIVITIES') ? 25 : 0}
 						{@const legendTriangleSize = (GREEN_STIPPLE_SIZE * GRID_CELL_SIZE) / 2}
 						<polygon
-							points="10,{legendTriangleY - legendTriangleSize} {10 - legendTriangleSize},{legendTriangleY + legendTriangleSize} {10 + legendTriangleSize},{legendTriangleY + legendTriangleSize}"
+							points="10,{legendTriangleY - legendTriangleSize} {10 -
+								legendTriangleSize},{legendTriangleY + legendTriangleSize} {10 +
+								legendTriangleSize},{legendTriangleY + legendTriangleSize}"
 							class="fill-current text-green-300"
 						/>
 						<text

@@ -2,7 +2,12 @@ import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants.js';
 
 // Generate a comment about the current location
-export async function generateLocationComment(placesHere, placesSurrounding, coordinates, preferences) {
+export async function generateLocationComment(
+	placesHere,
+	placesSurrounding,
+	coordinates,
+	preferences
+) {
 	const instructions = `You are a ${preferences.guideCharacter} city guide providing a brief, characterful comment about the user's current location.
 
 Write a short statement (just a short catch phrase) that captures the essence of this place. Answer in language '${preferences.lang}'.
@@ -11,10 +16,16 @@ Write a short statement (just a short catch phrase) that captures the essence of
 ${coordinates.address}
 
 # Places here (close by):
-${placesHere.slice(0, 5).map(place => `- ${place.title} (${place.labels?.join(', ') || 'no labels'})`).join('\n')}
+${placesHere
+	.slice(0, 5)
+	.map((place) => `- ${place.title} (${place.labels?.join(', ') || 'no labels'})`)
+	.join('\n')}
 
 # Surrounding area:
-${placesSurrounding.slice(0, 3).map(place => `- ${place.title}`).join('\n')}
+${placesSurrounding
+	.slice(0, 3)
+	.map((place) => `- ${place.title}`)
+	.join('\n')}
 
 # Important guidelines:
 - Match your personality as a ${preferences.guideCharacter} guide

@@ -3,9 +3,18 @@
 	import { marked } from 'marked';
 	import { generateStory } from '../util/ai-story.js';
 	import { textToSpeech } from '../util/ai-speech.js';
-import { get } from 'svelte/store';
+	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
-	import { errorMessage, storyTexts, storyLoading, audioState, preferences, preloadedStory, preloadingStory, preloadNextStoryPart } from '../stores.js';
+	import {
+		errorMessage,
+		storyTexts,
+		storyLoading,
+		audioState,
+		preferences,
+		preloadedStory,
+		preloadingStory,
+		preloadNextStoryPart
+	} from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
 	import { Button, Spinner, Alert, CloseButton } from 'flowbite-svelte';
 
@@ -24,14 +33,14 @@ import { get } from 'svelte/store';
 				// Generate new story if no preloaded version
 				nextStoryText = await generateStory($storyTexts);
 			}
-			
+
 			const newStoryTexts = [...$storyTexts, nextStoryText];
 			$storyTexts = newStoryTexts;
-			
+
 			if (visible && $preferences.audio) {
 				textToSpeech(nextStoryText, audioState, get(preferences));
 			}
-			
+
 			// Start preloading the next story part
 			preloadNextStoryPart(newStoryTexts);
 		} catch (error) {
@@ -112,11 +121,11 @@ import { get } from 'svelte/store';
 				{/each}
 				{#if !loading}
 					<div class="mb-2 flex justify-end">
-						<Button 
-							on:click={updateStory} 
-							pill 
-							size="xs" 
-							outline 
+						<Button
+							on:click={updateStory}
+							pill
+							size="xs"
+							outline
 							class="mt-2"
 							disabled={$preloadingStory}
 						>

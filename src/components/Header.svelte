@@ -1,6 +1,16 @@
 <script>
 	import { appName } from '../constants.js';
-	import { Navbar, NavBrand, NavHamburger, NavUl, NavLi, Modal, Button, Input, Label } from 'flowbite-svelte';
+	import {
+		Navbar,
+		NavBrand,
+		NavHamburger,
+		NavUl,
+		NavLi,
+		Modal,
+		Button,
+		Input,
+		Label
+	} from 'flowbite-svelte';
 	import UserPreferences from './UserPreferences.svelte';
 
 	export let updateRandom;
@@ -69,12 +79,16 @@
 			/>
 		</div>
 		<div class="flex justify-end space-x-2">
-			<Button color="alternative" on:click={() => { searchModalVisible = false; searchQuery = ''; }}>
+			<Button
+				color="alternative"
+				on:click={() => {
+					searchModalVisible = false;
+					searchQuery = '';
+				}}
+			>
 				Cancel
 			</Button>
-			<Button type="submit" disabled={!searchQuery.trim()}>
-				Search
-			</Button>
+			<Button type="submit" disabled={!searchQuery.trim()}>Search</Button>
 		</div>
 	</form>
 </Modal>

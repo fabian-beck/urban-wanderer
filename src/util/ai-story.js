@@ -2,7 +2,14 @@ import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants.js';
 
 // generate story about the user position
-export async function generateStory(storyTexts, placesHere, placesNearby, placesSurrounding, coordinates, preferences) {
+export async function generateStory(
+	storyTexts,
+	placesHere,
+	placesNearby,
+	placesSurrounding,
+	coordinates,
+	preferences
+) {
 	if (!storyTexts) {
 		storyTexts = [];
 	}
@@ -20,40 +27,40 @@ ${coordinates.address}
 # The position is close to /in:
 
 ${placesHere
-			.map(
-				(place) =>
-					`## ${place.title}: ${place.labels?.join(', ')}    	    
+	.map(
+		(place) =>
+			`## ${place.title}: ${place.labels?.join(', ')}    	    
 Rating: ${place.stars}
 
 ${place.insights || place.article || place.description || place.snippet || place.type || ''}
 `
-			)
-			.join('\n')}
+	)
+	.join('\n')}
 
 # Nearby places are:
 
 ${placesNearby
-			.map(
-				(place) =>
-					`
+	.map(
+		(place) =>
+			`
 ## ${place.title} (${place.dist}m): ${place.labels?.join(', ')}
 Rating: ${place.stars}
     
 ${place.description || place.snippet || place.type || ''}
 `
-			)
-			.join('\n')}
+	)
+	.join('\n')}
 
 # The user is in:
 
 ${placesSurrounding
-			.map(
-				(place) => `## ${place.title}
+	.map(
+		(place) => `## ${place.title}
     
 ${place.insights || place.article || place.description || place.snippet || place.type || ''}
     `
-			)
-			.join('\n')}
+	)
+	.join('\n')}
 
 
 ----------------------------------------------
@@ -61,9 +68,7 @@ ${place.insights || place.article || place.description || place.snippet || place
 # IMPORTANT INSTUCTIONS:
 
 User's preferences are the following topics:
-${preferences
-			.labels?.map((label) => `- ${label}`)
-			.join('\n')}
+${preferences.labels?.map((label) => `- ${label}`).join('\n')}
 
 The story should be up to ${Math.min(Math.round(0.5 + (placesHere.length + placesSurrounding.length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places.
 Avoid giving directions or distances.
@@ -95,9 +100,7 @@ Remember, the user is at this position:
 ${coordinates.address}
 
 The position is close to /in:
-${placesHere
-				.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`)
-				.join('\n')}
+${placesHere.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`).join('\n')}
 
 Strictly stick to the initially provided instructions and facts about the places.
 Write one to three paragraphs of text. 

@@ -8,8 +8,14 @@
 		DatabaseOutline
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai-facts.js';
-import { get } from 'svelte/store';
-	import { coordinates, placesSurrounding, preferences, placeDetailsVisible, updateLocation } from '../stores.js';
+	import { get } from 'svelte/store';
+	import {
+		coordinates,
+		placesSurrounding,
+		preferences,
+		placeDetailsVisible,
+		updateLocation
+	} from '../stores.js';
 	import { LABELS } from '../constants.js';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
@@ -54,9 +60,15 @@ import { get } from 'svelte/store';
 					: `https://${place.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${place.wikipedia.split(':')[1]}&origin=*`;
 				const response = await fetch(url);
 				const data = await response.json();
-				summary = await summarizeArticle(Object.values(data.query.pages)[0].extract, get(preferences));
+				summary = await summarizeArticle(
+					Object.values(data.query.pages)[0].extract,
+					get(preferences)
+				);
 			} else if (place.description) {
-				summary = await summarizeArticle(`${place.title}. ${place.description} (${place.type})`, get(preferences));
+				summary = await summarizeArticle(
+					`${place.title}. ${place.description} (${place.type})`,
+					get(preferences)
+				);
 			}
 		})();
 	});
@@ -74,12 +86,12 @@ import { get } from 'svelte/store';
 	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
 		{#if place.image}
-			<img 
+			<img
 				bind:this={imageElement}
-				src={place.image} 
-				alt={place.title} 
+				src={place.image}
+				alt={place.title}
 				on:load={onImageLoad}
-				class="mb-2 w-full {isPortrait ? 'aspect-square object-cover' : 'h-64 object-cover'}" 
+				class="mb-2 w-full {isPortrait ? 'aspect-square object-cover' : 'h-64 object-cover'}"
 			/>
 		{/if}
 		<div class="p-4">

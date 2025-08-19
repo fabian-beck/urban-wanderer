@@ -21,7 +21,6 @@
 
 <div class="mt-1 flex text-left text-xs {detail ? 'flex-col' : 'h-5'}">
 	{#if item.starDescriptions?.length > 0}
-		{@const allStars = item.starDescriptions.reduce((acc, desc) => acc + desc.number, 0)}
 		{#each item.starDescriptions as starDescription, groupIndex}
 			{@const starOffset = item.starDescriptions
 				.slice(0, groupIndex)

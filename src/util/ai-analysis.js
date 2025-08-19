@@ -11,8 +11,8 @@ async function analyzeSinglePlace(place, preferences) {
 
 Available CLASSES are:
 ${Object.keys(CLASSES)
-		.map((classLabel) => `- ${classLabel}: ${CLASSES[classLabel].description}`)
-		.join('\n')}
+	.map((classLabel) => `- ${classLabel}: ${CLASSES[classLabel].description}`)
+	.join('\n')}
         
 Available LABELS are:
 ${LABELS.map((label) => `- ${label.value}: ${label.description}`).join('\n')}
@@ -107,7 +107,9 @@ export async function analyzePlaces(places, preferences) {
 	const placesWithoutCachedAnalysis = places.filter((place) => !analysisCache[place.title]);
 	if (placesWithoutCachedAnalysis.length > 0) {
 		// analyze each place separately, but concurrently
-		await Promise.all(placesWithoutCachedAnalysis.map((place) => analyzeSinglePlace(place, preferences)));
+		await Promise.all(
+			placesWithoutCachedAnalysis.map((place) => analyzeSinglePlace(place, preferences))
+		);
 	}
 	const newPlaces = places.map((place) => ({
 		...place,

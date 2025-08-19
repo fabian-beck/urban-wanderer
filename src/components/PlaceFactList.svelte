@@ -3,7 +3,7 @@
 	import { ArrowRightOutline } from 'flowbite-svelte-icons';
 	import PlaceFact from './PlaceFact.svelte';
 	import { searchPlaceFacts } from '../util/ai-facts.js';
-import { coordinates } from '../stores.js';
+	import { coordinates } from '../stores.js';
 	import { Spinner } from 'flowbite-svelte';
 	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../constants.js';
 	import { preferences } from '../stores.js';
@@ -81,7 +81,6 @@ import { coordinates } from '../stores.js';
 	function simpleLayout(facts) {
 		const result = [];
 		let i = 0;
-		let rowNum = 1;
 
 		while (i < facts.length) {
 			// Try to fill a complete row (4 columns)
@@ -147,7 +146,6 @@ import { coordinates } from '../stores.js';
 					result.push({ ...item.fact, widthSpan: item.minWidth });
 				});
 			}
-			rowNum++;
 		}
 
 		return result;

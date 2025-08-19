@@ -2,7 +2,12 @@ import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants.js';
 
 // extract and list historic events
-export async function extractHistoricEvents(placesHere, placesSurrounding, coordinates, preferences) {
+export async function extractHistoricEvents(
+	placesHere,
+	placesSurrounding,
+	coordinates,
+	preferences
+) {
 	let relevantPlaces = placesHere.filter((place) => place.stars > 2);
 	if (relevantPlaces.length < 2) {
 		relevantPlaces.push(...placesSurrounding);
@@ -14,13 +19,13 @@ Extract and list historic events from the following text descring nearby places.
 Put more emphasis on higher rated places. Answer in language '${preferences.lang}'.
 
 ${relevantPlaces
-			.map(
-				(place) =>
-					`# ${place.title}: ${place.labels?.join(', ')}
+	.map(
+		(place) =>
+			`# ${place.title}: ${place.labels?.join(', ')}
 Rating: ${place.stars}` +
-					`${place.article || place.description || place.snippet || place.type || ''}`
-			)
-			.join('\n\n')}
+			`${place.article || place.description || place.snippet || place.type || ''}`
+	)
+	.join('\n\n')}
 
 Only output a list of events in ascending temporal in JSON format.If events refer to a time range, translate the range to the start year of the range("year"), but give the range description in "date_string".Years BC should be negative.
 

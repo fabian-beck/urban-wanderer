@@ -6,7 +6,9 @@ export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
 	}
 	const places = [];
 	preferences.sourceLanguages?.forEach(async (lang) => {
-		places.push(...(await wikipediaGeoSearchForPlaces(coordinates, lang, preferences.radius, nArticles)));
+		places.push(
+			...(await wikipediaGeoSearchForPlaces(coordinates, lang, preferences.radius, nArticles))
+		);
 	});
 	const searchAndAddPlace = async (title) => {
 		if (title && !places.find((place) => place?.title === title)) {
@@ -176,7 +178,6 @@ export async function getRandomWikipediaPlaceCoordinates(lang) {
 }
 
 export async function searchWikipediaPlaceCoordinates(placeName, lang) {
-
 	// Search for the place on Wikipedia
 	const searchResponse = await fetch(
 		`https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(placeName)}&limit=5&format=json&origin=*`
@@ -261,7 +262,7 @@ async function wikipediaNameSearchForPlace(name, coordinates, lang) {
 		const distance =
 			Math.sqrt(
 				Math.pow(coords.lat - coordinates.latitude, 2) +
-				Math.pow(coords.lon - coordinates.longitude, 2)
+					Math.pow(coords.lon - coordinates.longitude, 2)
 			) * 111139; // convert degrees to meters
 		// if close enough, return place
 		if (distance < 10000) {

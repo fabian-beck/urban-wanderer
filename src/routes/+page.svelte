@@ -3,13 +3,9 @@
 	import { goto } from '$app/navigation';
 	import {
 		coordinates,
-		places,
 		errorMessage,
-		storyTexts,
 		loadingMessage,
 		heading,
-		events,
-		preferences,
 		updateLocation,
 		searchForPlace,
 		loading
@@ -21,7 +17,6 @@
 	import { appName } from '../constants.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
-	import { get } from 'svelte/store';
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
 	let urlCoordinates = null;
@@ -56,7 +51,13 @@
 <main id="main" class="mx-auto mb-10 max-w-lg p-4 pb-24 pt-20">
 	{#if urlCoordinates}
 		<div class="mb-4">
-			<Button on:click={() => { updateLocation(urlCoordinates); urlCoordinates = null; }} class="w-full">
+			<Button
+				on:click={() => {
+					updateLocation(urlCoordinates);
+					urlCoordinates = null;
+				}}
+				class="w-full"
+			>
 				Jump to {urlCoordinates.latitude.toFixed(4)}, {urlCoordinates.longitude.toFixed(4)}
 			</Button>
 		</div>

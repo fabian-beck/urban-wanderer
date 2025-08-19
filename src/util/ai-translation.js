@@ -61,7 +61,9 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then
 }
 
 export async function groupDuplicatePlaces(places, coordinates, preferences) {
-	const translations = await Promise.all(places.map((place) => translatePlaceName(place, preferences)));
+	const translations = await Promise.all(
+		places.map((place) => translatePlaceName(place, preferences))
+	);
 	console.log('Translations:', translations);
 
 	const levenshtein = (a, b) => {
