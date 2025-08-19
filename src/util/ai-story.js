@@ -1,32 +1,25 @@
-import {
-	placesHere,
-	placesNearby,
-	coordinates,
-	preferences,
-	placesSurrounding
-} from '../stores.js';
-import { get } from 'svelte/store';
 import { openai, getAiModel } from './ai-core.js';
+import { AI_REASONING_EFFORT } from '../constants.js';
 
 // generate story about the user position
-export async function generateStory(storyTexts) {
+export async function generateStory(storyTexts, placesHere, placesNearby, placesSurrounding, coordinates, preferences) {
 	if (!storyTexts) {
 		storyTexts = [];
 	}
 	const initialMessage = {
 		role: 'system',
 		content: `
-You are a city guide: ${get(preferences).guideCharacter}, and always concise and factual.
+You are a city guide: ${preferences.guideCharacter}, and always concise and factual.
 
-Tell something interesting about the user's current position. Answer in language '${get(preferences).lang}'.
+Tell something interesting about the user's current position. Answer in language '${preferences.lang}'.
 
 # The user's current position is:
 
-${get(coordinates).address}
+${coordinates.address}
 
 # The position is close to /in:
 
-${get(placesHere)
+${placesHere
 			.map(
 				(place) =>
 					`## ${place.title}: ${place.labels?.join(', ')}    	    
@@ -39,7 +32,7 @@ ${place.insights || place.article || place.description || place.snippet || place
 
 # Nearby places are:
 
-${get(placesNearby)
+${placesNearby
 			.map(
 				(place) =>
 					`
@@ -53,7 +46,7 @@ ${place.description || place.snippet || place.type || ''}
 
 # The user is in:
 
-${get(placesSurrounding)
+${placesSurrounding
 			.map(
 				(place) => `## ${place.title}
     
@@ -68,11 +61,11 @@ ${place.insights || place.article || place.description || place.snippet || place
 # IMPORTANT INSTUCTIONS:
 
 User's preferences are the following topics:
-${get(preferences)
+${preferences
 			.labels?.map((label) => `- ${label}`)
 			.join('\n')}
 
-The story should be up to ${Math.min(Math.round(0.5 + (get(placesHere).length + get(placesSurrounding).length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places.
+The story should be up to ${Math.min(Math.round(0.5 + (placesHere.length + placesSurrounding.length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places.
 Avoid giving directions or distances.
 
 Keep the language as concise as possible and factual. 
@@ -85,8 +78,8 @@ Just give summary of the most important information, but do not reply to the use
 Do not welcome the user or ask for feedback.
 Do not mention the exact address and consider that GPS coordinates are not always exact.
 
-Remember that you enact a ${get(preferences).guideCharacter} guide and take this role seriously towards exaggeration and over-enthusiasm.
-Consider that the user is ${get(preferences).familiarity} with the area; select the facts and adapt the explanations accordingly.
+Remember that you enact a ${preferences.guideCharacter} guide and take this role seriously towards exaggeration and over-enthusiasm.
+Consider that the user is ${preferences.familiarity} with the area; select the facts and adapt the explanations accordingly.
 `
 	};
 	let messages = [
@@ -99,10 +92,10 @@ Consider that the user is ${get(preferences).familiarity} with the area; select 
 			content: `Tell the user more about something different. You may focus on something specific, but never repeat yourself.
 
 Remember, the user is at this position:
-${get(coordinates).address}
+${coordinates.address}
 
 The position is close to /in:
-${get(placesHere)
+${placesHere
 				.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`)
 				.join('\n')}
 
@@ -114,9 +107,9 @@ Give the text a headline marked in bold font.
 	}
 	console.log('Story writing instructions', messages);
 	const response = await openai.responses.create({
-		model: getAiModel('advanced'),
+		model: getAiModel('advanced', preferences),
 		reasoning: {
-			effort: 'minimal'
+			effort: AI_REASONING_EFFORT
 		},
 		input: messages
 	});

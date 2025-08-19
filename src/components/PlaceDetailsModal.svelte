@@ -8,6 +8,7 @@
 		DatabaseOutline
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai-facts.js';
+import { get } from 'svelte/store';
 	import { coordinates, placesSurrounding, preferences, placeDetailsVisible } from '../stores.js';
 	import { LABELS } from '../constants.js';
 	import PlaceStars from './PlaceStars.svelte';
@@ -44,9 +45,9 @@
 					: `https://${place.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${place.wikipedia.split(':')[1]}&origin=*`;
 				const response = await fetch(url);
 				const data = await response.json();
-				summary = await summarizeArticle(Object.values(data.query.pages)[0].extract);
+				summary = await summarizeArticle(Object.values(data.query.pages)[0].extract, get(preferences));
 			} else if (place.description) {
-				summary = await summarizeArticle(`${place.title}. ${place.description} (${place.type})`);
+				summary = await summarizeArticle(`${place.title}. ${place.description} (${place.type})`, get(preferences));
 			}
 		})();
 	});

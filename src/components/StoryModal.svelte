@@ -3,6 +3,7 @@
 	import { marked } from 'marked';
 	import { generateStory } from '../util/ai-story.js';
 	import { textToSpeech } from '../util/ai-speech.js';
+import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
 	import { errorMessage, storyTexts, storyLoading, audioState, preferences, preloadedStory, preloadingStory, preloadNextStoryPart } from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
@@ -28,7 +29,7 @@
 			$storyTexts = newStoryTexts;
 			
 			if (visible && $preferences.audio) {
-				textToSpeech(nextStoryText);
+				textToSpeech(nextStoryText, audioState, get(preferences));
 			}
 			
 			// Start preloading the next story part
@@ -97,7 +98,7 @@
 					</div>
 					<div class="mb-2 flex justify-end">
 						<Button
-							on:click={() => textToSpeech(storyText)}
+							on:click={() => textToSpeech(storyText, audioState, get(preferences))}
 							pill
 							size="sm"
 							outline

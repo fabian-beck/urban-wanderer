@@ -1,11 +1,9 @@
-import { preferences, places } from '../stores.js';
-import { get } from 'svelte/store';
-import { LABELS, CLASSES } from '../constants.js';
+import { LABELS, CLASSES, AI_REASONING_EFFORT } from '../constants.js';
 import { openai, getAiModel } from './ai-core.js';
 
 const analysisCache = {};
 
-async function analyzeSinglePlace(place) {
+async function analyzeSinglePlace(place, preferences) {
 	const instructions = `You are a chat assistant helping a user analyze places:
 (1) To classify them
 (2) To assign labels to them
@@ -62,9 +60,9 @@ FURTHER INSTRUCTIONS:
 `;
 	const dataString = `* ${place.title}  (${place.type || ''}): ${place.snippet || place.description || ''}`;
 	const response = await openai.responses.create({
-		model: getAiModel('simple'),
+		model: getAiModel('simple', preferences),
 		reasoning: {
-			effort: 'minimal'
+			effort: AI_REASONING_EFFORT
 		},
 		input: [
 			{
@@ -103,16 +101,15 @@ FURTHER INSTRUCTIONS:
 }
 
 // ToDo: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
-export async function analyzePlaces() {
-	const $places = get(places);
-	console.log('Places before analysis:', $places);
+export async function analyzePlaces(places, preferences) {
+	console.log('Places before analysis:', places);
 	// get places with cached labels (labelsCache)
-	const placesWithoutCachedAnalysis = $places.filter((place) => !analysisCache[place.title]);
+	const placesWithoutCachedAnalysis = places.filter((place) => !analysisCache[place.title]);
 	if (placesWithoutCachedAnalysis.length > 0) {
 		// analyze each place separately, but concurrently
-		await Promise.all(placesWithoutCachedAnalysis.map((place) => analyzeSinglePlace(place)));
+		await Promise.all(placesWithoutCachedAnalysis.map((place) => analyzeSinglePlace(place, preferences)));
 	}
-	const newPlaces = $places.map((place) => ({
+	const newPlaces = places.map((place) => ({
 		...place,
 		labels: analysisCache[place.title]?.labels,
 		cls: analysisCache[place.title]?.cls,
@@ -120,5 +117,5 @@ export async function analyzePlaces() {
 	}));
 	// remove non-geographic classes
 	const nonGeoClasses = Object.keys(CLASSES).filter((classLabel) => CLASSES[classLabel]?.nonGeo);
-	places.set(newPlaces.filter((place) => !nonGeoClasses.includes(place.cls)));
+	return newPlaces.filter((place) => !nonGeoClasses.includes(place.cls));
 }

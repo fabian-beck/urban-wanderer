@@ -2,6 +2,8 @@
 	import { Modal } from 'flowbite-svelte';
 	import { marked } from 'marked';
 	import { extractHistoricEvents } from '../util/ai-history.js';
+import { placesHere, placesSurrounding, coordinates, preferences } from '../stores.js';
+import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
 	import { errorMessage, events } from '../stores.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';
@@ -14,7 +16,7 @@
 	const updateHistory = async () => {
 		loading = true;
 		try {
-			let eventsTmp = await extractHistoricEvents();
+			let eventsTmp = await extractHistoricEvents(get(placesHere), get(placesSurrounding), get(coordinates), get(preferences));
 			// sort events by year
 			eventsTmp = eventsTmp.sort((a, b) => {
 				if (a.year && b.year) {

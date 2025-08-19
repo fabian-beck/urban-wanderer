@@ -1,11 +1,9 @@
-import { audioState, preferences } from '../stores.js';
-import { get } from 'svelte/store';
 import { openai } from './ai-core.js';
 
 let audio = null;
 
-export async function textToSpeech(text) {
-	if (get(audioState) === 'playing') {
+export async function textToSpeech(text, audioState, preferences) {
+	if (audioState.get() === 'playing') {
 		audioState.set('paused');
 		if (audio) {
 			audio.pause();
@@ -14,7 +12,7 @@ export async function textToSpeech(text) {
 	audioState.set('loading');
 	console.log('Text to speech:', text);
 	const instructions = `
-You are ${get(preferences).guideCharacter} city guide and speak accordingly.
+You are ${preferences.guideCharacter} city guide and speak accordingly.
 `;
 	const response = await openai.audio.speech.create({
 		model: 'gpt-4o-mini-tts',
@@ -28,7 +26,7 @@ You are ${get(preferences).guideCharacter} city guide and speak accordingly.
 		audio.pause();
 	}
 	audio = new Audio(URL.createObjectURL(blob));
-	if (get(audioState) === 'paused') {
+	if (audioState.get() === 'paused') {
 		return;
 	}
 	document.querySelectorAll('audio').forEach((audio) => audio.pause());

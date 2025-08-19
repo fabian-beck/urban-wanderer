@@ -1,13 +1,8 @@
-import {
-	coordinates,
-	preferences,
-	places
-} from '../stores.js';
-import { get } from 'svelte/store';
 import { openai, getAiModel } from './ai-core.js';
+import { AI_REASONING_EFFORT } from '../constants.js';
 
-async function translatePlaceName(place) {
-	const prefs = get(preferences);
+async function translatePlaceName(place, preferences) {
+	const prefs = preferences;
 	const hasMultipleSourceLanguages = prefs.sourceLanguages && prefs.sourceLanguages.length > 1;
 	const isDifferentLanguage = place.lang && place.lang !== prefs.lang;
 
@@ -36,9 +31,9 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then
 }
 `;
 	const response = await openai.responses.create({
-		model: getAiModel('simple'),
+		model: getAiModel('simple', preferences),
 		reasoning: {
-			effort: 'minimal'
+			effort: AI_REASONING_EFFORT
 		},
 		input: [
 			{ role: 'system', content: instructions },
@@ -65,9 +60,8 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then
 	return translation;
 }
 
-export async function groupDuplicatePlaces() {
-	const $places = get(places);
-	const translations = await Promise.all($places.map((place) => translatePlaceName(place)));
+export async function groupDuplicatePlaces(places, coordinates, preferences) {
+	const translations = await Promise.all(places.map((place) => translatePlaceName(place, preferences)));
 	console.log('Translations:', translations);
 
 	const levenshtein = (a, b) => {
@@ -111,7 +105,7 @@ export async function groupDuplicatePlaces() {
 		name1 = name1.replace(/[^a-z0-9]/g, '');
 		name2 = name2.replace(/[^a-z0-9]/g, '');
 		// remove town name from place name (if place name significantly longer than town name)
-		const townName = get(coordinates)?.town?.toLowerCase();
+		const townName = coordinates?.town?.toLowerCase();
 		if (townName && name1.length > townName.length + 5) {
 			name1 = name1.replace(townName, '');
 		}
@@ -134,7 +128,7 @@ export async function groupDuplicatePlaces() {
 	};
 
 	const newPlaces = [];
-	for (const place of $places) {
+	for (const place of places) {
 		const translation = translations.find((translation) =>
 			placesNameIsSimilar(place.title, translation.title)
 		);
@@ -143,7 +137,7 @@ export async function groupDuplicatePlaces() {
 		}
 		const previousPlace = newPlaces.find((p) => placesNameIsSimilar(p.title, place.title));
 		if (previousPlace) {
-			if (previousPlace.lang === get(preferences).lang) {
+			if (previousPlace.lang === preferences.lang) {
 				// replace previous place with the new one
 				newPlaces[newPlaces.indexOf(previousPlace)] = place;
 			}
@@ -152,5 +146,5 @@ export async function groupDuplicatePlaces() {
 		newPlaces.push(place);
 	}
 	console.log('Places after grouping:', newPlaces);
-	places.set(newPlaces);
+	return newPlaces;
 }

@@ -503,3 +503,6 @@ export const AI_MODELS = {
 	DEFAULT_SIMPLE: 'gpt-5-mini',
 	DEFAULT_ADVANCED: 'gpt-5'
 };
+
+// Standard reasoning configuration for all AI requests
+export const AI_REASONING_EFFORT = 'minimal';

@@ -3,6 +3,7 @@
 	import { ArrowRightOutline } from 'flowbite-svelte-icons';
 	import PlaceFact from './PlaceFact.svelte';
 	import { searchPlaceFacts } from '../util/ai-facts.js';
+import { coordinates } from '../stores.js';
 	import { Spinner } from 'flowbite-svelte';
 	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../constants.js';
 	import { preferences } from '../stores.js';
@@ -46,7 +47,7 @@
 			}
 		}
 
-		facts = await searchPlaceFacts(place, factsProperties);
+		facts = await searchPlaceFacts(place, factsProperties, get(coordinates), get(preferences));
 		factsLoading = false;
 	};
 

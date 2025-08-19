@@ -120,7 +120,8 @@ function createPlaces() {
 				console.log('Time to load places (s):', ((Date.now() - startTime) / 1000).toFixed(2));
 				previousTime = Date.now();
 				loadingMessage.set('Grouping places ...');
-				await groupDuplicatePlaces();
+				const groupedPlaces = await groupDuplicatePlaces(get(places), get(coordinates), get(preferences));
+			set(groupedPlaces);
 				console.log('Time to group places (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
 				previousTime = Date.now();
 				loadingMessage.set('Loading article extracts ...');
@@ -128,7 +129,8 @@ function createPlaces() {
 				console.log('Time to load extracts (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
 				previousTime = Date.now();
 				loadingMessage.set('Analyzing places ...');
-				await analyzePlaces();
+				const analyzedPlaces = await analyzePlaces(get(places), get(preferences));
+			set(analyzedPlaces);
 				console.log('Places after analysis:', get(places));
 				console.log('Time to analyze places (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
 				console.log(
@@ -287,7 +289,7 @@ async function loadMetadata() {
 	// Extract insights for places that have articles (only for here and surrounding places)
 	const placesWithArticles = [...get(placesHere), ...get(placesSurrounding)].filter(place => place.article);
 	await Promise.all(placesWithArticles.map(async (place) => {
-		place.insights = await extractInsightsFromArticle(place.article);
+		place.insights = await extractInsightsFromArticle(place.article, get(preferences));
 	}));
 }
 
@@ -324,7 +326,7 @@ async function pregenerateStoryInBackground() {
 	preloadingStory.set(false);
 
 	try {
-		const firstStory = await generateStory([]);
+		const firstStory = await generateStory([], get(placesHere), get(placesNearby), get(placesSurrounding), get(coordinates), get(preferences));
 		storyTexts.set([firstStory]);
 		storyLoading.set(false);
 		// Start preloading the next story part immediately
@@ -340,7 +342,7 @@ export async function preloadNextStoryPart(currentStories) {
 	
 	preloadingStory.set(true);
 	try {
-		const nextStory = await generateStory(currentStories);
+		const nextStory = await generateStory(currentStories, get(placesHere), get(placesNearby), get(placesSurrounding), get(coordinates), get(preferences));
 		preloadedStory.set(nextStory);
 	} catch (error) {
 		console.error('Error preloading next story part:', error);
