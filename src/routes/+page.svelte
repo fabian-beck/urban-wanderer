@@ -19,6 +19,9 @@
 	import { onMount } from 'svelte';
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
+	
+	export let params = {};
+	
 	let urlCoordinates = null;
 	let urlUpdateTimeout = null;
 
