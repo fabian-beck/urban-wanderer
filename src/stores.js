@@ -1,6 +1,6 @@
 import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
-import { CLASSES, LABELS } from './constants.js';
+import { CLASSES, LABELS, nArticles } from './constants.js';
 import { analyzePlaces, groupDuplicatePlaces, generateStory } from './util/ai.js';
 import {
 	loadWikipediaPlaces,
@@ -27,12 +27,12 @@ function createCoordinates() {
 		update: async (coords) => {
 			try {
 				if (coords === 'random') {
-					coords = await getRandomWikipediaPlaceCoordinates();
+					coords = await getRandomWikipediaPlaceCoordinates(get(preferences).lang);
 				} else if (!coords) {
 					coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
 					console.log('Received coordinates:', coords);
 				}
-				const addressData = await loadOsmAddressData(coords);
+				const addressData = await loadOsmAddressData(coords, get(preferences).lang);
 				set({
 					latitude: coords.latitude,
 					longitude: coords.longitude,
@@ -108,10 +108,11 @@ function createPlaces() {
 				const startTime = Date.now();
 				let previousTime = startTime;
 				loadingMessage.set('Loading places ...');
-				loadOsmWaterMap();
-				loadOsmGreenMap();
-				loadOsmActivityMap();
-				let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(), loadOsmPlaces()]);
+				// Load maps and update stores
+				loadOsmWaterMap(get(coordinates)).then(mapData => waterMap.set(mapData));
+				loadOsmGreenMap(get(coordinates)).then(mapData => greenMap.set(mapData));
+				loadOsmActivityMap(get(coordinates)).then(mapData => activityMap.set(mapData));
+				let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(get(coordinates), get(preferences), nArticles), loadOsmPlaces(get(coordinates))]);
 				set(mergePlaces(placesTmp, placesOsm));
 				console.log('Time to load places (s):', ((Date.now() - startTime) / 1000).toFixed(2));
 				previousTime = Date.now();
@@ -120,7 +121,7 @@ function createPlaces() {
 				console.log('Time to group places (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
 				previousTime = Date.now();
 				loadingMessage.set('Loading article extracts ...');
-				await loadWikipediaExtracts(get(places));
+				await loadWikipediaExtracts(get(places), get(preferences).lang);
 				console.log('Time to load extracts (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
 				previousTime = Date.now();
 				loadingMessage.set('Analyzing places ...');
@@ -266,12 +267,16 @@ function rate() {
 }
 
 async function loadMetadata() {
-	loadWikipediaImageUrls('imageThumb', 100);
-	loadWikipediaImageUrls('image', 500);
+	// Load images asynchronously and trigger store updates when complete
+	loadWikipediaImageUrls(get(places), 'imageThumb', 100, get(preferences).lang)
+		.then(() => places.set(get(places)));
+	loadWikipediaImageUrls(get(places), 'image', 500, get(preferences).lang)
+		.then(() => places.set(get(places)));
+	
 	await Promise.all([
-		loadWikipediaArticleTexts(get(placesHere)),
-		loadWikipediaArticleTexts(get(placesSurrounding)),
-		loadWikipediaArticleTexts(get(placesNearby), false) // Skip insights extraction for nearby places
+		loadWikipediaArticleTexts(get(placesHere), get(preferences).lang),
+		loadWikipediaArticleTexts(get(placesSurrounding), get(preferences).lang),
+		loadWikipediaArticleTexts(get(placesNearby), get(preferences).lang, false) // Skip insights extraction for nearby places
 	]);
 }
 

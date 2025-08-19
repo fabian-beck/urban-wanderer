@@ -1,10 +1,7 @@
-import { coordinates, preferences, waterMap, greenMap, activityMap } from '../stores.js';
 import { GRID_ARRAY_SIZE, GRID_CELL_SIZE } from '../constants.js';
-import { get } from 'svelte/store';
 
-export async function loadOsmPlaces() {
+export async function loadOsmPlaces(coordinates) {
 	try {
-		const $coordinates = get(coordinates);
 		const radius = 150;
 		const waterway =
 			'river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point';
@@ -21,32 +18,32 @@ export async function loadOsmPlaces() {
 [out:json];
 (
     // Search for waterways
-    relation[waterway~"${waterway}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    relation[waterway~"${waterway}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for amenities
-    node[amenity~"${amenities}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    way[amenity~"${amenities}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    relation[amenity~"${amenities}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    node[amenity~"${amenities}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[amenity~"${amenities}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[amenity~"${amenities}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for tourism-related points of interest
-    node[tourism~"${tourism}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    way[tourism~"${tourism}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    relation[tourism~"${tourism}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    node[tourism~"${tourism}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[tourism~"${tourism}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[tourism~"${tourism}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for historic landmarks such as monuments and memorials
-    node[historic~"${historic}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    way[historic~"${historic}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    relation[historic~"${historic}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    node[historic~"${historic}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[historic~"${historic}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[historic~"${historic}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for man-made structures such as statues
-    node[man_made~"${man_made}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    way[man_made~"${man_made}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    relation[man_made~"${man_made}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    node[man_made~"${man_made}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[man_made~"${man_made}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[man_made~"${man_made}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for leisure facilities such as parks and gardens
-    node[leisure~"${leisure}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    way[leisure~"${leisure}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
-    relation[leisure~"${leisure}"](around:${radius},${$coordinates.latitude},${$coordinates.longitude});
+    node[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 );
 out body;
 >;
@@ -84,8 +81,8 @@ out skel qt;
 					lon: element.lon,
 					dist:
 						Math.sqrt(
-							Math.pow(element.lat - $coordinates.latitude, 2) +
-								Math.pow(element.lon - $coordinates.longitude, 2)
+							Math.pow(element.lat - coordinates.latitude, 2) +
+								Math.pow(element.lon - coordinates.longitude, 2)
 						) * 111139 // convert degrees to meters
 				};
 			});
@@ -97,8 +94,7 @@ out skel qt;
 	}
 }
 
-export async function loadOsmAddressData(coords) {
-	const lang = get(preferences).lang;
+export async function loadOsmAddressData(coords, lang) {
 	const response = await fetch(
 		`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1&accept-language=${lang}`
 	);
@@ -152,7 +148,7 @@ export function coordsToGridY(lat, lon, centerLat, centerLon) {
 }
 
 // water map
-export async function loadOsmWaterMap() {
+export async function loadOsmWaterMap(coordinates) {
 	try {
 		const increaseWaterLevel = (x, y, value) => {
 			if (value < 0.1) {
@@ -174,9 +170,9 @@ export async function loadOsmWaterMap() {
 [out:json];
 (
     // Search for water bodies
-    relation[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
-    way[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
-    node[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    relation[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${coordinates.latitude},${coordinates.longitude});
+    way[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${coordinates.latitude},${coordinates.longitude});
+    node[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${coordinates.latitude},${coordinates.longitude});
 );
 out body;
 >;
@@ -309,23 +305,23 @@ out skel qt;
 				const lat2 = polyline.nodes[i + 1].lat;
 				const lon2 = polyline.nodes[i + 1].lon;
 				// calculate x and y coordinates in the grid
-				const x1 = coordsToGridX(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude);
-				const y1 = coordsToGridY(lat1, lon1, get(coordinates).latitude, get(coordinates).longitude);
-				const x2 = coordsToGridX(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude);
-				const y2 = coordsToGridY(lat2, lon2, get(coordinates).latitude, get(coordinates).longitude);
+				const x1 = coordsToGridX(lat1, lon1, coordinates.latitude, coordinates.longitude);
+				const y1 = coordsToGridY(lat1, lon1, coordinates.latitude, coordinates.longitude);
+				const x2 = coordsToGridX(lat2, lon2, coordinates.latitude, coordinates.longitude);
+				const y2 = coordsToGridY(lat2, lon2, coordinates.latitude, coordinates.longitude);
 
 				// Draw thick line between the two points
 				drawThickLine(x1, y1, x2, y2, waterwayRadius, waterIntensity);
 			}
 		}
-		waterMap.set(waterMapTmp);
+		return waterMapTmp;
 	} catch (error) {
 		console.error('Error loading water map:', error);
 	}
 }
 
 // green map
-export async function loadOsmGreenMap() {
+export async function loadOsmGreenMap(coordinates) {
 	try {
 		const increaseGreenLevel = (x, y, value) => {
 			if (value < 0.05) {
@@ -356,14 +352,14 @@ export async function loadOsmGreenMap() {
 					x: coordsToGridX(
 						node.lat,
 						node.lon,
-						get(coordinates).latitude,
-						get(coordinates).longitude
+						coordinates.latitude,
+						coordinates.longitude
 					),
 					y: coordsToGridY(
 						node.lat,
 						node.lon,
-						get(coordinates).latitude,
-						get(coordinates).longitude
+						coordinates.latitude,
+						coordinates.longitude
 					)
 				}))
 				.filter(
@@ -412,17 +408,17 @@ export async function loadOsmGreenMap() {
 [out:json];
 (
     // Search for green spaces and natural areas
-    relation[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
-    way[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    relation[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:800,${coordinates.latitude},${coordinates.longitude});
+    way[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:800,${coordinates.latitude},${coordinates.longitude});
     
-    relation[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
-    way[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    relation[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:800,${coordinates.latitude},${coordinates.longitude});
+    way[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:800,${coordinates.latitude},${coordinates.longitude});
     
-    relation[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
-    way[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:800,${get(coordinates).latitude},${get(coordinates).longitude});
+    relation[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:800,${coordinates.latitude},${coordinates.longitude});
+    way[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:800,${coordinates.latitude},${coordinates.longitude});
     
     // Individual trees
-    node[natural="tree"](around:400,${get(coordinates).latitude},${get(coordinates).longitude});
+    node[natural="tree"](around:400,${coordinates.latitude},${coordinates.longitude});
 );
 out body;
 >;
@@ -524,14 +520,14 @@ out skel qt;
 						const x = coordsToGridX(
 							node.lat,
 							node.lon,
-							get(coordinates).latitude,
-							get(coordinates).longitude
+							coordinates.latitude,
+							coordinates.longitude
 						);
 						const y = coordsToGridY(
 							node.lat,
 							node.lon,
-							get(coordinates).latitude,
-							get(coordinates).longitude
+							coordinates.latitude,
+							coordinates.longitude
 						);
 						increaseGreenLevel(x, y, 0.7);
 					}
@@ -544,25 +540,25 @@ out skel qt;
 			const x = coordsToGridX(
 				tree.lat,
 				tree.lon,
-				get(coordinates).latitude,
-				get(coordinates).longitude
+				coordinates.latitude,
+				coordinates.longitude
 			);
 			const y = coordsToGridY(
 				tree.lat,
 				tree.lon,
-				get(coordinates).latitude,
-				get(coordinates).longitude
+				coordinates.latitude,
+				coordinates.longitude
 			);
 			increaseGreenLevel(x, y, 0.6);
 		}
 
-		greenMap.set(greenMapTmp);
+		return greenMapTmp;
 	} catch (error) {
 		console.error('Error loading green map:', error);
 	}
 }
 
-export async function loadOsmActivityMap() {
+export async function loadOsmActivityMap(coordinates) {
 	try {
 		const increaseActivityLevel = (x, y, value) => {
 			if (value < 0.05) {
@@ -587,20 +583,20 @@ export async function loadOsmActivityMap() {
 [out:json];
 (
     // Shopping areas
-    way[shop~"mall|supermarket|department_store|bakery|butcher|clothes|convenience|general|gift|jewelry|shoes|sports|toys|electronics|furniture|florist|bookshop|chemist|optician|hairdresser|beauty|bicycle|car|mobile_phone"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
-    node[shop~"mall|supermarket|department_store|bakery|butcher|clothes|convenience|general|gift|jewelry|shoes|sports|toys|electronics|furniture|florist|bookshop|chemist|optician|hairdresser|beauty|bicycle|car|mobile_phone"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[shop~"mall|supermarket|department_store|bakery|butcher|clothes|convenience|general|gift|jewelry|shoes|sports|toys|electronics|furniture|florist|bookshop|chemist|optician|hairdresser|beauty|bicycle|car|mobile_phone"](around:600,${coordinates.latitude},${coordinates.longitude});
+    node[shop~"mall|supermarket|department_store|bakery|butcher|clothes|convenience|general|gift|jewelry|shoes|sports|toys|electronics|furniture|florist|bookshop|chemist|optician|hairdresser|beauty|bicycle|car|mobile_phone"](around:600,${coordinates.latitude},${coordinates.longitude});
     
     // Restaurants and food
-    way[amenity~"restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
-    node[amenity~"restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[amenity~"restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream"](around:600,${coordinates.latitude},${coordinates.longitude});
+    node[amenity~"restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream"](around:600,${coordinates.latitude},${coordinates.longitude});
     
     // Entertainment and nightlife
-    way[amenity~"nightclub|casino|cinema|theatre|arts_centre|community_centre"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
-    node[amenity~"nightclub|casino|cinema|theatre|arts_centre|community_centre"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[amenity~"nightclub|casino|cinema|theatre|arts_centre|community_centre"](around:600,${coordinates.latitude},${coordinates.longitude});
+    node[amenity~"nightclub|casino|cinema|theatre|arts_centre|community_centre"](around:600,${coordinates.latitude},${coordinates.longitude});
     
     // Commercial areas
-    way[landuse="commercial"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
-    way[landuse="retail"](around:600,${get(coordinates).latitude},${get(coordinates).longitude});
+    way[landuse="commercial"](around:600,${coordinates.latitude},${coordinates.longitude});
+    way[landuse="retail"](around:600,${coordinates.latitude},${coordinates.longitude});
 );
 out body;
 >;
@@ -679,14 +675,14 @@ out skel qt;
 						const x = coordsToGridX(
 							node.lat,
 							node.lon,
-							get(coordinates).latitude,
-							get(coordinates).longitude
+							coordinates.latitude,
+							coordinates.longitude
 						);
 						const y = coordsToGridY(
 							node.lat,
 							node.lon,
-							get(coordinates).latitude,
-							get(coordinates).longitude
+							coordinates.latitude,
+							coordinates.longitude
 						);
 						increaseActivityLevel(x, y, 0.4);
 					}
@@ -697,14 +693,14 @@ out skel qt;
 						const x = coordsToGridX(
 							node.lat,
 							node.lon,
-							get(coordinates).latitude,
-							get(coordinates).longitude
+							coordinates.latitude,
+							coordinates.longitude
 						);
 						const y = coordsToGridY(
 							node.lat,
 							node.lon,
-							get(coordinates).latitude,
-							get(coordinates).longitude
+							coordinates.latitude,
+							coordinates.longitude
 						);
 						increaseActivityLevel(x, y, 0.6);
 					}
@@ -717,20 +713,20 @@ out skel qt;
 			const x = coordsToGridX(
 				node.lat,
 				node.lon,
-				get(coordinates).latitude,
-				get(coordinates).longitude
+				coordinates.latitude,
+				coordinates.longitude
 			);
 			const y = coordsToGridY(
 				node.lat,
 				node.lon,
-				get(coordinates).latitude,
-				get(coordinates).longitude
+				coordinates.latitude,
+				coordinates.longitude
 			);
 			// Higher intensity for individual shops/restaurants/bars
 			increaseActivityLevel(x, y, 0.8);
 		}
 
-		activityMap.set(activityMapTmp);
+		return activityMapTmp;
 	} catch (error) {
 		console.error('Error loading activity map:', error);
 	}

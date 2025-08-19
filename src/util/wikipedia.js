@@ -1,52 +1,48 @@
-import { coordinates, preferences, places } from '../stores.js';
-import { nArticles } from '../constants.js';
-import { get } from 'svelte/store';
 import { extractInsightsFromArticle } from './ai.js';
 
-export async function loadWikipediaPlaces() {
-	const $coordinates = get(coordinates);
-	if (!$coordinates) {
+export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
+	if (!coordinates) {
 		return;
 	}
 	const places = [];
-	get(preferences).sourceLanguages?.forEach(async (lang) => {
-		places.push(...(await wikipediaGeoSearchForPlaces($coordinates, lang)));
+	preferences.sourceLanguages?.forEach(async (lang) => {
+		places.push(...(await wikipediaGeoSearchForPlaces(coordinates, lang, preferences.radius, nArticles)));
 	});
 	const searchAndAddPlace = async (title) => {
 		if (title && !places.find((place) => place?.title === title)) {
-			let place = await wikipediaNameSearchForPlace(title);
+			let place = await wikipediaNameSearchForPlace(title, coordinates, preferences.lang);
 			if (!place) {
 				return;
 			}
 			places.push(place);
 		}
 	};
-	if ($coordinates.town) {
-		searchAndAddPlace($coordinates.town);
-		if ($coordinates.village) {
-			searchAndAddPlace(`${$coordinates.village} (${$coordinates.town})`);
+	if (coordinates.town) {
+		searchAndAddPlace(coordinates.town);
+		if (coordinates.village) {
+			searchAndAddPlace(`${coordinates.village} (${coordinates.town})`);
 		}
-		if ($coordinates.suburb) {
-			searchAndAddPlace(`${$coordinates.suburb} (${$coordinates.town})`);
+		if (coordinates.suburb) {
+			searchAndAddPlace(`${coordinates.suburb} (${coordinates.town})`);
 		}
-		if ($coordinates.road) {
-			searchAndAddPlace(`${$coordinates.road} (${$coordinates.town})`);
+		if (coordinates.road) {
+			searchAndAddPlace(`${coordinates.road} (${coordinates.town})`);
 		}
 	} else {
-		searchAndAddPlace($coordinates.village);
+		searchAndAddPlace(coordinates.village);
 	}
 	console.log('Wikipedia places:', places);
 	return places;
 }
 
-export async function loadWikipediaArticleTexts(places, extractInsights = true) {
+export async function loadWikipediaArticleTexts(places, lang, extractInsights = true) {
 	await Promise.all(
 		places.map(async (place) => {
 			if (!place.pageid) {
 				return;
 			}
 			const response = await fetch(
-				`https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=revisions|pageprops&rvprop=content&rvslots=main&ppprop=wikibase_item`
+				`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=revisions|pageprops&rvprop=content&rvslots=main&ppprop=wikibase_item`
 			);
 			const data = await response.json();
 			const pageData = data.query.pages[place.pageid];
@@ -74,7 +70,7 @@ export async function loadWikipediaArticleTexts(places, extractInsights = true) 
 	);
 }
 
-export async function loadWikipediaExtracts(places) {
+export async function loadWikipediaExtracts(places, lang) {
 	await Promise.all(
 		places.map(async (place) => {
 			if (!place.pageid && !place.wikipedia) {
@@ -84,7 +80,7 @@ export async function loadWikipediaExtracts(places) {
 			try {
 				if (place.pageid) {
 					response = await fetch(
-						`https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
+						`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts&exintro=1&explaintext=1`
 					);
 				} else if (place.wikipedia) {
 					// return if wikipedia link contains "#" (subheading) as the returned extract would not relate to the place
@@ -120,9 +116,9 @@ export async function loadWikipediaExtracts(places) {
 	);
 }
 
-export async function loadWikipediaImageUrls(attribute, size) {
+export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 	await Promise.all(
-		get(places).map(async (place) => {
+		places.map(async (place) => {
 			let response;
 			if (place.wikipedia) {
 				if (place.wikipedia.includes('#')) {
@@ -138,7 +134,7 @@ export async function loadWikipediaImageUrls(attribute, size) {
 				);
 			} else if (place.pageid) {
 				response = await fetch(
-					`https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=${size}`
+					`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=${size}`
 				);
 			}
 			if (!response) {
@@ -151,14 +147,14 @@ export async function loadWikipediaImageUrls(attribute, size) {
 			} else {
 				// load first image from wiki page
 				const response2 = await fetch(
-					`https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&prop=images&pageids=${place.pageid}&origin=*`
+					`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&prop=images&pageids=${place.pageid}&origin=*`
 				);
 				const data2 = await response2.json();
 				const images = data2.query.pages[place.pageid].images;
 				if (images) {
 					const firstImage = images[0].title;
 					const response3 = await fetch(
-						`https://${place.lang || get(preferences).lang}.wikipedia.org/w/api.php?action=query&format=json&titles=${firstImage}&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=${size}`
+						`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&titles=${firstImage}&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=${size}`
 					);
 					const data3 = await response3.json();
 					const imageinfo = Object.values(data3.query.pages)[0].imageinfo;
@@ -167,13 +163,11 @@ export async function loadWikipediaImageUrls(attribute, size) {
 					}
 				}
 			}
-			places.set(get(places));
 		})
 	);
 }
 
-export async function getRandomWikipediaPlaceCoordinates() {
-	const lang = get(preferences).lang;
+export async function getRandomWikipediaPlaceCoordinates(lang) {
 	while (true) {
 		const response = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/random/summary`);
 		const data = await response.json();
@@ -183,8 +177,7 @@ export async function getRandomWikipediaPlaceCoordinates() {
 	}
 }
 
-export async function searchWikipediaPlaceCoordinates(placeName) {
-	const lang = get(preferences).lang;
+export async function searchWikipediaPlaceCoordinates(placeName, lang) {
 	
 	// Search for the place on Wikipedia
 	const searchResponse = await fetch(
@@ -229,9 +222,9 @@ export async function searchWikipediaPlaceCoordinates(placeName) {
 	throw new Error(`No geographic coordinates found for "${placeName}"`);
 }
 
-async function wikipediaGeoSearchForPlaces(coordinates, lang) {
+async function wikipediaGeoSearchForPlaces(coordinates, lang, radius, nArticles) {
 	const response = await fetch(
-		`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.latitude}|${coordinates.longitude}&gsradius=${get(preferences).radius}&gslimit=${nArticles}&format=json&origin=*`
+		`https://${lang}.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${coordinates.latitude}|${coordinates.longitude}&gsradius=${radius}&gslimit=${nArticles}&format=json&origin=*`
 	);
 	const data = await response.json();
 	data.query.geosearch.forEach((place) => {
@@ -245,8 +238,7 @@ async function wikipediaGeoSearchForPlaces(coordinates, lang) {
 	return data.query.geosearch;
 }
 
-async function wikipediaNameSearchForPlace(name) {
-	const lang = get(preferences).lang;
+async function wikipediaNameSearchForPlace(name, coordinates, lang) {
 	const response2 = await fetch(
 		`https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${name}&srlimit=1&format=json&origin=*`
 	);
@@ -270,8 +262,8 @@ async function wikipediaNameSearchForPlace(name) {
 		// calculate distance
 		const distance =
 			Math.sqrt(
-				Math.pow(coords.lat - get(coordinates).latitude, 2) +
-					Math.pow(coords.lon - get(coordinates).longitude, 2)
+				Math.pow(coords.lat - coordinates.latitude, 2) +
+					Math.pow(coords.lon - coordinates.longitude, 2)
 			) * 111139; // convert degrees to meters
 		// if close enough, return place
 		if (distance < 10000) {

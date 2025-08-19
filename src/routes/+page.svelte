@@ -8,7 +8,8 @@
 		storyTexts,
 		loadingMessage,
 		heading,
-		events
+		events,
+		preferences
 	} from '../stores.js';
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
@@ -17,6 +18,7 @@
 	import { appName } from '../constants.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import Map from '../components/Map.svelte';
 	import { searchWikipediaPlaceCoordinates } from '../util/wikipedia.js';
 
@@ -66,7 +68,7 @@
 			errorMessage.set(null);
 			loadingMessage.set(`Searching for "${placeName}"...`);
 			
-			const placeData = await searchWikipediaPlaceCoordinates(placeName);
+			const placeData = await searchWikipediaPlaceCoordinates(placeName, get(preferences).lang);
 			await update({
 				latitude: placeData.latitude,
 				longitude: placeData.longitude
