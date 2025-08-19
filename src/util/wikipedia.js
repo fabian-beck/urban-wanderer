@@ -1,4 +1,3 @@
-import { extractInsightsFromArticle } from './ai.js';
 import { MAX_ARTICLE_LENGTH } from '../constants.js';
 
 export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
@@ -36,7 +35,7 @@ export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
 	return places;
 }
 
-export async function loadWikipediaArticleTexts(places, lang, extractInsights = true) {
+export async function loadWikipediaArticleTexts(places, lang) {
 	await Promise.all(
 		places.map(async (place) => {
 			if (!place.pageid) {
@@ -61,14 +60,9 @@ export async function loadWikipediaArticleTexts(places, lang, extractInsights = 
 			place.article = place.article.replace(/\[http[^\]]*\]/g, '');
 			// delete all references like: "[[File|Datei|Kategorie|...:...]]"
 			place.article = place.article.replace(/\[\[[^\]]*:[^\]]*\]\]/g, '');
-			console.log(`📋 Loaded article for ${place.title} (${place.pageid}): ${place.article}`);
 			// article still too long?
 			if (place.article.length > MAX_ARTICLE_LENGTH) {
 				place.article = place.article.substring(0, MAX_ARTICLE_LENGTH) + '...';
-			}
-			// extracts insights (only if requested)
-			if (extractInsights) {
-				place.insights = await extractInsightsFromArticle(place.article);
 			}
 		})
 	);

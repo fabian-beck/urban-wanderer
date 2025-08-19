@@ -1,7 +1,7 @@
 import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
 import { CLASSES, LABELS, nArticles } from './constants.js';
-import { analyzePlaces, groupDuplicatePlaces, generateStory } from './util/ai.js';
+import { analyzePlaces, groupDuplicatePlaces, generateStory, extractInsightsFromArticle } from './util/ai.js';
 import {
 	loadWikipediaPlaces,
 	loadWikipediaArticleTexts,
@@ -276,8 +276,14 @@ async function loadMetadata() {
 	await Promise.all([
 		loadWikipediaArticleTexts(get(placesHere), get(preferences).lang),
 		loadWikipediaArticleTexts(get(placesSurrounding), get(preferences).lang),
-		loadWikipediaArticleTexts(get(placesNearby), get(preferences).lang, false) // Skip insights extraction for nearby places
+		loadWikipediaArticleTexts(get(placesNearby), get(preferences).lang)
 	]);
+	
+	// Extract insights for places that have articles (only for here and surrounding places)
+	const placesWithArticles = [...get(placesHere), ...get(placesSurrounding)].filter(place => place.article);
+	await Promise.all(placesWithArticles.map(async (place) => {
+		place.insights = await extractInsightsFromArticle(place.article);
+	}));
 }
 
 function mergePlaces(placesTmp, placesOsm) {
