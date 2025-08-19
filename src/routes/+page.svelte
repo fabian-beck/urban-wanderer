@@ -20,13 +20,27 @@
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
 	let urlCoordinates = null;
+	let urlUpdateTimeout = null;
 
-	// Update URL params when coordinates change
+	// Update URL params when coordinates change (debounced)
 	$: if ($coordinates) {
-		const newUrl = new URL($page.url);
-		newUrl.searchParams.set('lat', $coordinates.latitude);
-		newUrl.searchParams.set('lon', $coordinates.longitude);
-		goto(newUrl.toString(), { replaceState: true });
+		if (urlUpdateTimeout) {
+			clearTimeout(urlUpdateTimeout);
+		}
+		urlUpdateTimeout = setTimeout(() => {
+			const newUrl = new URL($page.url);
+			const currentLat = newUrl.searchParams.get('lat');
+			const currentLon = newUrl.searchParams.get('lon');
+			const newLat = $coordinates.latitude.toString();
+			const newLon = $coordinates.longitude.toString();
+			
+			// Only update URL if coordinates actually changed
+			if (currentLat !== newLat || currentLon !== newLon) {
+				newUrl.searchParams.set('lat', newLat);
+				newUrl.searchParams.set('lon', newLon);
+				goto(newUrl.toString(), { replaceState: true, noScroll: true });
+			}
+		}, 500);
 	}
 
 	onMount(() => {
