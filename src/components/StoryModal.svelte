@@ -3,7 +3,7 @@
 	import { marked } from 'marked';
 	import { generateStory, textToSpeech } from '../util/ai.js';
 	import { markPlacesInText } from '../util/text.js';
-	import { errorMessage, storyTexts, storyLoading, audioState, preferences } from '../stores.js';
+	import { errorMessage, storyTexts, storyLoading, audioState, preferences, preloadedStory, preloadingStory, preloadNextStoryPart } from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
 	import { Button, Spinner, Alert, CloseButton } from 'flowbite-svelte';
 
@@ -13,11 +13,25 @@
 		loading = true;
 		audioState.set('paused');
 		try {
-			const nextStoryText = await generateStory($storyTexts);
-			$storyTexts = [...$storyTexts, nextStoryText];
+			let nextStoryText;
+			// Use preloaded story if available
+			if ($preloadedStory) {
+				nextStoryText = $preloadedStory;
+				preloadedStory.set(null);
+			} else {
+				// Generate new story if no preloaded version
+				nextStoryText = await generateStory($storyTexts);
+			}
+			
+			const newStoryTexts = [...$storyTexts, nextStoryText];
+			$storyTexts = newStoryTexts;
+			
 			if (visible && $preferences.audio) {
 				textToSpeech(nextStoryText);
 			}
+			
+			// Start preloading the next story part
+			preloadNextStoryPart(newStoryTexts);
 		} catch (error) {
 			console.error('Error generating story', error);
 			errorMessage.set('Error generating story: ' + error);
@@ -25,9 +39,7 @@
 		loading = false;
 	};
 
-	$: if (visible && $storyTexts.length === 0 && !$storyLoading) {
-		updateStory();
-	}
+	// Remove the redundant first story generation since it's handled by pregenerateStoryInBackground
 
 	export let visible = false;
 </script>
@@ -98,9 +110,17 @@
 				{/each}
 				{#if !loading}
 					<div class="mb-2 flex justify-end">
-						<Button on:click={updateStory} pill size="xs" outline class="mt-2"
-							><ArrowRightOutline />Tell me more</Button
+						<Button 
+							on:click={updateStory} 
+							pill 
+							size="xs" 
+							outline 
+							class="mt-2"
+							disabled={$preloadingStory}
 						>
+							<ArrowRightOutline />
+							{$preloadedStory ? 'Tell me more' : $preloadingStory ? 'Loading...' : 'Tell me more'}
+						</Button>
 					</div>
 				{/if}
 			{/if}

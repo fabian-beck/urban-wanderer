@@ -206,6 +206,8 @@ export const placesNearby = derived(
 // story
 export const storyTexts = writable([]);
 export const storyLoading = writable(false);
+export const preloadedStory = writable(null);
+export const preloadingStory = writable(false);
 
 // events
 export const events = writable([]);
@@ -312,17 +314,35 @@ async function pregenerateStoryInBackground() {
 	// Load facts before story generation
 	await loadMetadata();
 
-	// Clear previous stories
+	// Clear previous stories and preloaded content
 	storyTexts.set([]);
+	preloadedStory.set(null);
 	storyLoading.set(true);
+	preloadingStory.set(false);
 
 	try {
 		const firstStory = await generateStory([]);
 		storyTexts.set([firstStory]);
 		storyLoading.set(false);
+		// Start preloading the next story part immediately
+		preloadNextStoryPart([firstStory]);
 	} catch (error) {
 		console.error('Background story generation failed:', error);
 		storyLoading.set(false);
+	}
+}
+
+export async function preloadNextStoryPart(currentStories) {
+	if (get(preloadingStory)) return; // Already preloading
+	
+	preloadingStory.set(true);
+	try {
+		const nextStory = await generateStory(currentStories);
+		preloadedStory.set(nextStory);
+	} catch (error) {
+		console.error('Error preloading next story part:', error);
+	} finally {
+		preloadingStory.set(false);
 	}
 }
 
