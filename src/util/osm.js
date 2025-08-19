@@ -1,4 +1,4 @@
-import { GRID_ARRAY_SIZE, GRID_CELL_SIZE } from '../constants.js';
+import { GRID_ARRAY_SIZE, GRID_CELL_SIZE, OSM_SEARCH_RADIUS } from '../constants.js';
 
 export async function loadOsmPlaces(coordinates) {
 	try {
@@ -170,9 +170,9 @@ export async function loadOsmWaterMap(coordinates) {
 [out:json];
 (
     // Search for water bodies
-    relation[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${coordinates.latitude},${coordinates.longitude});
-    way[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${coordinates.latitude},${coordinates.longitude});
-    node[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:800,${coordinates.latitude},${coordinates.longitude});
+    relation[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    node[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
 );
 out body;
 >;
@@ -408,14 +408,14 @@ export async function loadOsmGreenMap(coordinates) {
 [out:json];
 (
     // Search for green spaces and natural areas
-    relation[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:800,${coordinates.latitude},${coordinates.longitude});
-    way[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:800,${coordinates.latitude},${coordinates.longitude});
+    relation[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
-    relation[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:800,${coordinates.latitude},${coordinates.longitude});
-    way[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:800,${coordinates.latitude},${coordinates.longitude});
+    relation[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
-    relation[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:800,${coordinates.latitude},${coordinates.longitude});
-    way[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:800,${coordinates.latitude},${coordinates.longitude});
+    relation[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
     // Individual trees
     node[natural="tree"](around:400,${coordinates.latitude},${coordinates.longitude});

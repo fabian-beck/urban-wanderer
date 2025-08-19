@@ -17,6 +17,9 @@ export const ACTIVITY_STIPPLE_SIZE = 0.6;
 // Place highlighting constants
 export const PLACE_MIN_DISTANCE = 70;
 
+// OSM search radius for Overpass API queries
+export const OSM_SEARCH_RADIUS = 500;
+
 export const CLASSES = {
 	ABSTRACT_ENTITY: {
 		emoji: '?',
