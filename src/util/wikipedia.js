@@ -1,4 +1,5 @@
 import { extractInsightsFromArticle } from './ai.js';
+import { MAX_ARTICLE_LENGTH } from '../constants.js';
 
 export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
 	if (!coordinates) {
@@ -58,9 +59,12 @@ export async function loadWikipediaArticleTexts(places, lang, extractInsights = 
 			place.article = place.article.replace(/\{\{[\s\S]*?\}\}/g, '');
 			// delete all URLs
 			place.article = place.article.replace(/\[http[^\]]*\]/g, '');
+			// delete all references like: "[[File|Datei|Kategorie|...:...]]"
+			place.article = place.article.replace(/\[\[[^\]]*:[^\]]*\]\]/g, '');
+			console.log(`📋 Loaded article for ${place.title} (${place.pageid}): ${place.article}`);
 			// article still too long?
-			if (place.article.length > 20000) {
-				place.article = place.article.substring(0, 20000) + '...';
+			if (place.article.length > MAX_ARTICLE_LENGTH) {
+				place.article = place.article.substring(0, MAX_ARTICLE_LENGTH) + '...';
 			}
 			// extracts insights (only if requested)
 			if (extractInsights) {
@@ -178,17 +182,17 @@ export async function getRandomWikipediaPlaceCoordinates(lang) {
 }
 
 export async function searchWikipediaPlaceCoordinates(placeName, lang) {
-	
+
 	// Search for the place on Wikipedia
 	const searchResponse = await fetch(
 		`https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(placeName)}&limit=5&format=json&origin=*`
 	);
 	const searchData = await searchResponse.json();
-	
+
 	if (!searchData[1] || searchData[1].length === 0) {
 		throw new Error(`No Wikipedia articles found for "${placeName}"`);
 	}
-	
+
 	// Try each search result until we find one with coordinates
 	for (const title of searchData[1]) {
 		try {
@@ -197,17 +201,17 @@ export async function searchWikipediaPlaceCoordinates(placeName, lang) {
 				`https://${lang}.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=coordinates|extracts&exintro=1&explaintext=1&exlimit=1&format=json&origin=*`
 			);
 			const pageData = await pageResponse.json();
-			
+
 			const pages = pageData.query.pages;
 			const pageId = Object.keys(pages)[0];
 			const page = pages[pageId];
-			
+
 			// Check if this page has coordinates
 			if (page.coordinates && page.coordinates.length > 0) {
 				const coords = page.coordinates[0];
 				console.log(`Found coordinates for "${title}":`, coords);
-				return { 
-					latitude: coords.lat, 
+				return {
+					latitude: coords.lat,
 					longitude: coords.lon,
 					title: title,
 					description: page.extract
@@ -218,7 +222,7 @@ export async function searchWikipediaPlaceCoordinates(placeName, lang) {
 			continue;
 		}
 	}
-	
+
 	throw new Error(`No geographic coordinates found for "${placeName}"`);
 }
 
@@ -263,7 +267,7 @@ async function wikipediaNameSearchForPlace(name, coordinates, lang) {
 		const distance =
 			Math.sqrt(
 				Math.pow(coords.lat - coordinates.latitude, 2) +
-					Math.pow(coords.lon - coordinates.longitude, 2)
+				Math.pow(coords.lon - coordinates.longitude, 2)
 			) * 111139; // convert degrees to meters
 		// if close enough, return place
 		if (distance < 10000) {

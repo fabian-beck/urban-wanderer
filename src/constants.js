@@ -2,6 +2,9 @@ export const appName = 'Urban Wanderer';
 
 export const nArticles = 40;
 
+// Wikipedia article processing
+export const MAX_ARTICLE_LENGTH = 30000;
+
 // Grid constants
 export const GRID_CELL_SIZE = 20; // Grid cell size in both pixels and meters
 export const GRID_ARRAY_SIZE = 40; // Grid array dimensions
