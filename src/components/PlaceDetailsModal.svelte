@@ -9,7 +9,7 @@
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai-facts.js';
 import { get } from 'svelte/store';
-	import { coordinates, placesSurrounding, preferences, placeDetailsVisible } from '../stores.js';
+	import { coordinates, placesSurrounding, preferences, placeDetailsVisible, updateLocation } from '../stores.js';
 	import { LABELS } from '../constants.js';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
@@ -126,7 +126,10 @@ import { get } from 'svelte/store';
 			{#if place.lon && place.lat}
 				<hr class="my-4" />
 				<Button
-					on:click={() => (window.location.href = `/?lat=${place.lat}&lon=${place.lon}`)}
+					on:click={() => {
+						updateLocation({ latitude: place.lat, longitude: place.lon });
+						placeDetailsVisible.set('');
+					}}
 					class="m-1 mt-2 flex items-center rounded-full bg-primary-800 p-2 text-white shadow-lg"
 				>
 					<MapPinAltOutline class="!mr-1" />Jump to this place

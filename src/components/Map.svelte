@@ -30,11 +30,13 @@
 	const GRID_OFFSET_Y = SVG_CENTER;
 	const GRID_HEX_OFFSET = GRID_CELL_SIZE / 2;
 
-	const placesToHighlight = derived(places, ($places) => {
+	const placesToHighlight = derived([places, placesSurrounding], ([$places, $placesSurrounding]) => {
 		const highlighted = [];
 		const minDistance = PLACE_MIN_DISTANCE;
 
-		const filteredPlaces = $places?.filter(
+		if (!$places || !$placesSurrounding) return highlighted;
+
+		const filteredPlaces = $places.filter(
 			(place) =>
 				place.lon &&
 				place.lat &&
@@ -43,7 +45,7 @@
 		);
 
 		// sort places by stars (descending; primary) and by place.dist (ascending; secondary)
-		const sortedPlaces = filteredPlaces?.sort((a, b) => {
+		const sortedPlaces = filteredPlaces.sort((a, b) => {
 			if (a.stars !== b.stars) {
 				return b.stars - a.stars; // Sort by stars in descending order
 			} else if (a.dist !== b.dist) {
@@ -52,7 +54,7 @@
 			return 0; // No sorting needed if both stars and distance are equal
 		});
 
-		sortedPlaces?.forEach((place) => {
+		sortedPlaces.forEach((place) => {
 			if (place.lon && place.lat && place.stars > 1) {
 				const isTooClose = highlighted.some((highlightedPlace) => {
 					const distance = haversineDistance(
@@ -318,7 +320,7 @@
 			<g clip-path="url(#circleClip)">
 				<!-- background: all places as blurred circles -->
 				<g class="places-bg">
-					{#each $places.filter((place) => place.lon && place.lat && place.stars > 1) as place}
+					{#each ($places || []).filter((place) => place.lon && place.lat && place.stars > 1) as place}
 						<circle
 							cx={latLonToX(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
 							cy={latLonToY(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}

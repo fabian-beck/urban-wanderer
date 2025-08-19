@@ -91,6 +91,7 @@ out skel qt;
 		return places;
 	} catch (error) {
 		console.error('Could not load OSM places:', error);
+		return []; // Return empty array on error
 	}
 }
 

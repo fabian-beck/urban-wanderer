@@ -9,7 +9,10 @@
 		loadingMessage,
 		heading,
 		events,
-		preferences
+		preferences,
+		updateLocation,
+		searchForPlace,
+		loading
 	} from '../stores.js';
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
@@ -21,66 +24,15 @@
 	import { get } from 'svelte/store';
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
-	import { searchWikipediaPlaceCoordinates } from '../util/wikipedia.js';
-
-	let loading = false;
 	let urlCoordinates = null;
 
-	const updateUrlParamsWithCoordinates = async () => {
+	// Update URL params when coordinates change
+	$: if ($coordinates) {
 		const newUrl = new URL($page.url);
 		newUrl.searchParams.set('lat', $coordinates.latitude);
 		newUrl.searchParams.set('lon', $coordinates.longitude);
-		await goto(newUrl.toString(), { replaceState: false });
-	};
-
-	const update = async (coords) => {
-		try {
-			loading = true;
-			errorMessage.set(null);
-			places.reset();
-			coordinates.reset();
-			$storyTexts = [];
-			$events = [];
-			loadingMessage.set('Updating location ...');
-			await coordinates.update(coords);
-			await updateUrlParamsWithCoordinates();
-			loadingMessage.set('Loading places ...');
-			await places.update();
-			loading = false;
-			loadingMessage.reset();
-		} catch (error) {
-			loading = false;
-			loadingMessage.reset();
-			errorMessage.set('Error updating location: ' + error);
-			console.error('Error updating location', error);
-		}
-	};
-
-	const jumpToUrlCoordinates = () => {
-		if (urlCoordinates) {
-			update(urlCoordinates);
-			urlCoordinates = null;
-		}
-	};
-
-	const searchForPlace = async (placeName) => {
-		try {
-			loading = true;
-			errorMessage.set(null);
-			loadingMessage.set(`Searching for "${placeName}"...`);
-
-			const placeData = await searchWikipediaPlaceCoordinates(placeName, get(preferences).lang);
-			await update({
-				latitude: placeData.latitude,
-				longitude: placeData.longitude
-			});
-		} catch (error) {
-			loading = false;
-			loadingMessage.reset();
-			errorMessage.set(`Error searching for place: ${error.message}`);
-			console.error('Error searching for place:', error);
-		}
-	};
+		goto(newUrl.toString(), { replaceState: true });
+	}
 
 	onMount(() => {
 		const urlParams = $page.url.searchParams;
@@ -100,11 +52,11 @@
 	});
 </script>
 
-<Header updateRandom={() => update('random')} {searchForPlace} />
+<Header updateRandom={() => updateLocation('random')} {searchForPlace} />
 <main id="main" class="mx-auto mb-10 max-w-lg p-4 pb-24 pt-20">
 	{#if urlCoordinates}
 		<div class="mb-4">
-			<Button on:click={jumpToUrlCoordinates} class="w-full">
+			<Button on:click={() => { updateLocation(urlCoordinates); urlCoordinates = null; }} class="w-full">
 				Jump to {urlCoordinates.latitude.toFixed(4)}, {urlCoordinates.longitude.toFixed(4)}
 			</Button>
 		</div>
@@ -117,7 +69,7 @@
 			<CloseButton on:click={() => errorMessage.set(null)} class="flex-none" />
 		</Alert>
 	{/if}
-	{#if !loading && $coordinates}
+	{#if !$loading && $coordinates}
 		<Map />
 		<hr class="m-4" />
 		<Comment />
@@ -130,7 +82,7 @@
 			<img src="urban-wanderer-icon.png" alt="logo" class="w-24" />
 		</div>
 		<h1 class="uw-font text-center text-3xl text-primary-800">{appName}</h1>
-		{#if loading}
+		{#if $loading}
 			<div class="m-6 text-center">
 				<p><Spinner /></p>
 				{#if $loadingMessage}
@@ -140,4 +92,4 @@
 		{/if}
 	{/if}
 </main>
-<Location {loading} update={() => update(false)} />
+<Location loading={$loading} update={() => updateLocation(false)} />

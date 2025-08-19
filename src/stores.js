@@ -115,7 +115,13 @@ function createPlaces() {
 				loadOsmWaterMap(get(coordinates)).then(mapData => waterMap.set(mapData));
 				loadOsmGreenMap(get(coordinates)).then(mapData => greenMap.set(mapData));
 				loadOsmActivityMap(get(coordinates)).then(mapData => activityMap.set(mapData));
-				let [placesTmp, placesOsm] = await Promise.all([loadWikipediaPlaces(get(coordinates), get(preferences), nArticles), loadOsmPlaces(get(coordinates))]);
+				let [placesTmp, placesOsm] = await Promise.allSettled([
+					loadWikipediaPlaces(get(coordinates), get(preferences), nArticles), 
+					loadOsmPlaces(get(coordinates))
+				]).then(results => [
+					results[0].status === 'fulfilled' ? results[0].value : [],
+					results[1].status === 'fulfilled' ? results[1].value : []
+				]);
 				set(mergePlaces(placesTmp, placesOsm));
 				console.log('Time to load places (s):', ((Date.now() - startTime) / 1000).toFixed(2));
 				previousTime = Date.now();
@@ -220,6 +226,9 @@ export const events = writable([]);
 // error store
 export const errorMessage = writable(null);
 
+// loading state store
+export const loading = writable(false);
+
 // loading message store
 function createLoadingMessage() {
 	const { subscribe, set: originalSet } = writable(null);
@@ -294,6 +303,10 @@ async function loadMetadata() {
 }
 
 function mergePlaces(placesTmp, placesOsm) {
+	// Handle cases where inputs might be null/undefined
+	if (!placesTmp) placesTmp = [];
+	if (!placesOsm) placesOsm = [];
+	
 	placesTmp = placesTmp.map((place) => {
 		const osm = placesOsm.find((osm) => osm.title === place.title);
 		if (osm) {
@@ -365,3 +378,48 @@ export const greenMap = writable([]);
 
 // activity map
 export const activityMap = writable([]);
+
+// Update location function - orchestrates all store updates
+export async function updateLocation(coords) {
+	try {
+		loading.set(true);
+		errorMessage.set(null);
+		places.reset();
+		coordinates.reset();
+		storyTexts.set([]);
+		events.set([]);
+		loadingMessage.set('Updating location ...');
+		await coordinates.update(coords);
+		loadingMessage.set('Loading places ...');
+		await places.update();
+		loadingMessage.reset();
+		loading.set(false);
+	} catch (error) {
+		loadingMessage.reset();
+		loading.set(false);
+		errorMessage.set('Error updating location: ' + error);
+		console.error('Error updating location', error);
+	}
+}
+
+// Search for place by name and update location
+export async function searchForPlace(placeName) {
+	try {
+		loading.set(true);
+		const { searchWikipediaPlaceCoordinates } = await import('./util/wikipedia.js');
+		loadingMessage.set(`Searching for "${placeName}"...`);
+		const placeData = await searchWikipediaPlaceCoordinates(placeName, get(preferences).lang);
+		
+		// Reset loading state and call updateLocation (which will handle its own loading state)
+		loading.set(false);
+		await updateLocation({
+			latitude: placeData.latitude,
+			longitude: placeData.longitude
+		});
+	} catch (error) {
+		loadingMessage.reset();
+		loading.set(false);
+		errorMessage.set(`Error searching for place: ${error.message}`);
+		console.error('Error searching for place:', error);
+	}
+}
