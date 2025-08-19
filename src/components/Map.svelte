@@ -13,7 +13,7 @@
 	} from '../stores.js';
 
 	import { derived } from 'svelte/store';
-	import { haversineDistance, latLonToX, latLonToY } from '../util/geo.js';
+	import { haversineDistance, latLonToX, latLonToY } from '../util/osm.js';
 	import {
 		GRID_CELL_SIZE,
 		GRID_ARRAY_SIZE,
