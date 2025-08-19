@@ -20,6 +20,7 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import Map from '../components/Map.svelte';
+	import Comment from '../components/Comment.svelte';
 	import { searchWikipediaPlaceCoordinates } from '../util/wikipedia.js';
 
 	let loading = false;
@@ -67,7 +68,7 @@
 			loading = true;
 			errorMessage.set(null);
 			loadingMessage.set(`Searching for "${placeName}"...`);
-			
+
 			const placeData = await searchWikipediaPlaceCoordinates(placeName, get(preferences).lang);
 			await update({
 				latitude: placeData.latitude,
@@ -118,6 +119,8 @@
 	{/if}
 	{#if !loading && $coordinates}
 		<Map />
+		<hr class="m-4" />
+		<Comment />
 		<hr class="m-4" />
 		<Here />
 		<hr class="m-4" />
