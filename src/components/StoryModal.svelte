@@ -46,7 +46,7 @@
 			result = result.replace(regEx, (match) => {
 				const placeText = match.replace(/<\/?strong>/g, '');
 				const placeEmoji = place.cls && CLASSES[place.cls]?.emoji ? CLASSES[place.cls].emoji : '';
-				return `<strong class="cursor-pointer text-primary-600 hover:text-primary-800" data-place-title="${place.title}">${placeEmoji}${placeEmoji ? ' ' : ''}${placeText}</strong>`;
+				return `<strong class="cursor-pointer text-primary-800 hover:text-primary-900" data-place-title="${place.title}">${placeEmoji}${placeEmoji ? ' ' : ''}${placeText}</strong>`;
 			});
 		});
 		return result;
