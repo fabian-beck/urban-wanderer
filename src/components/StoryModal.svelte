@@ -18,12 +18,58 @@
 		placesHere,
 		placesNearby,
 		placesSurrounding,
-		coordinates
+		coordinates,
+		places,
+		placeDetailsVisible
 	} from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
 	import { Button, Spinner, Alert, CloseButton } from 'flowbite-svelte';
 
 	let loading = false;
+
+	// Function to make marked places clickable
+	const makeClickablePlaces = (htmlContent) => {
+		let result = htmlContent;
+		const $places = get(places);
+
+		// Sort places by length of title in descending order to handle longer names first
+		const sortedPlaces = [...$places].sort((a, b) => b.title.length - a.title.length);
+
+		sortedPlaces.forEach((place) => {
+			let placeName = place.title.replace(/\s*\(.*?\)\s*/g, '');
+			// Create a regex to find bold marked places
+			let regEx = new RegExp(
+				`<strong>${placeName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\w*</strong>`,
+				'gi'
+			);
+			result = result.replace(regEx, (match) => {
+				const placeText = match.replace(/<\/?strong>/g, '');
+				return `<strong class="cursor-pointer text-primary-600 hover:text-primary-800" data-place-title="${place.title}">${placeText}</strong>`;
+			});
+		});
+		return result;
+	};
+
+	// Function to handle place clicks
+	const openPlaceDetails = (placeTitle) => {
+		placeDetailsVisible.set(placeTitle);
+	};
+
+	// Add event listener for place clicks after the content is rendered
+	const handleStoryClick = (event) => {
+		const target = event.target;
+		if (target.tagName === 'STRONG' && target.dataset.placeTitle) {
+			openPlaceDetails(target.dataset.placeTitle);
+		}
+	};
+
+	// Handle keyboard events for accessibility
+	const handleStoryKeydown = (event) => {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			handleStoryClick(event);
+		}
+	};
 
 	const updateStory = async () => {
 		loading = true;
@@ -118,9 +164,16 @@
 		<div class="p-4">
 			{#if $storyTexts.length > 0}
 				{#each $storyTexts as storyText}
-					<div>
+					<div
+						on:click={handleStoryClick}
+						on:keydown={handleStoryKeydown}
+						role="button"
+						tabindex="0"
+					>
 						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-						{@html marked(markPlacesInText(storyText)).replaceAll('<p>', '<p class="mt-2">')}
+						{@html makeClickablePlaces(
+							marked(markPlacesInText(storyText)).replaceAll('<p>', '<p class="mt-2">')
+						)}
 					</div>
 					<div class="mb-2 flex justify-end">
 						<Button

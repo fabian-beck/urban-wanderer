@@ -17,7 +17,7 @@
 	}));
 
 	let cacheCleared = false;
-	
+
 	function handleClearCache() {
 		clearAnalysisCache();
 		clearInsightsCache();
@@ -86,19 +86,19 @@
 	<Select bind:value={$preferences.aiModelSimple} items={AI_MODELS.SIMPLE} />
 	<Label>AI Model for Advanced Tasks</Label>
 	<Select bind:value={$preferences.aiModelAdvanced} items={AI_MODELS.ADVANCED} />
-	
-	<div class="mt-6 pt-4 border-t border-gray-200">
+
+	<div class="mt-6 border-t border-gray-200 pt-4">
 		<Label>Cache Management</Label>
-		<div class="text-xs text-gray-500 mb-2">
+		<div class="mb-2 text-xs text-gray-500">
 			Clear cached AI data (place analysis and article insights) to force fresh generation.
 		</div>
-		<Button 
-			color={cacheCleared ? "green" : "alternative"} 
-			size="sm" 
+		<Button
+			color={cacheCleared ? 'green' : 'alternative'}
+			size="sm"
 			on:click={handleClearCache}
 			disabled={cacheCleared}
 		>
-			{cacheCleared ? "✓ Caches Cleared!" : "Clear AI Caches"}
+			{cacheCleared ? '✓ Caches Cleared!' : 'Clear AI Caches'}
 		</Button>
 	</div>
 </Modal>

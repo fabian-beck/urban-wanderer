@@ -7,7 +7,7 @@ const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function loadInsightsCache() {
 	if (typeof localStorage === 'undefined') return {};
-	
+
 	try {
 		const stored = localStorage.getItem(INSIGHTS_CACHE_KEY);
 		if (stored) {
@@ -16,7 +16,7 @@ function loadInsightsCache() {
 			// Clean expired entries and return valid ones
 			const validCache = {};
 			for (const [key, value] of Object.entries(cache)) {
-				if (value.timestamp && (now - value.timestamp < CACHE_TTL)) {
+				if (value.timestamp && now - value.timestamp < CACHE_TTL) {
 					validCache[key] = value;
 				}
 			}
@@ -30,7 +30,7 @@ function loadInsightsCache() {
 
 function saveInsightsCache(cache) {
 	if (typeof localStorage === 'undefined') return;
-	
+
 	try {
 		localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify(cache));
 	} catch (error) {
@@ -140,13 +140,13 @@ ${place.article || place.description || place.snippet || '[no description availa
 
 export async function extractInsightsFromArticle(article, preferences) {
 	const cacheKey = createInsightsCacheKey(article, preferences);
-	
+
 	// Check cache first
 	if (insightsCache[cacheKey]) {
 		console.log('Insights found in cache for article');
 		return insightsCache[cacheKey].content;
 	}
-	
+
 	console.log('Generating new insights for article');
 	const instructions = `You are a chat assistant helping a user to extract insights from an article, relevant when visiting the place.
 
@@ -170,16 +170,16 @@ Answer in language '${preferences.lang}'.
 			}
 		]
 	});
-	
+
 	const insights = response.output_text;
 	console.log('Extract insights response:', [insights]);
-	
+
 	// Cache the result with timestamp
 	insightsCache[cacheKey] = {
 		content: insights,
 		timestamp: Date.now()
 	};
 	saveInsightsCache(insightsCache);
-	
+
 	return insights;
 }

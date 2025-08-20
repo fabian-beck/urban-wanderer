@@ -48,7 +48,11 @@
 	};
 
 	// Trigger fact loading when modal becomes visible
-	$: if ($visible && placeFactListComponent) {
+	$: if (
+		$visible &&
+		placeFactListComponent &&
+		typeof placeFactListComponent.loadFacts === 'function'
+	) {
 		placeFactListComponent.loadFacts();
 	}
 
@@ -77,7 +81,7 @@
 <Modal
 	title={place.title}
 	classBody="p-0 overscroll-none"
-	classDialog=""
+	classDialog="z-[60]"
 	open={$visible}
 	on:close={() => placeDetailsVisible.set('')}
 >

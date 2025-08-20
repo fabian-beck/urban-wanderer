@@ -1,9 +1,16 @@
 import { openai } from './ai-core.js';
+import { get } from 'svelte/store';
 
 let audio = null;
 
 export async function textToSpeech(text, audioState, preferences) {
-	if (audioState.get() === 'playing') {
+	// Defensive check to ensure audioState is a store
+	if (!audioState || typeof audioState.set !== 'function' || typeof audioState.subscribe !== 'function') {
+		console.error('audioState must be a Svelte store with set() and subscribe() methods');
+		return;
+	}
+
+	if (get(audioState) === 'playing') {
 		audioState.set('paused');
 		if (audio) {
 			audio.pause();
@@ -26,7 +33,7 @@ You are ${preferences.guideCharacter} city guide and speak accordingly.
 		audio.pause();
 	}
 	audio = new Audio(URL.createObjectURL(blob));
-	if (audioState.get() === 'paused') {
+	if (get(audioState) === 'paused') {
 		return;
 	}
 	document.querySelectorAll('audio').forEach((audio) => audio.pause());
@@ -39,7 +46,9 @@ You are ${preferences.guideCharacter} city guide and speak accordingly.
 		}
 	});
 	audio.onended = () => {
-		audioState.set('paused');
+		if (audioState && typeof audioState.set === 'function') {
+			audioState.set('paused');
+		}
 		audio = null;
 	};
 }
