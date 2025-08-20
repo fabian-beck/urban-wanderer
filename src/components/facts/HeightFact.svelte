@@ -1,7 +1,5 @@
 <script>
 	import { FAMOUS_BUILDINGS } from '../../constants.js';
-	import { preferences } from '../../stores.js';
-	import { get } from 'svelte/store';
 
 	export let value = '';
 	export let widthClass = 'col-span-1';
@@ -55,7 +53,6 @@
 		if (!comparisons) return { mainValue: value, smaller: null, larger: null };
 
 		const { smaller, larger } = comparisons;
-		const lang = get(preferences)?.lang || 'en';
 
 		// Format height according to language preference
 		const roundedHeight = Math.round(heightInMeters);
@@ -79,7 +76,7 @@
 			<div class="flex items-end justify-center gap-2 text-sm">
 				{#if formattedResult.smaller}
 					<div class="flex flex-col items-center">
-						<div class="text-xs leading-none text-gray-500 mb-0.5" style="font-size: 0.55rem;">
+						<div class="mb-0.5 text-xs leading-none text-gray-500" style="font-size: 0.55rem;">
 							{formattedResult.smaller.shortName}
 						</div>
 						<img
@@ -105,7 +102,7 @@
 				{#if formattedResult.larger}
 					<span class="mb-1 text-gray-600">&lt;</span>
 					<div class="flex flex-col items-center">
-						<div class="text-xs leading-none text-gray-500 mb-0.5" style="font-size: 0.55rem;">
+						<div class="mb-0.5 text-xs leading-none text-gray-500" style="font-size: 0.55rem;">
 							{formattedResult.larger.shortName}
 						</div>
 						<img

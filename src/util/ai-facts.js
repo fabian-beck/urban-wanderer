@@ -138,13 +138,13 @@ The place of interest is ${place.title} (${place.cls}) located near ${coordinate
 Extract relevant facts and data about the place. Answer in language '${preferences.lang}'.
 
 The facts should be relevant for a current touristic visitor of the place. 
-Avoid redundancies; do not repeat the same information in different ways in properties and other facts.
+Avoid redundancies and repetitions in all cases; do not repeat the same information in different ways in properties and other facts.
+If a fact is already mentioned as a required property (e.g., architectural style), do not repeat as part of the list of other facts.
 Directions, address, location are not necessary as the user is at the place already. 
 Avoid any general description of the place and do not provide general information about the city or region. 
 Use null for missing values.
 Keep the language as concise as possible and factual, do not use acronyms or abbreviations. 
 Descriptions should not be full sentences, but short phrases or single words.
-Use unicode icons for properties where possible, e.g., 🏛️ for "building", 🏞️ for "park", etc.
 Keep list short or empty if there are no relevant facts.
 
 You may use the following sources of information about the place:

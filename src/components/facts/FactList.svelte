@@ -1,6 +1,7 @@
 <script>
 	import Fact from './Fact.svelte';
 	import HeightFact from './HeightFact.svelte';
+	import ArchitectureStyleFact from './ArchitectureStyleFact.svelte';
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import { Spinner } from 'flowbite-svelte';
@@ -66,6 +67,11 @@
 			if (valueStr.length > 45) return 4; // full width
 			if (valueStr.length > 25) return 3; // three-quarter width
 			return 2; // minimum half width for height facts
+		}
+
+		// Architecture style facts need more space for description
+		if (key === 'architecture_style') {
+			return 2; // minimum half width for architecture style facts
 		}
 
 		const labelStr = label?.toString() || '';
@@ -207,12 +213,10 @@
 				{#each optimizedFacts as fact}
 					{#if fact.key === 'height'}
 						<HeightFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
+					{:else if fact.key === 'architecture_style'}
+						<ArchitectureStyleFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{:else}
-						<Fact
-							label={fact.label}
-							value={fact.value}
-							widthClass={`col-span-${fact.widthSpan}`}
-						/>
+						<Fact label={fact.label} value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{/if}
 				{/each}
 			</div>
