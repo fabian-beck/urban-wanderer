@@ -220,6 +220,7 @@ export const placesNearby = derived(
 
 // story
 export const storyTexts = writable([]);
+export const storyResponseIds = writable([]);
 export const storyLoading = writable(false);
 export const preloadedStory = writable(null);
 export const preloadingStory = writable(false);
@@ -344,12 +345,13 @@ async function pregenerateStoryInBackground() {
 
 	// Clear previous stories and preloaded content
 	storyTexts.set([]);
+	storyResponseIds.set([]);
 	preloadedStory.set(null);
 	storyLoading.set(true);
 	preloadingStory.set(false);
 
 	try {
-		const firstStory = await generateStory(
+		const firstStoryResult = await generateStory(
 			[],
 			get(placesHere),
 			get(placesNearby),
@@ -357,10 +359,11 @@ async function pregenerateStoryInBackground() {
 			get(coordinates),
 			get(preferences)
 		);
-		storyTexts.set([firstStory]);
+		storyTexts.set([firstStoryResult.text]);
+		storyResponseIds.set([firstStoryResult.responseId]);
 		storyLoading.set(false);
 		// Start preloading the next story part immediately
-		preloadNextStoryPart([firstStory]);
+		preloadNextStoryPart([firstStoryResult.text]);
 	} catch (error) {
 		console.error('Background story generation failed:', error);
 		storyLoading.set(false);
@@ -372,15 +375,20 @@ export async function preloadNextStoryPart(currentStories) {
 
 	preloadingStory.set(true);
 	try {
-		const nextStory = await generateStory(
+		const currentResponseIds = get(storyResponseIds);
+		const lastResponseId =
+			currentResponseIds.length > 0 ? currentResponseIds[currentResponseIds.length - 1] : null;
+
+		const nextStoryResult = await generateStory(
 			currentStories,
 			get(placesHere),
 			get(placesNearby),
 			get(placesSurrounding),
 			get(coordinates),
-			get(preferences)
+			get(preferences),
+			lastResponseId
 		);
-		preloadedStory.set(nextStory);
+		preloadedStory.set(nextStoryResult);
 	} catch (error) {
 		console.error('Error preloading next story part:', error);
 	} finally {

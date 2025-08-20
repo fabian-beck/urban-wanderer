@@ -8,7 +8,8 @@ export async function generateStory(
 	placesNearby,
 	placesSurrounding,
 	coordinates,
-	preferences
+	preferences,
+	previousResponseId = null
 ) {
 	if (!storyTexts) {
 		storyTexts = [];
@@ -87,16 +88,20 @@ Remember that you enact a ${preferences.guideCharacter} guide and take this role
 Consider that the user is ${preferences.familiarity} with the area; select the facts and adapt the explanations accordingly.
 `
 	};
-	let messages = [
-		initialMessage,
-		...storyTexts.map((text) => ({ role: 'assistant', content: text }))
-	];
-	if (storyTexts.length > 0) {
-		messages.push({
-			role: 'system',
-			content: `Tell the user more about something different. You may focus on something specific, but never repeat yourself.
+	let messages = [initialMessage];
 
-Remember, the user is at this position:
+	if (storyTexts.length > 0 && !previousResponseId) {
+		for (let i = 0; i < storyTexts.length; i++) {
+			messages.push(
+				{ role: 'user', content: 'Tell me something interesting about this location.' },
+				{ role: 'assistant', content: storyTexts[i] }
+			);
+		}
+		messages.push({
+			role: 'user',
+			content: `Tell me more about something different at this location. You may focus on something specific, but never repeat yourself.
+
+Remember, I am at this position:
 ${coordinates.address}
 
 The position is close to /in:
@@ -104,17 +109,42 @@ ${placesHere.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`).joi
 
 Strictly stick to the initially provided instructions and facts about the places.
 Write one to three paragraphs of text. 
-Give the text a headline marked in bold font.
-`
+Give the text a headline marked in bold font.`
+		});
+	} else if (storyTexts.length === 0) {
+		messages.push({
+			role: 'user',
+			content: 'Tell me something interesting about this location.'
+		});
+	} else {
+		messages.push({
+			role: 'user',
+			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself.
+
+Write one to three paragraphs of text. 
+Give the text a headline marked in bold font.`
 		});
 	}
 	console.log('Story writing instructions', messages);
-	const response = await openai.responses.create({
+	const requestConfig = {
 		model: getAiModel('advanced', preferences),
+		store: true,
 		reasoning: {
 			effort: AI_REASONING_EFFORT
-		},
-		input: messages
-	});
-	return response.output_text;
+		}
+	};
+
+	if (previousResponseId) {
+		requestConfig.previous_response_id = previousResponseId;
+		requestConfig.input = messages.slice(-1);
+	} else {
+		requestConfig.input = messages;
+	}
+
+	const response = await openai.responses.create(requestConfig);
+
+	return {
+		text: response.output_text,
+		responseId: response.id
+	};
 }

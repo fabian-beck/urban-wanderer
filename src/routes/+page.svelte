@@ -19,9 +19,9 @@
 	import { onMount } from 'svelte';
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
-	
+
 	export let params = {};
-	
+
 	let urlCoordinates = null;
 	let urlUpdateTimeout = null;
 
@@ -36,7 +36,7 @@
 			const currentLon = newUrl.searchParams.get('lon');
 			const newLat = $coordinates.latitude.toString();
 			const newLon = $coordinates.longitude.toString();
-			
+
 			// Only update URL if coordinates actually changed
 			if (currentLat !== newLat || currentLon !== newLon) {
 				newUrl.searchParams.set('lat', newLat);

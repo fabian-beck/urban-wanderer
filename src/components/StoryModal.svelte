@@ -8,12 +8,17 @@
 	import {
 		errorMessage,
 		storyTexts,
+		storyResponseIds,
 		storyLoading,
 		audioState,
 		preferences,
 		preloadedStory,
 		preloadingStory,
-		preloadNextStoryPart
+		preloadNextStoryPart,
+		placesHere,
+		placesNearby,
+		placesSurrounding,
+		coordinates
 	} from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
 	import { Button, Spinner, Alert, CloseButton } from 'flowbite-svelte';
@@ -24,21 +29,33 @@
 		loading = true;
 		audioState.set('paused');
 		try {
-			let nextStoryText;
+			let nextStoryResult;
 			// Use preloaded story if available
 			if ($preloadedStory) {
-				nextStoryText = $preloadedStory;
+				nextStoryResult = $preloadedStory;
 				preloadedStory.set(null);
 			} else {
 				// Generate new story if no preloaded version
-				nextStoryText = await generateStory($storyTexts);
+				const lastResponseId =
+					$storyResponseIds.length > 0 ? $storyResponseIds[$storyResponseIds.length - 1] : null;
+				nextStoryResult = await generateStory(
+					$storyTexts,
+					get(placesHere),
+					get(placesNearby),
+					get(placesSurrounding),
+					get(coordinates),
+					get(preferences),
+					lastResponseId
+				);
 			}
 
-			const newStoryTexts = [...$storyTexts, nextStoryText];
+			const newStoryTexts = [...$storyTexts, nextStoryResult.text];
+			const newResponseIds = [...$storyResponseIds, nextStoryResult.responseId];
 			$storyTexts = newStoryTexts;
+			$storyResponseIds = newResponseIds;
 
 			if (visible && $preferences.audio) {
-				textToSpeech(nextStoryText, audioState, get(preferences));
+				textToSpeech(nextStoryResult.text, audioState, get(preferences));
 			}
 
 			// Start preloading the next story part
