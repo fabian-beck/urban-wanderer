@@ -5,7 +5,11 @@ let audio = null;
 
 export async function textToSpeech(text, audioState, preferences) {
 	// Defensive check to ensure audioState is a store
-	if (!audioState || typeof audioState.set !== 'function' || typeof audioState.subscribe !== 'function') {
+	if (
+		!audioState ||
+		typeof audioState.set !== 'function' ||
+		typeof audioState.subscribe !== 'function'
+	) {
 		console.error('audioState must be a Svelte store with set() and subscribe() methods');
 		return;
 	}

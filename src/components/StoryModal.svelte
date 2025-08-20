@@ -5,6 +5,7 @@
 	import { textToSpeech } from '../util/ai-speech.js';
 	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
+	import { CLASSES } from '../constants.js';
 	import {
 		errorMessage,
 		storyTexts,
@@ -44,7 +45,8 @@
 			);
 			result = result.replace(regEx, (match) => {
 				const placeText = match.replace(/<\/?strong>/g, '');
-				return `<strong class="cursor-pointer text-primary-600 hover:text-primary-800" data-place-title="${place.title}">${placeText}</strong>`;
+				const placeEmoji = place.cls && CLASSES[place.cls]?.emoji ? CLASSES[place.cls].emoji : '';
+				return `<strong class="cursor-pointer text-primary-600 hover:text-primary-800" data-place-title="${place.title}">${placeEmoji}${placeEmoji ? ' ' : ''}${placeText}</strong>`;
 			});
 		});
 		return result;
