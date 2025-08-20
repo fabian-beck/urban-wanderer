@@ -1,8 +1,6 @@
 <script>
-	import { Button } from 'flowbite-svelte';
-	import { ArrowRightOutline } from 'flowbite-svelte-icons';
 	import PlaceFact from './PlaceFact.svelte';
-	import { searchPlaceFacts } from '../util/ai-facts.js';
+	import { extractPlaceFacts } from '../util/ai-facts.js';
 	import { coordinates } from '../stores.js';
 	import { Spinner } from 'flowbite-svelte';
 	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../constants.js';
@@ -47,7 +45,7 @@
 			}
 		}
 
-		facts = await searchPlaceFacts(place, factsProperties, get(coordinates), get(preferences));
+		facts = await extractPlaceFacts(place, factsProperties, get(coordinates), get(preferences));
 		factsLoading = false;
 	};
 
@@ -190,18 +188,11 @@
 
 <div>
 	<div class="flex flex-auto">
-		{#if !facts}
-			{#if factsLoading}
-				<div class="m-6 flex justify-center">
-					<Spinner size="6" />
-				</div>
-			{:else}
-				<Button on:click={loadFacts} pill size="xs" outline class="mt-2"
-					><ArrowRightOutline />
-					Search for facts
-				</Button>
-			{/if}
-		{:else}
+		{#if !facts && factsLoading}
+			<div class="m-6 flex justify-center">
+				<Spinner size="6" />
+			</div>
+		{:else if facts}
 			<div class="grid w-full auto-rows-fr grid-cols-4 gap-3">
 				{#each optimizedFacts as fact}
 					<PlaceFact

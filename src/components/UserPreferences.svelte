@@ -4,7 +4,7 @@
 	import { places } from '../stores.js';
 	import { LABELS, LANGUAGES, GUIDE_CHARACTERS, FAMILIARITY, AI_MODELS } from '../constants.js';
 	import { clearAnalysisCache } from '../util/ai-analysis.js';
-	import { clearInsightsCache } from '../util/ai-facts.js';
+	import { clearInsightsCache, clearFactsCache } from '../util/ai-facts.js';
 
 	export let visible = false;
 	const langOptions = [
@@ -21,6 +21,7 @@
 	function handleClearCache() {
 		clearAnalysisCache();
 		clearInsightsCache();
+		clearFactsCache();
 		cacheCleared = true;
 		// Reset the feedback after 3 seconds
 		setTimeout(() => {
@@ -89,9 +90,7 @@
 
 	<div class="mt-6 border-t border-gray-200 pt-4">
 		<Label>Cache Management</Label>
-		<div class="mb-2 text-xs text-gray-500">
-			Clear cached AI data (place analysis and article insights) to force fresh generation.
-		</div>
+		<div class="mb-2 text-xs text-gray-500">Clear cached AI data to force fresh generation.</div>
 		<Button
 			color={cacheCleared ? 'green' : 'alternative'}
 			size="sm"

@@ -3,13 +3,14 @@ import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT } from '../constants.js';
 
 const INSIGHTS_CACHE_KEY = 'urban-wanderer-insights-cache';
+const FACTS_CACHE_KEY = 'urban-wanderer-facts-cache';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-function loadInsightsCache() {
+function loadCache(cacheKey) {
 	if (typeof localStorage === 'undefined') return {};
 
 	try {
-		const stored = localStorage.getItem(INSIGHTS_CACHE_KEY);
+		const stored = localStorage.getItem(cacheKey);
 		if (stored) {
 			const cache = JSON.parse(stored);
 			const now = Date.now();
@@ -23,19 +24,35 @@ function loadInsightsCache() {
 			return validCache;
 		}
 	} catch (error) {
-		console.warn('Failed to load insights cache:', error);
+		console.warn(`Failed to load cache ${cacheKey}:`, error);
 	}
 	return {};
 }
 
-function saveInsightsCache(cache) {
+function loadInsightsCache() {
+	return loadCache(INSIGHTS_CACHE_KEY);
+}
+
+function loadFactsCache() {
+	return loadCache(FACTS_CACHE_KEY);
+}
+
+function saveCache(cacheKey, cache) {
 	if (typeof localStorage === 'undefined') return;
 
 	try {
-		localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify(cache));
+		localStorage.setItem(cacheKey, JSON.stringify(cache));
 	} catch (error) {
-		console.warn('Failed to save insights cache:', error);
+		console.warn(`Failed to save cache ${cacheKey}:`, error);
 	}
+}
+
+function saveInsightsCache(cache) {
+	saveCache(INSIGHTS_CACHE_KEY, cache);
+}
+
+function saveFactsCache(cache) {
+	saveCache(FACTS_CACHE_KEY, cache);
 }
 
 function createInsightsCacheKey(article, preferences) {
@@ -44,7 +61,14 @@ function createInsightsCacheKey(article, preferences) {
 	return `${articleHash}|${preferences.lang}`;
 }
 
+function createFactsCacheKey(place, factsProperties, preferences) {
+	// Create a cache key based on place title, properties schema, and language
+	const propertiesHash = Object.keys(factsProperties).sort().join(',');
+	return `${place.title}|${propertiesHash}|${preferences.lang}`;
+}
+
 let insightsCache = loadInsightsCache();
+let factsCache = loadFactsCache();
 
 export function clearInsightsCache() {
 	// Clear localStorage
@@ -54,6 +78,16 @@ export function clearInsightsCache() {
 	// Clear in-memory cache
 	insightsCache = {};
 	console.log('Insights cache cleared (both localStorage and memory)');
+}
+
+export function clearFactsCache() {
+	// Clear localStorage
+	if (typeof localStorage !== 'undefined') {
+		localStorage.removeItem(FACTS_CACHE_KEY);
+	}
+	// Clear in-memory cache
+	factsCache = {};
+	console.log('Facts cache cleared (both localStorage and memory)');
 }
 
 // summarize article
@@ -82,8 +116,17 @@ ${article} `
 	return summary;
 }
 
-// search for a data facts about a place
-export async function searchPlaceFacts(place, factsProperties, coordinates, preferences) {
+// extract facts about a place
+export async function extractPlaceFacts(place, factsProperties, coordinates, preferences) {
+	const cacheKey = createFactsCacheKey(place, factsProperties, preferences);
+
+	// Check cache first
+	if (factsCache[cacheKey]) {
+		console.log('Facts found in cache for place:', place.title);
+		return factsCache[cacheKey].content;
+	}
+
+	console.log('Generating new facts for place:', place.title);
 	// Get WikiData context using the new utility
 	const wikidataContext = await getWikidataContext(place);
 
@@ -92,7 +135,7 @@ You are a chat assistant helping a user to find facts about a place in the provi
 
 The place of interest is ${place.title} (${place.cls}) located near ${coordinates.address}. 
 
-Extract and search for relevant facts and data about the place. Answer in language '${preferences.lang}'.
+Extract relevant facts and data about the place. Answer in language '${preferences.lang}'.
 
 The facts should be relevant for a current touristic visitor of the place. 
 Avoid redundancies; do not repeat the same information in different ways in properties and other facts.
@@ -107,7 +150,7 @@ Keep list short or empty if there are no relevant facts.
 You may use the following sources of information about the place:
 ${place.article || place.description || place.snippet || '[no description available]'}${wikidataContext}
 `;
-	console.log('Search facts instructions', [initialMessage]);
+	console.log('Extract facts instructions', [initialMessage]);
 	const response = await openai.responses.create({
 		model: getAiModel('advanced', preferences),
 		reasoning: {
@@ -134,8 +177,17 @@ ${place.article || place.description || place.snippet || '[no description availa
 			}
 		}
 	});
-	console.log('Search fact response:', JSON.parse(response.output_text).facts);
-	return JSON.parse(response.output_text).facts;
+	const facts = JSON.parse(response.output_text).facts;
+	console.log('Extract facts response:', facts);
+
+	// Cache the result with timestamp
+	factsCache[cacheKey] = {
+		content: facts,
+		timestamp: Date.now()
+	};
+	saveFactsCache(factsCache);
+
+	return facts;
 }
 
 export async function extractInsightsFromArticle(article, preferences) {
