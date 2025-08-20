@@ -1,11 +1,11 @@
 <script>
-	import PlaceFact from './PlaceFact.svelte';
+	import Fact from './Fact.svelte';
 	import HeightFact from './HeightFact.svelte';
-	import { extractPlaceFacts } from '../util/ai-facts.js';
-	import { coordinates } from '../stores.js';
+	import { extractPlaceFacts } from '../../util/ai-facts.js';
+	import { coordinates } from '../../stores.js';
 	import { Spinner } from 'flowbite-svelte';
-	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../constants.js';
-	import { preferences } from '../stores.js';
+	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../../constants.js';
+	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
 
 	export let place;
@@ -208,7 +208,7 @@
 					{#if fact.key === 'height'}
 						<HeightFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{:else}
-						<PlaceFact
+						<Fact
 							label={fact.label}
 							value={fact.value}
 							widthClass={`col-span-${fact.widthSpan}`}

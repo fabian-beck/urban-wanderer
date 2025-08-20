@@ -20,7 +20,7 @@
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import { derived } from 'svelte/store';
-	import PlaceFactList from './PlaceFactList.svelte';
+	import FactList from './facts/FactList.svelte';
 
 	export let place;
 	const visible = derived(
@@ -138,7 +138,7 @@
 			{/if}
 			<hr class="my-4" />
 			<h3 class="mb-2 text-lg">Facts</h3>
-			<PlaceFactList {place} bind:this={placeFactListComponent} />
+			<FactList {place} bind:this={placeFactListComponent} />
 			{#if place.lon && place.lat}
 				<hr class="my-4" />
 				<Button

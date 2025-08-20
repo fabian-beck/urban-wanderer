@@ -525,7 +525,7 @@ export const FAMOUS_BUILDINGS = [
 	// Medium (100–200m)
 	{ name: 'Florence Cathedral', shortName: 'Florence Cath. (IT)', height: 114, image: 'florence_cathedral.png' },
 	{ name: 'Cologne Cathedral', shortName: 'Cologne Cath. (DE)', height: 157, image: 'cologne_cathedral.png' },
-	{ name: 'Washington Monument', shortName: 'Washington (US)', height: 169, image: 'washington_monument.png' },
+	{ name: 'Washington Monument', shortName: 'Washington Mem. (US)', height: 169, image: 'washington_monument.png' },
 	{ name: 'Space Needle', shortName: 'Space Needle (US)', height: 184, image: 'space_needle.png' },
 
 	// Tall (200–300m)
