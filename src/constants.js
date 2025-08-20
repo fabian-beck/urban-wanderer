@@ -509,3 +509,27 @@ export const AI_MODELS = {
 
 // Standard reasoning configuration for all AI requests
 export const AI_REASONING_EFFORT = 'minimal';
+
+// Famous buildings for height comparison (sorted by height in meters)
+export const FAMOUS_BUILDINGS = [
+	{ name: 'Big Ben', height: 96 },
+	{ name: 'Statue of Liberty', height: 93 }, // without pedestal: 46m
+	{ name: 'London Tower', height: 90 },
+	{ name: 'Leaning Tower of Pisa', height: 56 },
+	{ name: 'Arc de Triomphe', height: 50 },
+	{ name: 'Brandenburg Gate', height: 26 },
+	{ name: 'Sydney Opera House', height: 65 },
+	{ name: 'Space Needle', height: 184 },
+	{ name: 'Gateway Arch', height: 192 },
+	{ name: 'Washington Monument', height: 169 },
+	{ name: "St. Peter's Basilica", height: 136 },
+	{ name: 'Notre-Dame de Paris', height: 69 },
+	{ name: 'Cologne Cathedral', height: 157 },
+	{ name: 'Eiffel Tower', height: 330 },
+	{ name: 'Tokyo Tower', height: 333 },
+	{ name: 'CN Tower', height: 553 },
+	{ name: 'Empire State Building', height: 443 },
+	{ name: 'One World Trade Center', height: 541 },
+	{ name: 'Burj Khalifa', height: 828 },
+	{ name: 'Willis Tower', height: 442 }
+].sort((a, b) => a.height - b.height);

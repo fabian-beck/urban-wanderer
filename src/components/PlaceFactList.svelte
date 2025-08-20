@@ -1,5 +1,6 @@
 <script>
 	import PlaceFact from './PlaceFact.svelte';
+	import HeightFact from './HeightFact.svelte';
 	import { extractPlaceFacts } from '../util/ai-facts.js';
 	import { coordinates } from '../stores.js';
 	import { Spinner } from 'flowbite-svelte';
@@ -57,7 +58,16 @@
 		return key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 	}
 
-	function getMinWidthSpan(label, value) {
+	function getMinWidthSpan(label, value, key = null) {
+		// Height facts always need at least 2 quarters due to comparison text
+		if (key === 'height') {
+			const valueStr = value?.toString() || '';
+			// Height comparisons can be very long, so be more generous with width
+			if (valueStr.length > 45) return 4; // full width
+			if (valueStr.length > 25) return 3; // three-quarter width
+			return 2; // minimum half width for height facts
+		}
+
 		const labelStr = label?.toString() || '';
 		const valueStr = value?.toString() || '';
 
@@ -88,7 +98,7 @@
 			// Fill the row as much as possible
 			while (i < facts.length && rowWidth < 4) {
 				const fact = facts[i];
-				const minWidth = getMinWidthSpan(fact.label, fact.value);
+				const minWidth = getMinWidthSpan(fact.label, fact.value, fact.key);
 
 				if (rowWidth + minWidth <= 4) {
 					// Item fits in current row
@@ -195,11 +205,15 @@
 		{:else if facts}
 			<div class="grid w-full auto-rows-fr grid-cols-4 gap-3">
 				{#each optimizedFacts as fact}
-					<PlaceFact
-						label={fact.label}
-						value={fact.value}
-						widthClass={`col-span-${fact.widthSpan}`}
-					/>
+					{#if fact.key === 'height'}
+						<HeightFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
+					{:else}
+						<PlaceFact
+							label={fact.label}
+							value={fact.value}
+							widthClass={`col-span-${fact.widthSpan}`}
+						/>
+					{/if}
 				{/each}
 			</div>
 		{/if}

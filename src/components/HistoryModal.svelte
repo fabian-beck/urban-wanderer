@@ -2,10 +2,17 @@
 	import { Modal } from 'flowbite-svelte';
 	import { marked } from 'marked';
 	import { extractHistoricEvents } from '../util/ai-history.js';
-	import { placesHere, placesSurrounding, coordinates, preferences, places, placeDetailsVisible } from '../stores.js';
+	import {
+		placesHere,
+		placesSurrounding,
+		coordinates,
+		preferences,
+		places,
+		placeDetailsVisible
+	} from '../stores.js';
 	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
-import { CLASSES } from '../constants.js';
+	import { CLASSES } from '../constants.js';
 	import { errorMessage, events } from '../stores.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';
 	import { Spinner, Alert } from 'flowbite-svelte';
@@ -141,12 +148,14 @@ import { CLASSES } from '../constants.js';
 							<li class="mt-2">
 								<span class="text-sm font-bold text-primary-800">{event.date_string}</span>
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-								<div 
+								<div
 									on:click={handlePlaceClick}
 									on:keydown={handleKeydown}
 									role="button"
 									tabindex="0"
-								>{@html makeClickablePlaces(marked(markPlacesInText(event.text)))}</div>
+								>
+									{@html makeClickablePlaces(marked(markPlacesInText(event.text)))}
+								</div>
 								<div
 									class="line mt-2"
 									style="height: {Math.round(event.yearDiff / 8 + 0.25) * 4}px"
