@@ -2,6 +2,60 @@ import { openai, getAiModel } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT } from '../constants.js';
 
+const INSIGHTS_CACHE_KEY = 'urban-wanderer-insights-cache';
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function loadInsightsCache() {
+	if (typeof localStorage === 'undefined') return {};
+	
+	try {
+		const stored = localStorage.getItem(INSIGHTS_CACHE_KEY);
+		if (stored) {
+			const cache = JSON.parse(stored);
+			const now = Date.now();
+			// Clean expired entries and return valid ones
+			const validCache = {};
+			for (const [key, value] of Object.entries(cache)) {
+				if (value.timestamp && (now - value.timestamp < CACHE_TTL)) {
+					validCache[key] = value;
+				}
+			}
+			return validCache;
+		}
+	} catch (error) {
+		console.warn('Failed to load insights cache:', error);
+	}
+	return {};
+}
+
+function saveInsightsCache(cache) {
+	if (typeof localStorage === 'undefined') return;
+	
+	try {
+		localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify(cache));
+	} catch (error) {
+		console.warn('Failed to save insights cache:', error);
+	}
+}
+
+function createInsightsCacheKey(article, preferences) {
+	// Create a cache key based on article content and language
+	const articleHash = article.slice(0, 100); // First 100 chars as identifier
+	return `${articleHash}|${preferences.lang}`;
+}
+
+let insightsCache = loadInsightsCache();
+
+export function clearInsightsCache() {
+	// Clear localStorage
+	if (typeof localStorage !== 'undefined') {
+		localStorage.removeItem(INSIGHTS_CACHE_KEY);
+	}
+	// Clear in-memory cache
+	insightsCache = {};
+	console.log('Insights cache cleared (both localStorage and memory)');
+}
+
 // summarize article
 const summaryCache = {};
 export async function summarizeArticle(article, preferences) {
@@ -85,6 +139,15 @@ ${place.article || place.description || place.snippet || '[no description availa
 }
 
 export async function extractInsightsFromArticle(article, preferences) {
+	const cacheKey = createInsightsCacheKey(article, preferences);
+	
+	// Check cache first
+	if (insightsCache[cacheKey]) {
+		console.log('Insights found in cache for article');
+		return insightsCache[cacheKey].content;
+	}
+	
+	console.log('Generating new insights for article');
 	const instructions = `You are a chat assistant helping a user to extract insights from an article, relevant when visiting the place.
 
 Return a list of bullet points, focusing on the most important insights. 
@@ -107,6 +170,16 @@ Answer in language '${preferences.lang}'.
 			}
 		]
 	});
-	console.log('Extract insights response:', [response.output_text]);
-	return response.output_text;
+	
+	const insights = response.output_text;
+	console.log('Extract insights response:', [insights]);
+	
+	// Cache the result with timestamp
+	insightsCache[cacheKey] = {
+		content: insights,
+		timestamp: Date.now()
+	};
+	saveInsightsCache(insightsCache);
+	
+	return insights;
 }
