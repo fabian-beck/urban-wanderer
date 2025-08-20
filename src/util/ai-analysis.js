@@ -1,7 +1,57 @@
 import { LABELS, CLASSES, AI_REASONING_EFFORT } from '../constants.js';
 import { openai, getAiModel } from './ai-core.js';
 
-const analysisCache = {};
+const CACHE_KEY = 'urban-wanderer-analysis-cache';
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function loadAnalysisCache() {
+	if (typeof localStorage === 'undefined') return {};
+
+	try {
+		const stored = localStorage.getItem(CACHE_KEY);
+		if (stored) {
+			const cache = JSON.parse(stored);
+			const now = Date.now();
+			// Clean expired entries and return valid ones
+			const validCache = {};
+			for (const [key, value] of Object.entries(cache)) {
+				if (value.timestamp && now - value.timestamp < CACHE_TTL) {
+					validCache[key] = value;
+				}
+			}
+			return validCache;
+		}
+	} catch (error) {
+		console.warn('Failed to load analysis cache:', error);
+	}
+	return {};
+}
+
+function saveAnalysisCache(cache) {
+	if (typeof localStorage === 'undefined') return;
+
+	try {
+		localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+	} catch (error) {
+		console.warn('Failed to save analysis cache:', error);
+	}
+}
+
+function createAnalysisCacheKey(place) {
+	return place.title;
+}
+
+let analysisCache = loadAnalysisCache();
+
+export function clearAnalysisCache() {
+	// Clear localStorage
+	if (typeof localStorage !== 'undefined') {
+		localStorage.removeItem(CACHE_KEY);
+	}
+	// Clear in-memory cache
+	analysisCache = {};
+	console.log('Analysis cache cleared (both localStorage and memory)');
+}
 
 async function analyzeSinglePlace(place, preferences) {
 	const instructions = `You are a chat assistant helping a user analyze places:
@@ -96,27 +146,44 @@ FURTHER INSTRUCTIONS:
 		// Fallback to empty analysis
 		json = { cls: 'other', labels: [], importance: 0 };
 	}
-	// update cache
-	analysisCache[place.title] = json;
+	// update cache with timestamp and save to localStorage
+	const cacheKey = createAnalysisCacheKey(place);
+	analysisCache[cacheKey] = {
+		...json,
+		timestamp: Date.now()
+	};
+	saveAnalysisCache(analysisCache);
 }
 
-// ToDo: Support cases where two places have the same title, e.g., http://localhost:5173/?lat=48.85882&lon=10.41824
 export async function analyzePlaces(places, preferences) {
 	console.log('Places before analysis:', places);
-	// get places with cached labels (labelsCache)
-	const placesWithoutCachedAnalysis = places.filter((place) => !analysisCache[place.title]);
+	// get places with cached analysis using improved cache key
+	const placesWithoutCachedAnalysis = places.filter((place) => {
+		const cacheKey = createAnalysisCacheKey(place);
+		return !analysisCache[cacheKey];
+	});
+
 	if (placesWithoutCachedAnalysis.length > 0) {
+		console.log(`Analyzing ${placesWithoutCachedAnalysis.length} uncached places`);
 		// analyze each place separately, but concurrently
 		await Promise.all(
 			placesWithoutCachedAnalysis.map((place) => analyzeSinglePlace(place, preferences))
 		);
+	} else {
+		console.log('All places found in cache');
 	}
-	const newPlaces = places.map((place) => ({
-		...place,
-		labels: analysisCache[place.title]?.labels,
-		cls: analysisCache[place.title]?.cls,
-		importance: analysisCache[place.title]?.importance
-	}));
+
+	const newPlaces = places.map((place) => {
+		const cacheKey = createAnalysisCacheKey(place);
+		const cached = analysisCache[cacheKey];
+		return {
+			...place,
+			labels: cached?.labels,
+			cls: cached?.cls,
+			importance: cached?.importance
+		};
+	});
+
 	// remove non-geographic classes
 	const nonGeoClasses = Object.keys(CLASSES).filter((classLabel) => CLASSES[classLabel]?.nonGeo);
 	return newPlaces.filter((place) => !nonGeoClasses.includes(place.cls));

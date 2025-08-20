@@ -1,8 +1,9 @@
 <script>
-	import { Label, Range, Checkbox, Modal, Select, Toggle } from 'flowbite-svelte';
+	import { Label, Range, Checkbox, Modal, Select, Toggle, Button } from 'flowbite-svelte';
 	import { preferences } from '../stores.js';
 	import { places } from '../stores.js';
 	import { LABELS, LANGUAGES, GUIDE_CHARACTERS, FAMILIARITY, AI_MODELS } from '../constants.js';
+	import { clearAnalysisCache } from '../util/ai-analysis.js';
 
 	export let visible = false;
 	const langOptions = [
@@ -13,6 +14,17 @@
 		value: character,
 		name: character
 	}));
+
+	let cacheCleared = false;
+	
+	function handleClearCache() {
+		clearAnalysisCache();
+		cacheCleared = true;
+		// Reset the feedback after 3 seconds
+		setTimeout(() => {
+			cacheCleared = false;
+		}, 3000);
+	}
 </script>
 
 <Modal title="Preferences" bind:open={visible} autoclose on:close={places.update}>
@@ -72,4 +84,19 @@
 	<Select bind:value={$preferences.aiModelSimple} items={AI_MODELS.SIMPLE} />
 	<Label>AI Model for Advanced Tasks</Label>
 	<Select bind:value={$preferences.aiModelAdvanced} items={AI_MODELS.ADVANCED} />
+	
+	<div class="mt-6 pt-4 border-t border-gray-200">
+		<Label>Cache Management</Label>
+		<div class="text-xs text-gray-500 mb-2">
+			Clear cached place analysis data to force re-analysis of all places.
+		</div>
+		<Button 
+			color={cacheCleared ? "green" : "alternative"} 
+			size="sm" 
+			on:click={handleClearCache}
+			disabled={cacheCleared}
+		>
+			{cacheCleared ? "✓ Cache Cleared!" : "Clear Analysis Cache"}
+		</Button>
+	</div>
 </Modal>
