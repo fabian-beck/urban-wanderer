@@ -1,5 +1,7 @@
 <script>
 	import { FAMOUS_BUILDINGS } from '../constants.js';
+	import { preferences } from '../stores.js';
+	import { get } from 'svelte/store';
 
 	export let value = '';
 	export let widthClass = 'col-span-1';
@@ -10,11 +12,13 @@
 		// Remove extra whitespace and convert to lowercase
 		const cleaned = heightStr.trim().toLowerCase();
 
-		// Extract number and unit using regex
-		const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*(m|meters?|ft|feet|'|"|inches?)$/);
+		// Extract number and unit using regex - support both German (comma) and English (dot) notation
+		const match = cleaned.match(/^(\d+(?:[.,]\d+)?)\s*(m|meters?|ft|feet|'|"|inches?)$/);
 		if (!match) return null;
 
-		const number = parseFloat(match[1]);
+		// Replace comma with dot for parsing (German decimal notation)
+		const numberStr = match[1].replace(',', '.');
+		const number = parseFloat(numberStr);
 		const unit = match[2];
 
 		// Convert to meters
@@ -48,40 +52,80 @@
 	}
 
 	function formatComparison(heightInMeters, comparisons) {
-		if (!comparisons) return { mainValue: value, comparison: null };
+		if (!comparisons) return { mainValue: value, smaller: null, larger: null };
 
 		const { smaller, larger } = comparisons;
-		const mainValue = `${Math.round(heightInMeters)}m`;
+		const lang = get(preferences)?.lang || 'en';
 
-		const parts = [];
-		if (smaller) {
-			parts.push(`> ${smaller.name} (${smaller.height}m)`);
-		}
-		if (larger) {
-			parts.push(`< ${larger.name} (${larger.height}m)`);
-		}
+		// Format height according to language preference
+		const roundedHeight = Math.round(heightInMeters);
+		const mainValue = `${roundedHeight}m`;
 
-		const comparison = parts.length > 0 ? `(${parts.join('; ')})` : null;
-
-		return { mainValue, comparison };
+		return { mainValue, smaller, larger };
 	}
 
 	$: heightInMeters = parseHeight(value);
 	$: comparisons = findComparisons(heightInMeters);
-	$: formattedResult = heightInMeters ? formatComparison(heightInMeters, comparisons) : { mainValue: value, comparison: null };
+	$: formattedResult = heightInMeters
+		? formatComparison(heightInMeters, comparisons)
+		: { mainValue: value, smaller: null, larger: null };
 </script>
 
 <div
 	class="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-center shadow-sm {widthClass}"
 >
-	<span class="mb-0.5 text-xs font-medium leading-tight text-gray-600">Height</span>
 	<div class="text-center">
-		<div class="font-semibold leading-tight text-gray-900 text-base">
-			{formattedResult.mainValue}
-		</div>
-		{#if formattedResult.comparison}
-			<div class="mt-0.5 text-xs leading-tight text-gray-600">
-				{formattedResult.comparison}
+		{#if formattedResult.smaller || formattedResult.larger}
+			<div class="flex items-end justify-center gap-2 text-sm">
+				{#if formattedResult.smaller}
+					<div class="flex flex-col items-center">
+						<div class="text-xs leading-none text-gray-500 mb-0.5" style="font-size: 0.55rem;">
+							{formattedResult.smaller.shortName}
+						</div>
+						<img
+							src="/buildings/{formattedResult.smaller.image}"
+							alt={formattedResult.smaller.name}
+							class="h-12 w-8 object-contain"
+							title="{formattedResult.smaller.name} ({formattedResult.smaller.height}m)"
+						/>
+						<div class="text-xs leading-none text-gray-500" style="font-size: 0.65rem;">
+							{formattedResult.smaller.height}m
+						</div>
+					</div>
+					<span class="mb-1 text-gray-600">&lt;</span>
+				{/if}
+
+				<div class="mb-1 flex flex-col items-center px-1">
+					<span class="mb-0.5 text-xs font-medium leading-none text-gray-600">Height</span>
+					<div class="text-base font-semibold leading-tight text-gray-900">
+						{formattedResult.mainValue}
+					</div>
+				</div>
+
+				{#if formattedResult.larger}
+					<span class="mb-1 text-gray-600">&lt;</span>
+					<div class="flex flex-col items-center">
+						<div class="text-xs leading-none text-gray-500 mb-0.5" style="font-size: 0.55rem;">
+							{formattedResult.larger.shortName}
+						</div>
+						<img
+							src="/buildings/{formattedResult.larger.image}"
+							alt={formattedResult.larger.name}
+							class="h-12 w-8 object-contain"
+							title="{formattedResult.larger.name} ({formattedResult.larger.height}m)"
+						/>
+						<div class="text-xs leading-none text-gray-500" style="font-size: 0.65rem;">
+							{formattedResult.larger.height}m
+						</div>
+					</div>
+				{/if}
+			</div>
+		{:else}
+			<div class="flex flex-col items-center">
+				<span class="mb-0.5 text-xs font-medium leading-none text-gray-600">Height</span>
+				<div class="text-base font-semibold leading-tight text-gray-900">
+					{formattedResult.mainValue}
+				</div>
 			</div>
 		{/if}
 	</div>
