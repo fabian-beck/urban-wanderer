@@ -60,18 +60,14 @@
 	}
 
 	function getMinWidthSpan(label, value, key = null) {
-		// Height facts always need at least 2 quarters due to comparison text
+		// Height facts always need at least 3 quarters due to comparison images
 		if (key === 'height') {
-			const valueStr = value?.toString() || '';
-			// Height comparisons can be very long, so be more generous with width
-			if (valueStr.length > 45) return 4; // full width
-			if (valueStr.length > 25) return 3; // three-quarter width
-			return 2; // minimum half width for height facts
+			return 3;
 		}
 
 		// Architecture style facts need more space for description
 		if (key === 'architecture_style') {
-			return 2; // minimum half width for architecture style facts
+			return 2;
 		}
 
 		const labelStr = label?.toString() || '';
@@ -81,9 +77,9 @@
 
 		// More conservative thresholds for better layout
 		let width;
-		if (totalLength > 75 || valueStr.length > 45)
+		if (totalLength > 85 || valueStr.length > 55)
 			width = 4; // full width - only for very long content
-		else if (totalLength > 55 || valueStr.length > 35)
+		else if (totalLength > 65 || valueStr.length > 45)
 			width = 3; // three-quarter width - rare
 		else if (totalLength > 20 || valueStr.length > 12)
 			width = 2; // half width
