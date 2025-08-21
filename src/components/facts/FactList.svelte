@@ -6,7 +6,12 @@
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import { Spinner } from 'flowbite-svelte';
-	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS, HISTORICAL_EVENTS } from '../../constants.js';
+	import {
+		CLASSES,
+		PROPERTIES,
+		PROPERTY_TRANSLATIONS,
+		HISTORICAL_EVENTS
+	} from '../../constants.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
 
@@ -67,13 +72,13 @@
 	function hasHistoricalContext(value) {
 		const year = parseInt(value);
 		if (isNaN(year) || year <= -3000 || year >= 2100) return false;
-		
+
 		// Find events that are contemporaneous or close to the construction year
 		let minDistance = Infinity;
-		
+
 		for (const event of HISTORICAL_EVENTS) {
 			let distance;
-			
+
 			if (event.end) {
 				// Event with duration
 				if (year >= event.start && year <= event.end) {
@@ -87,12 +92,12 @@
 				// Single year event
 				distance = Math.abs(year - event.start);
 			}
-			
+
 			if (distance < minDistance) {
 				minDistance = distance;
 			}
 		}
-		
+
 		return minDistance <= 10; // Within 10 years
 	}
 
@@ -123,7 +128,7 @@
 			width = 4; // full width - only for very long content
 		else if (totalLength > 65 || valueStr.length > 45)
 			width = 3; // three-quarter width - rare
-		else if (totalLength > 20 || valueStr.length > 12)
+		else if (totalLength > 16 || valueStr.length > 12)
 			width = 2; // half width
 		else width = 1; // quarter width
 
@@ -254,7 +259,11 @@
 					{:else if fact.key === 'architecture_style'}
 						<ArchitectureStyleFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{:else if YEAR_PROPERTIES.includes(fact.key)}
-						<YearFact value={fact.value} propertyKey={fact.key} widthClass={`col-span-${fact.widthSpan}`} />
+						<YearFact
+							value={fact.value}
+							propertyKey={fact.key}
+							widthClass={`col-span-${fact.widthSpan}`}
+						/>
 					{:else}
 						<Fact label={fact.label} value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{/if}

@@ -38,8 +38,11 @@
 				// Event with duration
 				if (year >= event.start && year <= event.end) {
 					// Year falls within event period
+					const eventName = getEventName(event);
+					const $language = get(preferences).lang;
+					const duringText = $language === 'de' ? 'während' : 'during';
 					return {
-						text: `during<br>${event.name}`,
+						text: `${duringText}<br>${eventName}`,
 						distance: 0
 					};
 				} else if (year < event.start) {
@@ -59,19 +62,38 @@
 		}
 
 		if (bestMatch && minDistance <= 10) {
+			const eventName = getEventName(bestMatch);
+			const $language = get(preferences).lang;
+			
 			// Within 10 years - show relative timing
 			if (minDistance === 0) {
-				return { text: `same year as<br>${bestMatch.name}`, distance: minDistance };
+				const sameYearText = $language === 'de' ? 'gleiches Jahr wie' : 'same year as';
+				return { text: `${sameYearText}<br>${eventName}`, distance: minDistance };
 			} else if (year < (bestMatch.end || bestMatch.start)) {
-				const years = minDistance === 1 ? 'year' : 'years';
-				return { text: `${minDistance} ${years} before<br>${bestMatch.name}`, distance: minDistance };
+				const years = minDistance === 1 ? 
+					($language === 'de' ? 'Jahr' : 'year') : 
+					($language === 'de' ? 'Jahre' : 'years');
+				const beforeText = $language === 'de' ? 'vor' : 'before';
+				return { text: `${minDistance} ${years} ${beforeText}<br>${eventName}`, distance: minDistance };
 			} else {
-				const years = minDistance === 1 ? 'year' : 'years';
-				return { text: `${minDistance} ${years} after<br>${bestMatch.name}`, distance: minDistance };
+				const years = minDistance === 1 ? 
+					($language === 'de' ? 'Jahr' : 'year') : 
+					($language === 'de' ? 'Jahre' : 'years');
+				const afterText = $language === 'de' ? 'nach' : 'after';
+				return { text: `${minDistance} ${years} ${afterText}<br>${eventName}`, distance: minDistance };
 			}
 		}
 
 		return null;
+	}
+
+	// Helper function to get event name in current language
+	function getEventName(event) {
+		const $language = get(preferences).lang;
+		if (typeof event.name === 'object') {
+			return event.name[$language] || event.name.en;
+		}
+		return event.name; // fallback for old format
 	}
 
 </script>

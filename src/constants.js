@@ -717,47 +717,47 @@ export const ARCHITECTURE_STYLES = {
 // Historical events reference for construction year context
 export const HISTORICAL_EVENTS = [
 	// Ancient & Medieval
-	{ start: -753, name: '🏛️ founding of Rome' },
-	{ start: -44, name: '⚔️ Caesar assassination' },
-	{ start: 476, name: '🏛️ fall of Roman Empire' },
-	{ start: 800, name: '👑 Charlemagne coronation' },
-	{ start: 1066, name: '⚔️ Norman Conquest' },
-	{ start: 1096, name: '⛪ First Crusade' },
-	{ start: 1347, end: 1351, name: '☠️ the Black Death' },
-	{ start: 1453, name: '🏰 fall of Constantinople' },
+	{ start: -753, name: { en: '🏛️ founding of Rome', de: '🏛️ Gründung Roms' } },
+	{ start: -44, name: { en: '⚔️ Caesar assassination', de: '⚔️ Caesars Ermordung' } },
+	{ start: 476, name: { en: '🏛️ fall of Roman Empire', de: '🏛️ Fall des Römischen Reichs' } },
+	{ start: 800, name: { en: '👑 Charlemagne coronation', de: '👑 Karls des Großen Krönung' } },
+	{ start: 1066, name: { en: '⚔️ Norman Conquest', de: '⚔️ Normannische Eroberung' } },
+	{ start: 1096, name: { en: '⛪ First Crusade', de: '⛪ Erster Kreuzzug' } },
+	{ start: 1347, end: 1351, name: { en: '☠️ the Black Death', de: '☠️ der Schwarze Tod' } },
+	{ start: 1453, name: { en: '🏰 fall of Constantinople', de: '🏰 Fall Konstantinopels' } },
 
 	// Renaissance & Early Modern
-	{ start: 1492, name: '🌍 Columbus reaches Americas' },
-	{ start: 1517, name: '⛪ Protestant Reformation' },
-	{ start: 1666, name: '🔥 Great Fire of London' },
-	{ start: 1776, name: '🇺🇸 US Independence' },
-	{ start: 1789, end: 1799, name: '🇫🇷 French Revolution' },
+	{ start: 1492, name: { en: '🌍 Columbus reaches Americas', de: '🌍 Kolumbus erreicht Amerika' } },
+	{ start: 1517, name: { en: '⛪ Protestant Reformation', de: '⛪ Reformation' } },
+	{ start: 1666, name: { en: '🔥 Great Fire of London', de: '🔥 Großer Brand von London' } },
+	{ start: 1776, name: { en: '🇺🇸 US Independence', de: '🇺🇸 US-Unabhängigkeit' } },
+	{ start: 1789, end: 1799, name: { en: '🇫🇷 French Revolution', de: '🇫🇷 Französische Revolution' } },
 
 	// Industrial Revolution & 19th Century
-	{ start: 1815, name: '⚔️ Battle of Waterloo' },
-	{ start: 1837, name: '📡 telegraph invention' },
-	{ start: 1859, name: '🐒 Darwin Origin of Species' },
-	{ start: 1861, end: 1865, name: '🇺🇸 Civil War' },
-	{ start: 1876, name: '☎️ telephone invention' },
-	{ start: 1886, name: '🗽 Statue of Liberty' },
+	{ start: 1815, name: { en: '⚔️ Battle of Waterloo', de: '⚔️ Schlacht bei Waterloo' } },
+	{ start: 1837, name: { en: '📡 telegraph invention', de: '📡 Erfindung des Telegrafen' } },
+	{ start: 1859, name: { en: '🐒 Darwin Origin of Species', de: '🐒 Darwins Entstehung der Arten' } },
+	{ start: 1861, end: 1865, name: { en: '🇺🇸 Civil War', de: '🇺🇸 Amerikanischer Bürgerkrieg' } },
+	{ start: 1876, name: { en: '☎️ telephone invention', de: '☎️ Erfindung des Telefons' } },
+	{ start: 1886, name: { en: '🗽 Statue of Liberty', de: '🗽 Freiheitsstatue' } },
 
 	// Early 20th Century
-	{ start: 1903, name: '✈️ first flight' },
-	{ start: 1914, end: 1918, name: '⚔️ World War I' },
-	{ start: 1917, name: '🚩 Russian Revolution' },
-	{ start: 1929, name: '📉 Wall Street Crash' },
-	{ start: 1939, end: 1945, name: '💥 World War II' },
+	{ start: 1903, name: { en: '✈️ first flight', de: '✈️ erster Flug' } },
+	{ start: 1914, end: 1918, name: { en: '⚔️ World War I', de: '⚔️ Erster Weltkrieg' } },
+	{ start: 1917, name: { en: '🚩 Russian Revolution', de: '🚩 Russische Revolution' } },
+	{ start: 1929, name: { en: '📉 Wall Street Crash', de: '📉 Börsencrash' } },
+	{ start: 1939, end: 1945, name: { en: '💥 World War II', de: '💥 Zweiter Weltkrieg' } },
 
 	// Mid-Late 20th Century
-	{ start: 1957, name: '🚀 Sputnik launch' },
-	{ start: 1961, name: '🧿 Berlin Wall built' },
-	{ start: 1963, name: '🔫 JFK assassination' },
-	{ start: 1969, name: '🌙 moon landing' },
-	{ start: 1989, name: '🧿 Berlin Wall falls' },
-	{ start: 1991, name: '🚩 Soviet Union collapse' },
+	{ start: 1957, name: { en: '🚀 Sputnik launch', de: '🚀 Sputnik-Start' } },
+	{ start: 1961, name: { en: '🧱 Berlin Wall built', de: '🧱 Mauerbau in Berlin' } },
+	{ start: 1963, name: { en: '🔫 JFK assassination', de: '🔫 JFK-Attentat' } },
+	{ start: 1969, name: { en: '🌙 moon landing', de: '🌙 Mondlandung' } },
+	{ start: 1989, name: { en: '🧱 Berlin Wall falls', de: '🧱 Mauerfall' } },
+	{ start: 1991, name: { en: '🚩 Soviet Union collapse', de: '🚩 Zerfall der Sowjetunion' } },
 
 	// Recent History
-	{ start: 2001, name: '🏢 September 11' },
-	{ start: 2008, name: '📉 financial crisis' },
-	{ start: 2020, name: '🦠 COVID-19 pandemic' }
+	{ start: 2001, name: { en: '🏢 September 11', de: '🏢 11. September' } },
+	{ start: 2008, name: { en: '📉 financial crisis', de: '📉 Finanzkrise' } },
+	{ start: 2020, name: { en: '🦠 COVID-19 pandemic', de: '🦠 COVID-19-Pandemie' } }
 ];
