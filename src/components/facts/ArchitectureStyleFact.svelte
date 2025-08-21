@@ -1,5 +1,7 @@
 <script>
 	import { ARCHITECTURE_STYLES } from '../../constants.js';
+	import { preferences } from '../../stores.js';
+	import { get } from 'svelte/store';
 
 	export let value = '';
 	export let widthClass = 'col-span-1';
@@ -148,9 +150,33 @@
 		return null;
 	}
 
+	function getArchitectureStyleLabel() {
+		const $language = get(preferences).lang;
+		return $language === 'de' ? 'Baustil' : 'Architecture Style';
+	}
+
+	function getDescription(style) {
+		// Currently descriptions are only in English in the constants file
+		// This function is prepared for future bilingual support
+		const $language = get(preferences).lang;
+		if (typeof style.description === 'object' && style.description[$language]) {
+			return style.description[$language];
+		}
+		return style.description; // fallback to English
+	}
+
+	function getStyleName(style) {
+		if (!style) return value;
+		const $language = get(preferences).lang;
+		if (typeof style.name === 'object' && style.name[$language]) {
+			return style.name[$language];
+		}
+		return style.name; // fallback to English
+	}
+
 	$: matchedStyle = parseArchitecturalStyle(value);
 	$: backgroundImage = matchedStyle ? `/architecture-styles/${matchedStyle.image}` : null;
-	$: styleName = matchedStyle ? matchedStyle.name : value;
+	$: styleName = getStyleName(matchedStyle);
 </script>
 
 <div
@@ -168,7 +194,7 @@
 		<span
 			class="mb-0.5 text-xs font-medium leading-tight text-gray-600"
 			style="text-shadow: 0 0 3px #fff, 0 0 6px #fff, 0 0 10px #fff, 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;"
-			>Architecture Style</span
+			>{getArchitectureStyleLabel()}</span
 		>
 		<div class="text-center">
 			<div
@@ -182,7 +208,7 @@
 					class="mt-1 text-xs leading-tight text-gray-600"
 					style="text-shadow: 0 0 3px #fff, 0 0 6px #fff, 0 0 10px #fff, 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;"
 				>
-					{matchedStyle.description}
+					{getDescription(matchedStyle)}
 				</div>
 			{/if}
 		</div>

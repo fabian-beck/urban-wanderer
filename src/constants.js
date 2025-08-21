@@ -276,11 +276,11 @@ export const PROPERTIES = {
 	},
 	height: {
 		type: 'string',
-		description: 'height of the place (e.g., 100 m), if available'
+		description: 'height of the place (e.g., "100m"), if available; number and unit (meters preferred), no extra explanations'
 	},
 	length: {
 		type: 'string',
-		description: 'length of the place (e.g., 1000 m), if available'
+		description: 'length of the place (e.g., "1000m"), if available; number and unit (meters preferred), no extra explanations'
 	},
 	main_destinations: {
 		type: 'array',
@@ -596,131 +596,132 @@ export const FAMOUS_BUILDINGS = [
 // Architectural styles with background patterns
 export const ARCHITECTURE_STYLES = {
 	classical: {
-		name: 'Classical',
+		name: { en: 'Classical', de: 'Klassisch' },
 		image: 'classical.png',
-		description: 'Inspired by ancient Greek and Roman architecture'
+		description: { en: 'Inspired by ancient Greek and Roman architecture', de: 'Inspiriert von der antiken griechischen und römischen Architektur' }
 	},
 	gothic: {
-		name: 'Gothic',
+		name: { en: 'Gothic', de: 'Gotisch' },
 		image: 'gothic.png',
-		description: 'Pointed arches, ribbed vaults, flying buttresses'
+		description: { en: 'Pointed arches, ribbed vaults, flying buttresses, verticality', de: 'Spitzbogen, Rippengewölbe, Strebebögen, Vertikalität' }
 	},
 	romanesque: {
-		name: 'Romanesque',
+		name: { en: 'Romanesque', de: 'Romanisch' },
 		image: 'romanesque.png',
-		description: 'Round arches, thick walls, sturdy construction'
+		description: { en: 'Round arches, thick walls, sturdy construction', de: 'Rundbogen, dicke Mauern, robuste Bauweise' }
 	},
 	renaissance: {
-		name: 'Renaissance',
+		name: { en: 'Renaissance', de: 'Renaissance' },
 		image: 'renaissance.png',
-		description: 'Classical proportions, symmetry, columns'
+		description: { en: 'Classical proportions, symmetry, columns', de: 'Klassische Proportionen, Symmetrie, Säulen' }
 	},
 	baroque: {
-		name: 'Baroque',
+		name: { en: 'Baroque', de: 'Barock' },
 		image: 'baroque.png',
-		description: 'Ornate decoration, dramatic lighting, curves'
+		description: { en: 'Ornate decoration, dramatic lighting, curves', de: 'Prunkvolle Dekoration, dramatische Beleuchtung, geschwungene Formen' }
 	},
 	'art nouveau': {
-		name: 'Art Nouveau',
+		name: { en: 'Art Nouveau', de: 'Jugendstil' },
 		image: 'art_nouveau.png',
-		description: 'Organic forms, flowing lines, natural motifs'
+		description: { en: 'Organic forms, flowing lines, natural motifs', de: 'Organische Formen, fließende Linien, Naturmotive' }
 	},
 	'art deco': {
-		name: 'Art Deco',
+		name: { en: 'Art Deco', de: 'Art Déco' },
 		image: 'art_deco.png',
-		description: 'Geometric patterns, bold lines, luxury materials'
+		description: { en: 'Geometric patterns, bold lines, luxury materials', de: 'Geometrische Muster, kühne Linien, Luxusmaterialien' }
 	},
 	modernist: {
-		name: 'Modernist',
+		name: { en: 'Modernist', de: 'Modernistisch' },
 		image: 'modernist.png',
-		description: 'Form follows function, glass and steel, no ornamentation'
+		description: { en: 'Form follows function, glass and steel, minimal ornamentation', de: 'Form folgt Funktion, Glas und Stahl, minimale Verzierung' }
 	},
 	bauhaus: {
-		name: 'Bauhaus',
+		name: { en: 'Bauhaus', de: 'Bauhaus' },
 		image: 'bauhaus.png',
-		description: 'Form follows function, industrial materials'
+		description: { en: 'Form follows function, industrial materials', de: 'Form folgt Funktion, industrielle Materialien' }
 	},
 	postmodern: {
-		name: 'Postmodern',
+		name: { en: 'Postmodern', de: 'Postmodern' },
 		image: 'postmodern.png',
-		description: 'Anti-modernist, decorative, ironic historical mixing'
+		description: { en: 'Reaction to modernism, decorative, ironic historical mixing', de: 'Gegenbewegung zur Moderne, dekorativ, ironische historische Vermischung' }
 	},
 	contemporary: {
-		name: 'Contemporary',
+		name: { en: 'Contemporary', de: 'Zeitgenössisch' },
 		image: 'contemporary.png',
-		description: 'Current trends, innovative materials, sustainability'
+		description: { en: 'Current trends, innovative materials, sustainability', de: 'Aktuelle Trends, innovative Materialien, Nachhaltigkeit' }
 	},
 	brutalist: {
-		name: 'Brutalist',
+		name: { en: 'Brutalist', de: 'Brutalistisch' },
 		image: 'brutalist.png',
-		description: 'Raw concrete, bold geometric forms, monolithic'
+		description: { en: 'Raw concrete, bold geometric forms, monolithic', de: 'Rohbeton, kühne geometrische Formen, monolithisch' }
 	},
 	deconstructivist: {
-		name: 'Deconstructivist',
+		name: { en: 'Deconstructivist', de: 'Dekonstruktivistisch' },
 		image: 'deconstructivist.png',
-		description: 'Fragmented geometry, non-rectilinear shapes'
+		description: { en: 'Fragmented geometry, non-rectilinear shapes', de: 'Fragmentierte Geometrie, nicht-rechtwinklige Formen' }
 	},
 	byzantine: {
-		name: 'Byzantine',
+		name: { en: 'Byzantine', de: 'Byzantinisch' },
 		image: 'byzantine.png',
-		description: 'Domes, mosaics, religious symbolism'
+		description: { en: 'Domes, mosaics, religious symbolism', de: 'Kuppeln, Mosaike, religiöse Symbolik' }
 	},
 	victorian: {
-		name: 'Victorian',
+		name: { en: 'Victorian', de: 'Viktorianisch' },
 		image: 'victorian.png',
-		description: 'Ornate details, bay windows, asymmetrical facades'
+		description: { en: 'Ornate details, bay windows, asymmetrical facades', de: 'Verzierte Details, Erker, asymmetrische Fassaden' }
 	},
 	'beaux-arts': {
-		name: 'Beaux-Arts',
+		name: { en: 'Beaux-Arts', de: 'Beaux-Arts' },
 		image: 'beaux_arts.png',
-		description: 'Academic classicism, grand scale, ornate decoration'
+		description: { en: 'Academic classicism, grand scale, ornate decoration', de: 'Akademischer Klassizismus, groß angelegt, prunkvolle Dekoration' }
 	},
 
 	// Neo variants - reuse base style images
 	neoclassical: {
-		name: 'Neoclassical',
+		name: { en: 'Neoclassical', de: 'Neoklassisch' },
 		image: 'classical.png',
-		description: 'Classical Greek and Roman revival'
+		description: { en: 'Classical revival style', de: 'Wiederbelebungsstil der griechischen und römischen Klassik' }
 	},
 	neogothic: {
-		name: 'Neo-Gothic',
+		name: { en: 'Neo-Gothic', de: 'Neogotisch' },
 		image: 'gothic.png',
-		description: 'Gothic revival with modern interpretations'
+		description: { en: 'Gothic revival style with modern interpretations', de: 'Gotik-Wiederbelebungsstil mit modernen Interpretationen' }
 	},
 	neoromanesque: {
-		name: 'Neo-Romanesque',
+		name: { en: 'Neo-Romanesque', de: 'Neoromanisch' },
 		image: 'romanesque.png',
-		description: 'Romanesque revival in modern times'
+		description: { en: 'Romanesque revival style', de: 'Romanik-Wiederbelebungsstil' }
 	},
 	neorenaissance: {
-		name: 'Neo-Renaissance',
+		name: { en: 'Neo-Renaissance', de: 'Neorenaissance' },
 		image: 'renaissance.png',
-		description: 'Renaissance revival architecture'
+		description: { en: 'Renaissance revival style', de: 'Renaissance-Wiederbelebungsstil' }
 	},
 	neobaroque: {
-		name: 'Neo-Baroque',
+		name: { en: 'Neo-Baroque', de: 'Neobarock' },
 		image: 'baroque.png',
-		description: 'Baroque revival with contemporary elements'
+		description: { en: 'Baroque revival style with contemporary elements', de: 'Barock-Wiederbelebungsstil mit zeitgenössischen Elementen' }
 	},
 	neobyzantine: {
-		name: 'Neo-Byzantine',
+		name: { en: 'Neo-Byzantine', de: 'Neobyzantinisch' },
 		image: 'byzantine.png',
-		description: 'Byzantine revival architecture'
+		description: { en: 'Byzantine revival style', de: 'Byzantinischer Wiederbelebungsstil' }
 	},
 	neovictorian: {
-		name: 'Neo-Victorian',
+		name: { en: 'Neo-Victorian', de: 'Neoviktorianisch' },
 		image: 'victorian.png',
-		description: 'Victorian revival style'
+		description: { en: 'Victorian revival style', de: 'Viktorianischer Wiederbelebungsstil' }
 	}
 };
+
 
 // Historical events reference for construction year context
 export const HISTORICAL_EVENTS = [
 	// Ancient & Medieval
 	{ start: -753, name: { en: '🏛️ founding of Rome', de: '🏛️ Gründung Roms' } },
-	{ start: -44, name: { en: '⚔️ Caesar assassination', de: '⚔️ Caesars Ermordung' } },
-	{ start: 476, name: { en: '🏛️ fall of Roman Empire', de: '🏛️ Fall des Römischen Reichs' } },
-	{ start: 800, name: { en: '👑 Charlemagne coronation', de: '👑 Karls des Großen Krönung' } },
+	{ start: -44, name: { en: '⚔️ assassination of Caesar', de: '⚔️ Ermordung Caesars' } },
+	{ start: 476, name: { en: '🏛️ fall of Western Roman Empire', de: '🏛️ Untergang des Weströmischen Reichs' } },
+	{ start: 800, name: { en: '👑 Charlemagne coronation', de: '👑 Krönung Karls des Großen' } },
 	{ start: 1066, name: { en: '⚔️ Norman Conquest', de: '⚔️ Normannische Eroberung' } },
 	{ start: 1096, name: { en: '⛪ First Crusade', de: '⛪ Erster Kreuzzug' } },
 	{ start: 1347, end: 1351, name: { en: '☠️ the Black Death', de: '☠️ der Schwarze Tod' } },
@@ -736,13 +737,13 @@ export const HISTORICAL_EVENTS = [
 	// Industrial Revolution & 19th Century
 	{ start: 1815, name: { en: '⚔️ Battle of Waterloo', de: '⚔️ Schlacht bei Waterloo' } },
 	{ start: 1837, name: { en: '📡 telegraph invention', de: '📡 Erfindung des Telegrafen' } },
-	{ start: 1859, name: { en: '🐒 Darwin Origin of Species', de: '🐒 Darwins Entstehung der Arten' } },
+	{ start: 1859, name: { en: '🐒 Darwin Origin of Species', de: '🐒 Darwins „Über die Entstehung der Arten“' } },
 	{ start: 1861, end: 1865, name: { en: '🇺🇸 Civil War', de: '🇺🇸 Amerikanischer Bürgerkrieg' } },
 	{ start: 1876, name: { en: '☎️ telephone invention', de: '☎️ Erfindung des Telefons' } },
 	{ start: 1886, name: { en: '🗽 Statue of Liberty', de: '🗽 Freiheitsstatue' } },
 
 	// Early 20th Century
-	{ start: 1903, name: { en: '✈️ first flight', de: '✈️ erster Flug' } },
+	{ start: 1903, name: { en: '✈️ first powered flight', de: '✈️ erster Motorflug' } },
 	{ start: 1914, end: 1918, name: { en: '⚔️ World War I', de: '⚔️ Erster Weltkrieg' } },
 	{ start: 1917, name: { en: '🚩 Russian Revolution', de: '🚩 Russische Revolution' } },
 	{ start: 1929, name: { en: '📉 Wall Street Crash', de: '📉 Börsencrash' } },
@@ -750,14 +751,14 @@ export const HISTORICAL_EVENTS = [
 
 	// Mid-Late 20th Century
 	{ start: 1957, name: { en: '🚀 Sputnik launch', de: '🚀 Sputnik-Start' } },
-	{ start: 1961, name: { en: '🧱 Berlin Wall built', de: '🧱 Mauerbau in Berlin' } },
-	{ start: 1963, name: { en: '🔫 JFK assassination', de: '🔫 JFK-Attentat' } },
+	{ start: 1961, name: { en: '🧱 Berlin Wall constructed', de: '🧱 Bau der Berliner Mauer' } },
+	{ start: 1963, name: { en: '🔫 JFK assassination', de: '🔫 Ermordung Kennedys' } },
 	{ start: 1969, name: { en: '🌙 moon landing', de: '🌙 Mondlandung' } },
 	{ start: 1989, name: { en: '🧱 Berlin Wall falls', de: '🧱 Mauerfall' } },
 	{ start: 1991, name: { en: '🚩 Soviet Union collapse', de: '🚩 Zerfall der Sowjetunion' } },
 
 	// Recent History
-	{ start: 2001, name: { en: '🏢 September 11', de: '🏢 11. September' } },
+	{ start: 2001, name: { en: '🏢 September 11 attacks', de: '🏢 Terroranschläge am 11. September' } },
 	{ start: 2008, name: { en: '📉 financial crisis', de: '📉 Finanzkrise' } },
 	{ start: 2020, name: { en: '🦠 COVID-19 pandemic', de: '🦠 COVID-19-Pandemie' } }
 ];
