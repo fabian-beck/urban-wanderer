@@ -1,5 +1,5 @@
 <script>
-	import { BUILDING_TYPES } from '../../constants.js';
+	import { BUILDING_TYPES } from '../../constants/architecture.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
 

@@ -5,7 +5,7 @@
 	import { textToSpeech } from '../util/ai-speech.js';
 	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
-	import { CLASSES } from '../constants.js';
+	import { CLASSES } from '../constants/place-classes.js';
 	import {
 		errorMessage,
 		storyTexts,

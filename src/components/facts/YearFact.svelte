@@ -1,5 +1,6 @@
 <script>
-	import { HISTORICAL_EVENTS, PROPERTY_TRANSLATIONS } from '../../constants.js';
+	import { HISTORICAL_EVENTS } from '../../constants/reference-data.js';
+	import { PROPERTY_TRANSLATIONS } from '../../constants/place-classes.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
 

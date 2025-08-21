@@ -1,4 +1,5 @@
-import { LABELS, CLASSES, AI_REASONING_EFFORT } from '../constants.js';
+import { LABELS, AI_REASONING_EFFORT } from '../constants/ui-config.js';
+import { CLASSES } from '../constants/place-classes.js';
 import { openai, getAiModel } from './ai-core.js';
 
 const CACHE_KEY = 'urban-wanderer-analysis-cache';

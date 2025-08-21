@@ -12,7 +12,7 @@
 	} from '../stores.js';
 	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
-	import { CLASSES } from '../constants.js';
+	import { CLASSES } from '../constants/place-classes.js';
 	import { errorMessage, events } from '../stores.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';
 	import { Spinner, Alert } from 'flowbite-svelte';

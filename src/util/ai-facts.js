@@ -1,6 +1,6 @@
 import { openai, getAiModel } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
-import { AI_REASONING_EFFORT } from '../constants.js';
+import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
 
 const INSIGHTS_CACHE_KEY = 'urban-wanderer-insights-cache';
 const FACTS_CACHE_KEY = 'urban-wanderer-facts-cache';

@@ -7,12 +7,8 @@
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import { Spinner } from 'flowbite-svelte';
-	import {
-		CLASSES,
-		PROPERTIES,
-		PROPERTY_TRANSLATIONS,
-		HISTORICAL_EVENTS
-	} from '../../constants.js';
+	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../../constants/place-classes.js';
+	import { HISTORICAL_EVENTS } from '../../constants/reference-data.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
 	import { onMount } from 'svelte';

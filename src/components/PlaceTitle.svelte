@@ -1,5 +1,5 @@
 <script>
-	import { CLASSES } from '../constants.js';
+	import { CLASSES } from '../constants/place-classes.js';
 	export let place;
 </script>
 

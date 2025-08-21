@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { OPENAI_API_KEY } from '../.openai_api_key.js';
-import { AI_MODELS } from '../constants.js';
+import { AI_MODELS } from '../constants/ui-config.js';
 
 // Shared OpenAI instance
 export const openai = new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true });

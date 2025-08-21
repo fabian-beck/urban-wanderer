@@ -337,8 +337,8 @@
 				<!-- green map -->
 				{#if $preferences.labels?.includes('NATURE')}
 					<g class="green-map">
-						{#each ($greenMap || []) as row, rowIndex}
-							{#each (row || []) as cell, colIndex}
+						{#each $greenMap || [] as row, rowIndex}
+							{#each row || [] as cell, colIndex}
 								{#if cell}
 									{@const triangleX =
 										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
@@ -358,8 +358,8 @@
 				{/if}
 				<!-- water map -->
 				<g class="water-map">
-					{#each ($waterMap || []) as row, rowIndex}
-						{#each (row || []) as cell, colIndex}
+					{#each $waterMap || [] as row, rowIndex}
+						{#each row || [] as cell, colIndex}
 							{#if cell && cell > 0.1}
 								{@const x =
 									rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
@@ -383,8 +383,8 @@
 				<!-- activity map -->
 				{#if $preferences.labels?.includes('ACTIVITIES')}
 					<g class="activity-map">
-						{#each ($activityMap || []) as row, rowIndex}
-							{#each (row || []) as cell, colIndex}
+						{#each $activityMap || [] as row, rowIndex}
+							{#each row || [] as cell, colIndex}
 								{#if cell && cell > 0.1}
 									{@const x =
 										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}

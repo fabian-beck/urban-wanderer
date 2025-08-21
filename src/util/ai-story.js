@@ -1,5 +1,5 @@
 import { openai, getAiModel } from './ai-core.js';
-import { AI_REASONING_EFFORT } from '../constants.js';
+import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
 
 // generate story about the user position
 export async function generateStory(

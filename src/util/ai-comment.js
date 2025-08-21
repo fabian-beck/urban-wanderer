@@ -1,5 +1,5 @@
 import { openai, getAiModel } from './ai-core.js';
-import { AI_REASONING_EFFORT } from '../constants.js';
+import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
 
 // Generate a comment about the current location
 export async function generateLocationComment(

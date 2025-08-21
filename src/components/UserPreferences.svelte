@@ -2,7 +2,13 @@
 	import { Label, Range, Checkbox, Modal, Select, Toggle, Button } from 'flowbite-svelte';
 	import { preferences } from '../stores.js';
 	import { places } from '../stores.js';
-	import { LABELS, LANGUAGES, GUIDE_CHARACTERS, FAMILIARITY, AI_MODELS } from '../constants.js';
+	import {
+		LABELS,
+		LANGUAGES,
+		GUIDE_CHARACTERS,
+		FAMILIARITY,
+		AI_MODELS
+	} from '../constants/ui-config.js';
 	import { clearAnalysisCache } from '../util/ai-analysis.js';
 	import { clearInsightsCache, clearFactsCache } from '../util/ai-facts.js';
 

@@ -1,5 +1,5 @@
 <script>
-	import { FAMOUS_BUILDINGS } from '../../constants.js';
+	import { FAMOUS_BUILDINGS } from '../../constants/reference-data.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
 

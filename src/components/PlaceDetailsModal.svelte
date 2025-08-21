@@ -16,7 +16,7 @@
 		placeDetailsVisible,
 		updateLocation
 	} from '../stores.js';
-	import { LABELS } from '../constants.js';
+	import { LABELS } from '../constants/ui-config.js';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import { derived } from 'svelte/store';
