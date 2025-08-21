@@ -404,7 +404,7 @@
 				<Spinner size="6" />
 			</div>
 		{:else if facts}
-			<div class="grid w-full auto-rows-fr grid-cols-4 gap-3">
+			<div class="grid w-full auto-rows-min grid-cols-4 gap-3">
 				{#each optimizedFacts as fact}
 					{#if fact.key === 'height'}
 						<HeightFact
