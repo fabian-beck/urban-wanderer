@@ -4,6 +4,7 @@
 	import ArchitectureStyleFact from './ArchitectureStyleFact.svelte';
 	import BuildingTypeFact from './BuildingTypeFact.svelte';
 	import YearFact from './YearFact.svelte';
+	import NumberOfPeopleFact from './NumberOfPeopleFact.svelte';
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import { Spinner } from 'flowbite-svelte';
@@ -23,6 +24,9 @@
 
 	// Define which properties represent years
 	const YEAR_PROPERTIES = ['constructed', 'created', 'discovered', 'established'];
+	
+	// Define which properties represent people counts
+	const PEOPLE_COUNT_PROPERTIES = ['population', 'student_count', 'employee_count', 'capacity', 'visit_count', 'yearly_passenger_count', 'bed_count'];
 
 	// Track container width changes with debounced updates
 	let debouncedWidth = containerWidth;
@@ -179,6 +183,13 @@
 				return 2; // <500px
 			}
 			return 1;
+		}
+
+		// People count facts need more space for ISOTYPE visualization
+		if (PEOPLE_COUNT_PROPERTIES.includes(key)) {
+			// At 400px: 2 quarters, at 500px+: 1 quarter
+			if (responsiveWidthScale >= 1.25) return 1; // 500px+
+			return 2; // <500px
 		}
 
 		const labelStr = label?.toString() || '';
@@ -424,6 +435,14 @@
 						<YearFact
 							value={fact.value}
 							propertyKey={fact.key}
+							widthClass={`col-span-${fact.widthSpan}`}
+							containerWidth={debouncedWidth}
+						/>
+					{:else if PEOPLE_COUNT_PROPERTIES.includes(fact.key)}
+						<NumberOfPeopleFact
+							value={fact.value}
+							propertyKey={fact.key}
+							placeTitle={place.title}
 							widthClass={`col-span-${fact.widthSpan}`}
 							containerWidth={debouncedWidth}
 						/>

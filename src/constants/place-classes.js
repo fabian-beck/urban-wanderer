@@ -53,7 +53,7 @@ export const CLASSES = {
 		emoji: '🏰',
 		description: 'Castle or fortress',
 		radius: 200,
-		properties: ['constructed', 'area', 'architecture_style', 'material', 'building_type']
+		properties: ['constructed', 'area', 'architecture_style', 'material', 'building_type', 'visit_count']
 	},
 	CEMETERY: {
 		emoji: '⚰️',
@@ -85,7 +85,7 @@ export const CLASSES = {
 		emoji: '⚓',
 		description: 'Harbour',
 		radius: 300,
-		properties: ['constructed', 'area', 'yearly_tonnage', 'good_types']
+		properties: ['constructed', 'area', 'yearly_tonnage', 'good_types', 'employee_count']
 	},
 	HOSPITAL: {
 		emoji: '🏥',
@@ -133,7 +133,7 @@ export const CLASSES = {
 	MUSEUM: {
 		emoji: '🖼️',
 		description: 'Museum',
-		properties: ['established', 'visit_count', 'building_type', 'architecture_style', 'height']
+		properties: ['established', 'visit_count', 'employee_count', 'building_type', 'architecture_style', 'height']
 	},
 	OBSERVATORY: {
 		emoji: '🔭',
@@ -155,7 +155,7 @@ export const CLASSES = {
 		emoji: '🛐',
 		description: 'Place of worship (e.g., a church, a mosque, a temple)',
 		radius: 150,
-		properties: ['established', 'height', 'architecture_style', 'building_type']
+		properties: ['established', 'height', 'architecture_style', 'building_type', 'capacity']
 	},
 	SPORTS_FACILITY: {
 		emoji: '🏟️',
