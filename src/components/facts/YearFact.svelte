@@ -33,7 +33,7 @@
 
 		for (const event of HISTORICAL_EVENTS) {
 			let distance;
-			
+
 			if (event.end) {
 				// Event with duration
 				if (year >= event.start && year <= event.end) {
@@ -64,23 +64,39 @@
 		if (bestMatch && minDistance <= 10) {
 			const eventName = getEventName(bestMatch);
 			const $language = get(preferences).lang;
-			
+
 			// Within 10 years - show relative timing
 			if (minDistance === 0) {
 				const sameYearText = $language === 'de' ? 'gleiches Jahr wie' : 'same year as';
 				return { text: `${sameYearText}<br>${eventName}`, distance: minDistance };
 			} else if (year < (bestMatch.end || bestMatch.start)) {
-				const years = minDistance === 1 ? 
-					($language === 'de' ? 'Jahr' : 'year') : 
-					($language === 'de' ? 'Jahre' : 'years');
+				const years =
+					minDistance === 1
+						? $language === 'de'
+							? 'Jahr'
+							: 'year'
+						: $language === 'de'
+							? 'Jahre'
+							: 'years';
 				const beforeText = $language === 'de' ? 'vor' : 'before';
-				return { text: `${minDistance} ${years} ${beforeText}<br>${eventName}`, distance: minDistance };
+				return {
+					text: `${minDistance} ${years} ${beforeText}<br>${eventName}`,
+					distance: minDistance
+				};
 			} else {
-				const years = minDistance === 1 ? 
-					($language === 'de' ? 'Jahr' : 'year') : 
-					($language === 'de' ? 'Jahre' : 'years');
+				const years =
+					minDistance === 1
+						? $language === 'de'
+							? 'Jahr'
+							: 'year'
+						: $language === 'de'
+							? 'Jahre'
+							: 'years';
 				const afterText = $language === 'de' ? 'nach' : 'after';
-				return { text: `${minDistance} ${years} ${afterText}<br>${eventName}`, distance: minDistance };
+				return {
+					text: `${minDistance} ${years} ${afterText}<br>${eventName}`,
+					distance: minDistance
+				};
 			}
 		}
 
@@ -95,7 +111,6 @@
 		}
 		return event.name; // fallback for old format
 	}
-
 </script>
 
 <div
@@ -103,21 +118,15 @@
 	style="background-color: rgb(249 250 251);"
 >
 	<div class="relative z-10 flex flex-col items-center">
-		<span
-			class="mb-0.5 text-xs font-medium leading-tight text-gray-600"
-		>
+		<span class="mb-0.5 text-xs font-medium leading-tight text-gray-600">
 			{label}
 		</span>
 		<div class="text-center">
-			<div
-				class="text-base font-semibold leading-tight text-gray-900"
-			>
+			<div class="text-base font-semibold leading-tight text-gray-900">
 				{value}
 			</div>
 			{#if historicalContext}
-				<div
-					class="mt-1 text-xs leading-tight text-gray-600"
-				>
+				<div class="mt-1 text-xs leading-tight text-gray-600">
 					{@html historicalContext.text}
 				</div>
 			{/if}

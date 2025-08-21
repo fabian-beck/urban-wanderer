@@ -101,6 +101,12 @@
 		return minDistance <= 10; // Within 10 years
 	}
 
+	function getLongestWordLength(text) {
+		if (!text) return 0;
+		const words = text.toString().split(/\s+/);
+		return Math.max(...words.map((word) => word.length));
+	}
+
 	function getMinWidthSpan(label, value, key = null) {
 		// Height facts always need at least 3 quarters due to comparison images
 		if (key === 'height') {
@@ -121,16 +127,29 @@
 		const valueStr = value?.toString() || '';
 
 		const totalLength = labelStr.length + valueStr.length;
+		const longestLabelWord = getLongestWordLength(labelStr);
+		const longestValueWord = getLongestWordLength(valueStr);
+		const longestWord = Math.max(longestLabelWord, longestValueWord);
 
-		// More conservative thresholds for better layout
+		// Enhanced thresholds considering both total length and longest word
 		let width;
-		if (totalLength > 85 || valueStr.length > 55)
-			width = 4; // full width - only for very long content
-		else if (totalLength > 65 || valueStr.length > 45)
-			width = 3; // three-quarter width - rare
-		else if (totalLength > 16 || valueStr.length > 12)
-			width = 2; // half width
-		else width = 1; // quarter width
+
+		// Full width (4 quarters) - very long content or extremely long words
+		if (totalLength > 85 || valueStr.length > 55 || longestWord > 25) {
+			width = 4;
+		}
+		// Three-quarter width - long content or long words like "Meerwasserschwimmhalle"
+		else if (totalLength > 65 || valueStr.length > 45 || longestWord > 18) {
+			width = 3;
+		}
+		// Half width - medium content or medium-long words
+		else if (totalLength > 16 || valueStr.length > 12 || longestWord > 12) {
+			width = 2;
+		}
+		// Quarter width - short content and short words
+		else {
+			width = 1;
+		}
 
 		return width;
 	}

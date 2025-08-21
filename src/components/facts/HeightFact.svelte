@@ -100,7 +100,9 @@
 				{/if}
 
 				<div class="mb-1 flex flex-col items-center px-1">
-					<span class="mb-0.5 text-xs font-medium leading-none text-gray-600">{getHeightLabel()}</span>
+					<span class="mb-0.5 text-xs font-medium leading-none text-gray-600"
+						>{getHeightLabel()}</span
+					>
 					<div class="text-base font-semibold leading-tight text-gray-900">
 						{formattedResult.mainValue}
 					</div>
@@ -126,7 +128,8 @@
 			</div>
 		{:else}
 			<div class="flex flex-col items-center">
-				<span class="mb-0.5 text-xs font-medium leading-none text-gray-600">{getHeightLabel()}</span>
+				<span class="mb-0.5 text-xs font-medium leading-none text-gray-600">{getHeightLabel()}</span
+				>
 				<div class="text-base font-semibold leading-tight text-gray-900">
 					{formattedResult.mainValue}
 				</div>
