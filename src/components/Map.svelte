@@ -57,7 +57,7 @@
 			});
 
 			// Count places with 3+ stars to determine if we need 2-star places
-			const highStarPlaces = sortedPlaces.filter(place => place.stars >= 3);
+			const highStarPlaces = sortedPlaces.filter((place) => place.stars >= 3);
 			const allowTwoStars = highStarPlaces.length < 5;
 
 			sortedPlaces.forEach((place) => {
@@ -235,19 +235,19 @@
 		for (let i = 1; i < parts.length; i++) {
 			const firstLine = parts.slice(0, i).join(separator) + (addSeparator ? separator : '');
 			const secondLine = parts.slice(i).join(separator);
-			
+
 			const firstLen = firstLine.length;
 			const secondLen = secondLine.length;
 			const totalLen = firstLen + secondLen;
-			
+
 			// Skip if either line is too short or too long
 			if (firstLen < 2 || secondLen < 2 || firstLen > 20 || secondLen > 20) {
 				continue;
 			}
-			
+
 			// Calculate score: prefer longer first line, but penalize extreme imbalances
 			let score = 0;
-			
+
 			// Bonus for longer first line (up to 1.5x second line length)
 			if (firstLen >= secondLen) {
 				score += 10;
@@ -255,16 +255,16 @@
 					score += 5; // Additional bonus for reasonable ratio
 				}
 			}
-			
+
 			// Penalty for imbalance (the closer to balanced, the better)
 			const imbalance = Math.abs(firstLen - secondLen) / totalLen;
 			score -= imbalance * 20;
-			
+
 			// Bonus for keeping total length reasonable
 			if (totalLen <= 25) {
 				score += 5;
 			}
-			
+
 			if (score > bestScore) {
 				bestScore = score;
 				bestSplit = firstLine + '\n' + secondLine;
@@ -618,8 +618,8 @@
 							class="fill-current text-green-300"
 						/>
 						<text
-							x="20"
-							y={$preferences.labels?.includes('ACTIVITIES') ? 30 : 5}
+							x="22"
+							y={$preferences.labels?.includes('ACTIVITIES') ? 31 : 6}
 							class="text-lg"
 							text-anchor="start">Green areas</text
 						>
@@ -634,10 +634,10 @@
 						class="fill-current text-blue-300"
 					/>
 					<text
-						x="20"
+						x="24"
 						y={($preferences.labels?.includes('ACTIVITIES') ? 25 : 0) +
 							($preferences.labels?.includes('NATURE') ? 25 : 0) +
-							5}
+							7}
 						class="text-lg"
 						text-anchor="start">Water areas</text
 					>
