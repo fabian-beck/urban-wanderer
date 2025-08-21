@@ -713,3 +713,69 @@ export const ARCHITECTURE_STYLES = {
 		description: 'Victorian revival style'
 	}
 };
+
+// Historical events reference for construction year context
+export const HISTORICAL_EVENTS = [
+	// Ancient & Medieval
+	{ start: -753, name: 'founding of Rome' },
+	{ start: -44, name: 'assassination of Julius Caesar' },
+	{ start: 476, name: 'fall of the Western Roman Empire' },
+	{ start: 800, name: 'coronation of Charlemagne' },
+	{ start: 1066, name: 'Norman Conquest of England' },
+	{ start: 1096, name: 'start of the First Crusade' },
+	{ start: 1453, name: 'fall of Constantinople' },
+
+	// Renaissance & Early Modern
+	{ start: 1440, name: 'invention of the printing press' },
+	{ start: 1492, name: 'Columbus reaches the Americas' },
+	{ start: 1517, name: 'start of the Protestant Reformation' },
+	{ start: 1543, name: 'Copernicus publishes heliocentric theory' },
+	{ start: 1588, name: 'defeat of the Spanish Armada' },
+	{ start: 1609, name: 'Galileo\'s first telescope observations' },
+	{ start: 1666, name: 'Great Fire of London' },
+	{ start: 1776, name: 'American Declaration of Independence' },
+	{ start: 1789, end: 1799, name: 'the French Revolution' },
+
+	// Industrial Revolution & 19th Century
+	{ start: 1804, name: 'Napoleon\'s coronation as Emperor' },
+	{ start: 1807, name: 'Fulton\'s first steamboat' },
+	{ start: 1815, name: 'Battle of Waterloo' },
+	{ start: 1825, name: 'first passenger railway opened' },
+	{ start: 1837, name: 'invention of the telegraph' },
+	{ start: 1848, name: 'revolutions across Europe' },
+	{ start: 1859, name: 'Darwin publishes Origin of Species' },
+	{ start: 1861, end: 1865, name: 'American Civil War' },
+	{ start: 1869, name: 'opening of the Suez Canal' },
+	{ start: 1876, name: 'invention of the telephone' },
+	{ start: 1879, name: 'Edison\'s first light bulb' },
+	{ start: 1885, name: 'first automobile' },
+	{ start: 1886, name: 'Statue of Liberty dedication' },
+	{ start: 1888, name: 'Kodak camera invented' },
+
+	// Early 20th Century
+	{ start: 1901, name: 'first transatlantic radio signal' },
+	{ start: 1903, name: 'first powered flight' },
+	{ start: 1905, name: 'Einstein\'s theory of relativity' },
+	{ start: 1914, end: 1918, name: 'World War I' },
+	{ start: 1917, name: 'Russian Revolution' },
+	{ start: 1929, name: 'Wall Street Crash' },
+	{ start: 1933, name: 'Hitler rises to power' },
+	{ start: 1939, end: 1945, name: 'World War II' },
+
+	// Mid-Late 20th Century
+	{ start: 1945, name: 'founding of the United Nations' },
+	{ start: 1947, name: 'India\'s independence' },
+	{ start: 1957, name: 'launch of Sputnik' },
+	{ start: 1961, name: 'construction of Berlin Wall' },
+	{ start: 1963, name: 'assassination of JFK' },
+	{ start: 1969, name: 'moon landing' },
+	{ start: 1973, name: 'oil crisis' },
+	{ start: 1981, name: 'launch of IBM PC' },
+	{ start: 1989, name: 'fall of Berlin Wall' },
+	{ start: 1991, name: 'collapse of Soviet Union' },
+
+	// Recent History
+	{ start: 2001, name: 'September 11 attacks' },
+	{ start: 2008, name: 'global financial crisis' },
+	{ start: 2020, name: 'COVID-19 pandemic' }
+];

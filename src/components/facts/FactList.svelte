@@ -2,10 +2,11 @@
 	import Fact from './Fact.svelte';
 	import HeightFact from './HeightFact.svelte';
 	import ArchitectureStyleFact from './ArchitectureStyleFact.svelte';
+	import ConstructedFact from './ConstructedFact.svelte';
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import { Spinner } from 'flowbite-svelte';
-	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../../constants.js';
+	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS, HISTORICAL_EVENTS } from '../../constants.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
 
@@ -59,6 +60,39 @@
 		return key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 	}
 
+	// Helper function to check if a construction year has historical context
+	function hasHistoricalContext(value) {
+		const year = parseInt(value);
+		if (isNaN(year) || year <= -3000 || year >= 2100) return false;
+		
+		// Find events that are contemporaneous or close to the construction year
+		let minDistance = Infinity;
+		
+		for (const event of HISTORICAL_EVENTS) {
+			let distance;
+			
+			if (event.end) {
+				// Event with duration
+				if (year >= event.start && year <= event.end) {
+					return true; // Year falls within event period
+				} else if (year < event.start) {
+					distance = event.start - year;
+				} else {
+					distance = year - event.end;
+				}
+			} else {
+				// Single year event
+				distance = Math.abs(year - event.start);
+			}
+			
+			if (distance < minDistance) {
+				minDistance = distance;
+			}
+		}
+		
+		return minDistance <= 10; // Within 10 years
+	}
+
 	function getMinWidthSpan(label, value, key = null) {
 		// Height facts always need at least 3 quarters due to comparison images
 		if (key === 'height') {
@@ -68,6 +102,11 @@
 		// Architecture style facts need more space for description
 		if (key === 'architecture_style') {
 			return 2;
+		}
+
+		// Constructed facts need more space if they have historical context
+		if (key === 'constructed') {
+			return hasHistoricalContext(value) ? 2 : 1;
 		}
 
 		const labelStr = label?.toString() || '';
@@ -211,6 +250,8 @@
 						<HeightFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{:else if fact.key === 'architecture_style'}
 						<ArchitectureStyleFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
+					{:else if fact.key === 'constructed'}
+						<ConstructedFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{:else}
 						<Fact label={fact.label} value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{/if}
