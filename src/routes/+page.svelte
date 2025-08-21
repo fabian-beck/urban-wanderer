@@ -14,7 +14,7 @@
 	import Location from '../components/Position.svelte';
 	import Nearby from '../components/Nearby.svelte';
 	import { Alert, CloseButton, Spinner, Button } from 'flowbite-svelte';
-	import { appName } from '../constants.js';
+	import { appName } from '../constants/core.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
 	import Map from '../components/Map.svelte';

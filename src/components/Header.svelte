@@ -1,5 +1,5 @@
 <script>
-	import { appName } from '../constants.js';
+	import { appName } from '../constants/core.js';
 	import {
 		Navbar,
 		NavBrand,

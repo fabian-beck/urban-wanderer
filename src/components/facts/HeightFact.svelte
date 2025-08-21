@@ -1,7 +1,89 @@
 <script>
-	import { FAMOUS_BUILDINGS } from '../../constants/reference-data.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
+
+	// Famous buildings for height comparison (sorted by height in meters)
+	const FAMOUS_BUILDINGS = [
+		// Small / Historic (<100m)
+		{ name: 'Parthenon', shortName: 'Parthenon (GR)', height: 14, image: 'parthenon.png' },
+		{
+			name: 'Brandenburg Gate',
+			shortName: 'Brandenburg (DE)',
+			height: 26,
+			image: 'brandenburg_gate.png'
+		},
+		{
+			name: 'Arc de Triomphe',
+			shortName: 'Arc Triomphe (FR)',
+			height: 50,
+			image: 'arc_de_triomphe.png'
+		},
+		{
+			name: 'Leaning Tower of Pisa',
+			shortName: 'Pisa Tower (IT)',
+			height: 56,
+			image: 'leaning_tower_of_pisa.png'
+		},
+		{
+			name: 'Notre-Dame de Paris',
+			shortName: 'Notre-Dame (FR)',
+			height: 69,
+			image: 'notre_dame_de_paris.png'
+		},
+		{
+			name: 'Statue of Liberty',
+			shortName: 'Statue Liberty (US)',
+			height: 93,
+			image: 'statue_of_liberty.png'
+		}, // statue 46m, with pedestal 93m
+		{ name: 'Big Ben', shortName: 'Big Ben (UK)', height: 96, image: 'big_ben.png' },
+
+		// Medium (100–200m)
+		{
+			name: 'Florence Cathedral',
+			shortName: 'Florence Cath. (IT)',
+			height: 114,
+			image: 'florence_cathedral.png'
+		},
+		{
+			name: 'Cologne Cathedral',
+			shortName: 'Cologne Cath. (DE)',
+			height: 157,
+			image: 'cologne_cathedral.png'
+		},
+		{
+			name: 'Washington Monument',
+			shortName: 'Washington Mem. (US)',
+			height: 169,
+			image: 'washington_monument.png'
+		},
+		{ name: 'Space Needle', shortName: 'Space Needle (US)', height: 184, image: 'space_needle.png' },
+
+		// Tall (200–300m)
+		{
+			name: 'Marina Bay Sands',
+			shortName: 'Marina Bay (SG)',
+			height: 200,
+			image: 'marina_bay_sands.png'
+		},
+		{
+			name: 'Messeturm Frankfurt',
+			shortName: 'Messeturm (DE)',
+			height: 257,
+			image: 'messeturm_frankfurt.png'
+		},
+
+		// Super-Tall (300m+)
+		{ name: 'Eiffel Tower', shortName: 'Eiffel Tower (FR)', height: 330, image: 'eiffel_tower.png' },
+		{
+			name: 'Empire State Building',
+			shortName: 'Empire State (US)',
+			height: 443,
+			image: 'empire_state_building.png'
+		}, // 381m roof, 443m tip
+		{ name: 'Taipei 101', shortName: 'Taipei 101 (TW)', height: 508, image: 'taipei_101.png' }, // 508m roof, 508m tip
+		{ name: 'Burj Khalifa', shortName: 'Burj Khalifa (AE)', height: 828, image: 'burj_khalifa.png' }
+	];
 
 	export let value = '';
 	export let widthClass = 'col-span-1';

@@ -1,9 +1,7 @@
 import { LABELS, AI_REASONING_EFFORT } from '../constants/ui-config.js';
 import { CLASSES } from '../constants/place-classes.js';
 import { openai, getAiModel } from './ai-core.js';
-
-const CACHE_KEY = 'urban-wanderer-analysis-cache';
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+import { ANALYSIS_CACHE_KEY as CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
 
 function loadAnalysisCache() {
 	if (typeof localStorage === 'undefined') return {};

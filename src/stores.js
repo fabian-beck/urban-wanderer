@@ -1,6 +1,6 @@
 import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
-import { nArticles } from './constants.js';
+import { nArticles } from './constants/core.js';
 import { CLASSES } from './constants/place-classes.js';
 import { LABELS } from './constants/ui-config.js';
 import { analyzePlaces } from './util/ai-analysis.js';

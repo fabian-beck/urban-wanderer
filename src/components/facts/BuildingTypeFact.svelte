@@ -1,7 +1,146 @@
 <script>
-	import { BUILDING_TYPES } from '../../constants/architecture.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
+
+	// Building types with background patterns
+	const BUILDING_TYPES = {
+		residential: {
+			name: { en: 'Residential', de: 'Wohngebäude' },
+			image: 'residential.png'
+		},
+		bank: {
+			name: { en: 'Bank', de: 'Bank' },
+			image: 'bank.png'
+		},
+		commercial: {
+			name: { en: 'Commercial', de: 'Geschäftsgebäude' },
+			image: 'commercial.png'
+		},
+		office: {
+			name: { en: 'Office', de: 'Bürogebäude' },
+			image: 'office.png'
+		},
+		industrial: {
+			name: { en: 'Industrial', de: 'Industriegebäude' },
+			image: 'industrial.png'
+		},
+		warehouse: {
+			name: { en: 'Warehouse', de: 'Lagergebäude' },
+			image: 'warehouse.png'
+		},
+		hospital: {
+			name: { en: 'Hospital', de: 'Krankenhaus' },
+			image: 'hospital.png'
+		},
+		school: {
+			name: { en: 'School', de: 'Schule' },
+			image: 'school.png'
+		},
+		university: {
+			name: { en: 'University', de: 'Universität' },
+			image: 'university.png'
+		},
+		church: {
+			name: { en: 'Church', de: 'Kirche' },
+			image: 'church.png'
+		},
+		temple: {
+			name: { en: 'Temple', de: 'Tempel' },
+			image: 'temple.png'
+		},
+		mosque: {
+			name: { en: 'Mosque', de: 'Moschee' },
+			image: 'mosque.png'
+		},
+		synagogue: {
+			name: { en: 'Synagogue', de: 'Synagoge' },
+			image: 'synagogue.png'
+		},
+		hotel: {
+			name: { en: 'Hotel', de: 'Hotel' },
+			image: 'hotel.png'
+		},
+		restaurant: {
+			name: { en: 'Restaurant', de: 'Restaurant' },
+			image: 'restaurant.png'
+		},
+		museum: {
+			name: { en: 'Museum', de: 'Museum' },
+			image: 'museum.png'
+		},
+		library: {
+			name: { en: 'Library', de: 'Bibliothek' },
+			image: 'library.png'
+		},
+		theater: {
+			name: { en: 'Theater', de: 'Theater' },
+			image: 'theater.png'
+		},
+		stadium: {
+			name: { en: 'Stadium', de: 'Stadion' },
+			image: 'stadium.png'
+		},
+		gymnasium: {
+			name: { en: 'Gymnasium', de: 'Turnhalle' },
+			image: 'gymnasium.png'
+		},
+		tower: {
+			name: { en: 'Tower', de: 'Turm' },
+			image: 'tower.png'
+		},
+		skyscraper: {
+			name: { en: 'Skyscraper', de: 'Wolkenkratzer' },
+			image: 'skyscraper.png'
+		},
+		apartment: {
+			name: { en: 'Apartment Building', de: 'Wohnhaus' },
+			image: 'apartment.png'
+		},
+		villa: {
+			name: { en: 'Villa', de: 'Villa' },
+			image: 'villa.png'
+		},
+		cottage: {
+			name: { en: 'Cottage', de: 'Landhaus' },
+			image: 'cottage.png'
+		},
+		palace: {
+			name: { en: 'Palace', de: 'Palast' },
+			image: 'palace.png'
+		},
+		castle: {
+			name: { en: 'Castle', de: 'Burg' },
+			image: 'castle.png'
+		},
+		fortress: {
+			name: { en: 'Fortress', de: 'Festung' },
+			image: 'fortress.png'
+		},
+		barn: {
+			name: { en: 'Barn', de: 'Scheune' },
+			image: 'barn.png'
+		},
+		factory: {
+			name: { en: 'Factory', de: 'Fabrik' },
+			image: 'factory.png'
+		},
+		station: {
+			name: { en: 'Station', de: 'Bahnhof' },
+			image: 'station.png'
+		},
+		airport: {
+			name: { en: 'Airport Terminal', de: 'Flughafenterminal' },
+			image: 'airport.png'
+		},
+		garage: {
+			name: { en: 'Garage', de: 'Garage' },
+			image: 'garage.png'
+		},
+		shed: {
+			name: { en: 'Shed', de: 'Schuppen' },
+			image: 'shed.png'
+		}
+	};
 
 	export let value = '';
 	export let widthClass = 'col-span-1';

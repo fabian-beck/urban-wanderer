@@ -1,4 +1,4 @@
-import { MAX_ARTICLE_LENGTH } from '../constants.js';
+import { MAX_ARTICLE_LENGTH } from '../constants/core.js';
 
 export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
 	if (!coordinates) {

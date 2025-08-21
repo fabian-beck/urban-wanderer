@@ -21,7 +21,7 @@
 		WATER_STIPPLE_SIZE,
 		ACTIVITY_STIPPLE_SIZE,
 		PLACE_MIN_DISTANCE
-	} from '../constants.js';
+	} from '../constants/core.js';
 
 	// Derived constants
 	const SVG_SIZE = GRID_CELL_SIZE * GRID_ARRAY_SIZE;

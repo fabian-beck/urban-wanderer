@@ -161,3 +161,5 @@ This application demonstrates modern web-to-mobile development patterns, AI inte
 - Contants should be defined in @src\constants.js
 
 - use linter (npm run lint) after substantial code edits
+
+- Avoid comments that comment on removed parts or old versions

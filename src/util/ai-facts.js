@@ -1,10 +1,7 @@
 import { openai, getAiModel } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
-
-const INSIGHTS_CACHE_KEY = 'urban-wanderer-insights-cache';
-const FACTS_CACHE_KEY = 'urban-wanderer-facts-cache';
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+import { INSIGHTS_CACHE_KEY, FACTS_CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
 
 function loadCache(cacheKey) {
 	if (typeof localStorage === 'undefined') return {};

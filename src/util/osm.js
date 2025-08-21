@@ -1,4 +1,4 @@
-import { GRID_ARRAY_SIZE, GRID_CELL_SIZE, OSM_SEARCH_RADIUS } from '../constants.js';
+import { GRID_ARRAY_SIZE, GRID_CELL_SIZE, OSM_SEARCH_RADIUS } from '../constants/core.js';
 
 export async function loadOsmPlaces(coordinates) {
 	try {
