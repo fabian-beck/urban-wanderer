@@ -14,14 +14,53 @@
 	} from '../../constants.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
+	import { onMount } from 'svelte';
 
 	export let place;
 
 	let facts = null;
 	let factsLoading = false;
+	let containerElement;
+	let containerWidth = 400; // Default baseline width
+	let resizeTimeout;
 
 	// Define which properties represent years
 	const YEAR_PROPERTIES = ['constructed', 'created', 'discovered', 'established'];
+
+	// Track container width changes with debounced updates
+	let debouncedWidth = containerWidth;
+
+	onMount(() => {
+		if (containerElement) {
+			const resizeObserver = new ResizeObserver((entries) => {
+				for (let entry of entries) {
+					containerWidth = entry.contentRect.width;
+
+					// Debounce the width updates to avoid excessive recalculations
+					clearTimeout(resizeTimeout);
+					resizeTimeout = setTimeout(() => {
+						debouncedWidth = containerWidth;
+					}, 150); // 150ms delay
+				}
+			});
+			resizeObserver.observe(containerElement);
+
+			// Initial width measurement
+			containerWidth = containerElement.offsetWidth;
+			debouncedWidth = containerWidth;
+
+			return () => {
+				resizeObserver.disconnect();
+				clearTimeout(resizeTimeout);
+			};
+		}
+	});
+
+	// Force layout recalculation when debounced width changes
+	let layoutTrigger = 0;
+	$: if (debouncedWidth) {
+		layoutTrigger++;
+	}
 
 	export const loadFacts = async () => {
 		factsLoading = true;
@@ -108,19 +147,34 @@
 	}
 
 	function getMinWidthSpan(label, value, key = null) {
-		// Height facts always need at least 3 quarters due to comparison images
+		// Scale base requirements based on container width
+		const baseWidth = 400;
+		const responsiveWidthScale = debouncedWidth / baseWidth;
+
+		// Height facts need space for comparison images, but can be smaller on wider screens
 		if (key === 'height') {
-			return 3;
+			// At 400px: 3 quarters, at 500px+: 2 quarters, at 700px+: can be 1 quarter
+			if (responsiveWidthScale >= 1.75) return 1; // 700px+
+			if (responsiveWidthScale >= 1.25) return 2; // 500px+
+			return 3; // <500px
 		}
 
 		// Architecture style facts need more space for description
 		if (key === 'architecture_style') {
+			// Can scale down to 1 quarter on very wide screens
+			if (responsiveWidthScale >= 1.75) return 1; // 700px+
 			return 2;
 		}
 
 		// Year-based facts need more space if they have historical context
 		if (YEAR_PROPERTIES.includes(key)) {
-			return hasHistoricalContext(value) ? 2 : 1;
+			const hasContext = hasHistoricalContext(value);
+			if (hasContext) {
+				// At 400px: 2 quarters, at 500px+: 1 quarter
+				if (responsiveWidthScale >= 1.25) return 1; // 500px+
+				return 2; // <500px
+			}
+			return 1;
 		}
 
 		const labelStr = label?.toString() || '';
@@ -131,19 +185,49 @@
 		const longestValueWord = getLongestWordLength(valueStr);
 		const longestWord = Math.max(longestLabelWord, longestValueWord);
 
+		// Scale thresholds proportionally based on container width
+		// Base thresholds are for 400px width
+		const thresholdBaseWidth = 400;
+		const thresholdWidthScale = debouncedWidth / thresholdBaseWidth;
+
+		// Adjust thresholds proportionally (but with reasonable bounds)
+		const scaledTotalLong = Math.max(60, Math.min(100, 85 * thresholdWidthScale));
+		const scaledTotalMedium = Math.max(45, Math.min(80, 65 * thresholdWidthScale));
+		const scaledTotalShort = Math.max(12, Math.min(25, 16 * thresholdWidthScale));
+
+		const scaledValueLong = Math.max(40, Math.min(70, 55 * thresholdWidthScale));
+		const scaledValueMedium = Math.max(30, Math.min(60, 45 * thresholdWidthScale));
+		const scaledValueShort = Math.max(8, Math.min(18, 12 * thresholdWidthScale));
+
+		const scaledWordLong = Math.max(20, Math.min(35, 25 * thresholdWidthScale));
+		const scaledWordMedium = Math.max(14, Math.min(25, 18 * thresholdWidthScale));
+		const scaledWordShort = Math.max(8, Math.min(16, 12 * thresholdWidthScale));
+
 		// Enhanced thresholds considering both total length and longest word
 		let width;
 
 		// Full width (4 quarters) - very long content or extremely long words
-		if (totalLength > 85 || valueStr.length > 55 || longestWord > 25) {
+		if (
+			totalLength > scaledTotalLong ||
+			valueStr.length > scaledValueLong ||
+			longestWord > scaledWordLong
+		) {
 			width = 4;
 		}
 		// Three-quarter width - long content or long words like "Meerwasserschwimmhalle"
-		else if (totalLength > 65 || valueStr.length > 45 || longestWord > 18) {
+		else if (
+			totalLength > scaledTotalMedium ||
+			valueStr.length > scaledValueMedium ||
+			longestWord > scaledWordMedium
+		) {
 			width = 3;
 		}
 		// Half width - medium content or medium-long words
-		else if (totalLength > 16 || valueStr.length > 12 || longestWord > 12) {
+		else if (
+			totalLength > scaledTotalShort ||
+			valueStr.length > scaledValueShort ||
+			longestWord > scaledWordShort
+		) {
 			width = 2;
 		}
 		// Quarter width - short content and short words
@@ -251,7 +335,10 @@
 			// Add the optimized row to results
 			if (row.length > 0) {
 				row.forEach((item) => {
-					result.push({ ...item.fact, widthSpan: item.minWidth });
+					result.push({
+						...item.fact,
+						widthSpan: item.minWidth
+					});
 				});
 			}
 
@@ -265,43 +352,44 @@
 	}
 
 	// Create optimized layout that fills gaps
-	$: optimizedFacts = facts
-		? (() => {
-				const allFacts = [];
+	$: optimizedFacts =
+		facts && layoutTrigger >= 0
+			? (() => {
+					const allFacts = [];
 
-				// Collect all facts with their width spans
-				Object.entries(facts).forEach(([key, value]) => {
-					if (key !== 'other_facts' && value && value !== 'null' && PROPERTIES[key]) {
-						const propDefinition = PROPERTIES[key];
-						const label = formatLabel(key);
-						const displayValue =
-							propDefinition.type === 'array' && Array.isArray(value) ? value.join(' ') : value;
-						allFacts.push({ key, label, value: displayValue, type: 'property' });
-					}
-				});
-
-				if (facts?.other_facts && Array.isArray(facts.other_facts)) {
-					facts.other_facts.forEach((fact, index) => {
-						if (fact.label && fact.description && fact.description !== 'null') {
-							allFacts.push({
-								key: `other_${index}`,
-								label: fact.label,
-								value: fact.description,
-								type: 'other'
-							});
+					// Collect all facts with their width spans
+					Object.entries(facts).forEach(([key, value]) => {
+						if (key !== 'other_facts' && value && value !== 'null' && PROPERTIES[key]) {
+							const propDefinition = PROPERTIES[key];
+							const label = formatLabel(key);
+							const displayValue =
+								propDefinition.type === 'array' && Array.isArray(value) ? value.join(' ') : value;
+							allFacts.push({ key, label, value: displayValue, type: 'property' });
 						}
 					});
-				}
 
-				// Keep facts in original order for better layout
-				// (sorting by width can cause layout issues)
+					if (facts?.other_facts && Array.isArray(facts.other_facts)) {
+						facts.other_facts.forEach((fact, index) => {
+							if (fact.label && fact.description && fact.description !== 'null') {
+								allFacts.push({
+									key: `other_${index}`,
+									label: fact.label,
+									value: fact.description,
+									type: 'other'
+								});
+							}
+						});
+					}
 
-				return simpleLayout(allFacts);
-			})()
-		: [];
+					// Keep facts in original order for better layout
+					// (sorting by width can cause layout issues)
+
+					return simpleLayout(allFacts);
+				})()
+			: [];
 </script>
 
-<div>
+<div bind:this={containerElement}>
 	<div class="flex flex-auto">
 		{#if !facts && factsLoading}
 			<div class="m-6 flex justify-center">
@@ -311,14 +399,23 @@
 			<div class="grid w-full auto-rows-fr grid-cols-4 gap-3">
 				{#each optimizedFacts as fact}
 					{#if fact.key === 'height'}
-						<HeightFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
+						<HeightFact
+							value={fact.value}
+							widthClass={`col-span-${fact.widthSpan}`}
+							containerWidth={debouncedWidth}
+						/>
 					{:else if fact.key === 'architecture_style'}
-						<ArchitectureStyleFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
+						<ArchitectureStyleFact
+							value={fact.value}
+							widthClass={`col-span-${fact.widthSpan}`}
+							containerWidth={debouncedWidth}
+						/>
 					{:else if YEAR_PROPERTIES.includes(fact.key)}
 						<YearFact
 							value={fact.value}
 							propertyKey={fact.key}
 							widthClass={`col-span-${fact.widthSpan}`}
+							containerWidth={debouncedWidth}
 						/>
 					{:else}
 						<Fact label={fact.label} value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />

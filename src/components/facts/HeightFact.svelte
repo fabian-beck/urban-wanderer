@@ -5,6 +5,7 @@
 
 	export let value = '';
 	export let widthClass = 'col-span-1';
+	export let containerWidth = 400; // Available container width
 
 	function parseHeight(heightStr) {
 		if (!heightStr || typeof heightStr !== 'string') return null;
@@ -68,18 +69,32 @@
 		return $language === 'de' ? 'Höhe' : 'Height';
 	}
 
+	// Determine if we have enough space to show comparisons
+	function shouldShowComparisons(containerWidth, widthSpan) {
+		const estimatedFactWidth = (containerWidth / 4) * widthSpan;
+		// Need at least 180px to show comparisons properly
+		return estimatedFactWidth >= 180;
+	}
+
+	// Extract width span from widthClass
+	function getWidthSpan(widthClass) {
+		const match = widthClass.match(/col-span-(\d+)/);
+		return match ? parseInt(match[1]) : 1;
+	}
+
 	$: heightInMeters = parseHeight(value);
 	$: comparisons = findComparisons(heightInMeters);
 	$: formattedResult = heightInMeters
 		? formatComparison(heightInMeters, comparisons)
 		: { mainValue: value, smaller: null, larger: null };
+	$: showComparisons = shouldShowComparisons(containerWidth, getWidthSpan(widthClass));
 </script>
 
 <div
 	class="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-center shadow-sm {widthClass}"
 >
 	<div class="text-center">
-		{#if formattedResult.smaller || formattedResult.larger}
+		{#if showComparisons && (formattedResult.smaller || formattedResult.larger)}
 			<div class="flex items-end justify-center gap-2 text-sm">
 				{#if formattedResult.smaller}
 					<div class="flex flex-col items-center">

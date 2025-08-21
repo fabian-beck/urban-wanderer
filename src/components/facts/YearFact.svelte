@@ -6,6 +6,7 @@
 	export let value;
 	export let propertyKey;
 	export let widthClass = '';
+	export let containerWidth = 400; // Available container width
 
 	// Parse the year from the value
 	$: year = parseInt(value);
@@ -111,6 +112,21 @@
 		}
 		return event.name; // fallback for old format
 	}
+
+	// Determine if we have enough space to show historical context
+	function shouldShowHistoricalContext(containerWidth, widthSpan) {
+		const estimatedFactWidth = (containerWidth / 4) * widthSpan;
+		// Need at least 120px to show historical context properly
+		return estimatedFactWidth >= 120;
+	}
+
+	// Extract width span from widthClass
+	function getWidthSpan(widthClass) {
+		const match = widthClass.match(/col-span-(\d+)/);
+		return match ? parseInt(match[1]) : 1;
+	}
+
+	$: showHistoricalContext = shouldShowHistoricalContext(containerWidth, getWidthSpan(widthClass));
 </script>
 
 <div
@@ -125,7 +141,7 @@
 			<div class="text-base font-semibold leading-tight text-gray-900">
 				{value}
 			</div>
-			{#if historicalContext}
+			{#if historicalContext && showHistoricalContext}
 				<div class="mt-1 text-xs leading-tight text-gray-600">
 					{@html historicalContext.text}
 				</div>

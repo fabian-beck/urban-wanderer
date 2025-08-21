@@ -5,6 +5,7 @@
 
 	export let value = '';
 	export let widthClass = 'col-span-1';
+	export let containerWidth = 400; // Available container width
 
 	function parseArchitecturalStyle(styleStr) {
 		if (!styleStr || typeof styleStr !== 'string') return null;
@@ -174,8 +175,31 @@
 		return style.name; // fallback to English
 	}
 
+	// Determine display based on available width
+	function shouldShowDescription(containerWidth, widthSpan) {
+		const estimatedFactWidth = (containerWidth / 4) * widthSpan;
+		// Need at least 140px to show description
+		return estimatedFactWidth >= 140;
+	}
+
+	function shouldShowBackgroundImage(containerWidth, widthSpan) {
+		const estimatedFactWidth = (containerWidth / 4) * widthSpan;
+		// Need at least 100px to show background pattern
+		return estimatedFactWidth >= 100;
+	}
+
+	// Extract width span from widthClass
+	function getWidthSpan(widthClass) {
+		const match = widthClass.match(/col-span-(\d+)/);
+		return match ? parseInt(match[1]) : 1;
+	}
+
 	$: matchedStyle = parseArchitecturalStyle(value);
-	$: backgroundImage = matchedStyle ? `/architecture-styles/${matchedStyle.image}` : null;
+	$: widthSpan = getWidthSpan(widthClass);
+	$: showDescription = shouldShowDescription(containerWidth, widthSpan);
+	$: showBackgroundImage = shouldShowBackgroundImage(containerWidth, widthSpan);
+	$: backgroundImage =
+		matchedStyle && showBackgroundImage ? `/architecture-styles/${matchedStyle.image}` : null;
 	$: styleName = getStyleName(matchedStyle);
 </script>
 
@@ -203,7 +227,7 @@
 			>
 				{styleName}
 			</div>
-			{#if matchedStyle && matchedStyle.description}
+			{#if matchedStyle && matchedStyle.description && showDescription}
 				<div
 					class="mt-1 text-xs leading-tight text-gray-600"
 					style="text-shadow: 0 0 3px #fff, 0 0 6px #fff, 0 0 10px #fff, 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;"
