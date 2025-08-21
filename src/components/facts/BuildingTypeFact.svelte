@@ -35,7 +35,6 @@
 				'residence',
 				'dwelling',
 				'wohnung',
-				'haus',
 				'bürgerhaus'
 			],
 			commercial: [
