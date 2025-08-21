@@ -429,6 +429,7 @@
 				<!-- places -->
 				<g class="places">
 					{#each $placesToHighlight as place}
+						{@const labelLines = layoutLabel(place.title).split('\n')}
 						<!-- svelte-ignore a11y-click-events-have-key-events -->
 						<!-- svelte-ignore a11y-no-static-element-interactions -->
 						<g
@@ -443,18 +444,11 @@
 						>
 							<ellipse
 								cx="0"
-								cy={layoutLabel(place.title).includes('\n') ? 28 : 25}
-								rx={layoutLabel(place.title).includes('\n')
-									? Math.max(
-											70,
-											Math.max(
-												...layoutLabel(place.title)
-													.split('\n')
-													.map((line) => line.length)
-											) * 7
-										)
-									: Math.max(55, layoutLabel(place.title).length * 6)}
-								ry={layoutLabel(place.title).includes('\n') ? 35 : 22}
+								cy={labelLines.length > 1 ? 28 : 25}
+								rx={labelLines.length > 1
+									? Math.max(70, Math.max(...labelLines.map((line) => line.length)) * 7)
+									: Math.max(55, labelLines[0].length * 6)}
+								ry={labelLines.length > 1 ? 35 : 22}
 								fill="url(#textGradient)"
 							/>
 							<circle
@@ -474,13 +468,11 @@
 								stroke="black"
 								style="filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));"
 							/>
-							<text
-								x="0"
-								y="30"
-								class="place-label text-lg"
-								text-anchor="middle"
-								style="white-space:pre-line; line-height:1.1">{layoutLabel(place.title)}</text
-							>
+							<text x="0" y="30" class="place-label text-lg" text-anchor="middle">
+								{#each labelLines as line, index}
+									<tspan x="0" dy={index === 0 ? 0 : '1.1em'}>{line}</tspan>
+								{/each}
+							</text>
 						</g>
 					{/each}
 				</g>

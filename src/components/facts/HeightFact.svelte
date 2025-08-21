@@ -57,7 +57,12 @@
 			height: 169,
 			image: 'washington_monument.png'
 		},
-		{ name: 'Space Needle', shortName: 'Space Needle (US)', height: 184, image: 'space_needle.png' },
+		{
+			name: 'Space Needle',
+			shortName: 'Space Needle (US)',
+			height: 184,
+			image: 'space_needle.png'
+		},
 
 		// Tall (200–300m)
 		{
@@ -74,7 +79,12 @@
 		},
 
 		// Super-Tall (300m+)
-		{ name: 'Eiffel Tower', shortName: 'Eiffel Tower (FR)', height: 330, image: 'eiffel_tower.png' },
+		{
+			name: 'Eiffel Tower',
+			shortName: 'Eiffel Tower (FR)',
+			height: 330,
+			image: 'eiffel_tower.png'
+		},
 		{
 			name: 'Empire State Building',
 			shortName: 'Empire State (US)',
