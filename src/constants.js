@@ -52,7 +52,7 @@ export const CLASSES = {
 		emoji: '🌉',
 		description: 'Bridge',
 		radius: 150,
-		properties: ['constructed', 'length', 'bridge_type', 'clearance_height', 'material']
+		properties: ['constructed', 'length', 'bridge_type', 'clearance_height', 'material', 'height']
 	},
 	BUILDING: {
 		emoji: '🏢',
@@ -75,7 +75,7 @@ export const CLASSES = {
 		emoji: '🏰',
 		description: 'Castle or fortress',
 		radius: 200,
-		properties: ['constructed', 'area', 'architecture_style', 'material']
+		properties: ['constructed', 'area', 'architecture_style', 'material', 'building_type']
 	},
 	CEMETERY: {
 		emoji: '⚰️',
@@ -97,7 +97,7 @@ export const CLASSES = {
 	INSTITUTION: {
 		emoji: '🏛️',
 		description: 'Institution (e.g., a school, a government building)',
-		properties: ['established', 'employee_count']
+		properties: ['established', 'employee_count', 'building_type', 'architecture_style', 'height']
 	},
 	LANDMARK: {
 		emoji: '📍 ',
@@ -113,13 +113,13 @@ export const CLASSES = {
 		emoji: '🏥',
 		description: 'Medical facility (e.g., a hospital, a clinic)',
 		radius: 200,
-		properties: ['established', 'employee_count', 'bed_count']
+		properties: ['established', 'employee_count', 'bed_count', 'building_type', 'architecture_style', 'height']
 	},
 	HOTEL: {
 		emoji: '🏨',
 		description: 'Hotel',
 		radius: 200,
-		properties: ['established', 'employee_count', 'room_count', 'material', 'architecture_style', 'height']
+		properties: ['established', 'employee_count', 'room_count', 'material', 'architecture_style', 'height', 'building_type']
 	},
 	MEMORIAL: {
 		emoji: '🕯️',
@@ -140,7 +140,7 @@ export const CLASSES = {
 	MUSEUM: {
 		emoji: '🖼️',
 		description: 'Museum',
-		properties: ['established', 'visit_count']
+		properties: ['established', 'visit_count', 'building_type', 'architecture_style', 'height']
 	},
 	OBSERVATORY: {
 		emoji: '🔭',
@@ -162,13 +162,13 @@ export const CLASSES = {
 		emoji: '🛐',
 		description: 'Place of worship (e.g., a church, a mosque, a temple)',
 		radius: 150,
-		properties: ['established', 'height', 'architecture_style']
+		properties: ['established', 'height', 'architecture_style', 'building_type']
 	},
 	SPORTS_FACILITY: {
 		emoji: '🏟️',
 		description: 'Sports facility (e.g., a stadium, a gym)',
 		radius: 200,
-		properties: ['established', 'capacity']
+		properties: ['established', 'capacity', 'building_type', 'architecture_style', 'height']
 	},
 	'STATE/COUNTRY': {
 		emoji: '🌍',
@@ -185,7 +185,7 @@ export const CLASSES = {
 		emoji: '🚉',
 		description: 'Station (e.g., a train station, a bus station)',
 		radius: 200,
-		properties: ['constructed', 'area', 'yearly_passenger_count', 'main_destinations']
+		properties: ['constructed', 'area', 'yearly_passenger_count', 'main_destinations', 'building_type', 'architecture_style', 'height']
 	},
 	'STREET/SQUARE': {
 		emoji: '🛣️',
@@ -197,7 +197,7 @@ export const CLASSES = {
 		emoji: '🎓',
 		description: 'University, college, or school',
 		radius: 150,
-		properties: ['established', 'student_count', 'employee_count']
+		properties: ['established', 'student_count', 'employee_count', 'building_type', 'architecture_style', 'height']
 	},
 	WATERBODY: {
 		emoji: '🌊',
@@ -788,6 +788,146 @@ export const ARCHITECTURE_STYLES = {
 		name: { en: 'Neo-Victorian', de: 'Neoviktorianisch' },
 		image: 'victorian.png',
 		description: { en: 'Victorian revival style', de: 'Viktorianischer Wiederbelebungsstil' }
+	}
+};
+
+// Building types with background patterns
+export const BUILDING_TYPES = {
+	residential: {
+		name: { en: 'Residential', de: 'Wohngebäude' },
+		image: 'residential.png'
+	},
+	bank: {
+		name: { en: 'Bank', de: 'Bank' },
+		image: 'bank.png'
+	},
+	commercial: {
+		name: { en: 'Commercial', de: 'Geschäftsgebäude' },
+		image: 'commercial.png'
+	},
+	office: {
+		name: { en: 'Office', de: 'Bürogebäude' },
+		image: 'office.png'
+	},
+	industrial: {
+		name: { en: 'Industrial', de: 'Industriegebäude' },
+		image: 'industrial.png'
+	},
+	warehouse: {
+		name: { en: 'Warehouse', de: 'Lagergebäude' },
+		image: 'warehouse.png'
+	},
+	hospital: {
+		name: { en: 'Hospital', de: 'Krankenhaus' },
+		image: 'hospital.png'
+	},
+	school: {
+		name: { en: 'School', de: 'Schule' },
+		image: 'school.png'
+	},
+	university: {
+		name: { en: 'University', de: 'Universität' },
+		image: 'university.png'
+	},
+	church: {
+		name: { en: 'Church', de: 'Kirche' },
+		image: 'church.png'
+	},
+	temple: {
+		name: { en: 'Temple', de: 'Tempel' },
+		image: 'temple.png'
+	},
+	mosque: {
+		name: { en: 'Mosque', de: 'Moschee' },
+		image: 'mosque.png'
+	},
+	synagogue: {
+		name: { en: 'Synagogue', de: 'Synagoge' },
+		image: 'synagogue.png'
+	},
+	hotel: {
+		name: { en: 'Hotel', de: 'Hotel' },
+		image: 'hotel.png'
+	},
+	restaurant: {
+		name: { en: 'Restaurant', de: 'Restaurant' },
+		image: 'restaurant.png'
+	},
+	museum: {
+		name: { en: 'Museum', de: 'Museum' },
+		image: 'museum.png'
+	},
+	library: {
+		name: { en: 'Library', de: 'Bibliothek' },
+		image: 'library.png'
+	},
+	theater: {
+		name: { en: 'Theater', de: 'Theater' },
+		image: 'theater.png'
+	},
+	stadium: {
+		name: { en: 'Stadium', de: 'Stadion' },
+		image: 'stadium.png'
+	},
+	gymnasium: {
+		name: { en: 'Gymnasium', de: 'Turnhalle' },
+		image: 'gymnasium.png'
+	},
+	tower: {
+		name: { en: 'Tower', de: 'Turm' },
+		image: 'tower.png'
+	},
+	skyscraper: {
+		name: { en: 'Skyscraper', de: 'Wolkenkratzer' },
+		image: 'skyscraper.png'
+	},
+	apartment: {
+		name: { en: 'Apartment Building', de: 'Wohnhaus' },
+		image: 'apartment.png'
+	},
+	villa: {
+		name: { en: 'Villa', de: 'Villa' },
+		image: 'villa.png'
+	},
+	cottage: {
+		name: { en: 'Cottage', de: 'Landhaus' },
+		image: 'cottage.png'
+	},
+	palace: {
+		name: { en: 'Palace', de: 'Palast' },
+		image: 'palace.png'
+	},
+	castle: {
+		name: { en: 'Castle', de: 'Burg' },
+		image: 'castle.png'
+	},
+	fortress: {
+		name: { en: 'Fortress', de: 'Festung' },
+		image: 'fortress.png'
+	},
+	barn: {
+		name: { en: 'Barn', de: 'Scheune' },
+		image: 'barn.png'
+	},
+	factory: {
+		name: { en: 'Factory', de: 'Fabrik' },
+		image: 'factory.png'
+	},
+	station: {
+		name: { en: 'Station', de: 'Bahnhof' },
+		image: 'station.png'
+	},
+	airport: {
+		name: { en: 'Airport Terminal', de: 'Flughafenterminal' },
+		image: 'airport.png'
+	},
+	garage: {
+		name: { en: 'Garage', de: 'Garage' },
+		image: 'garage.png'
+	},
+	shed: {
+		name: { en: 'Shed', de: 'Schuppen' },
+		image: 'shed.png'
 	}
 };
 

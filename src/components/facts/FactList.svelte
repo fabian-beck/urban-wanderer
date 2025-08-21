@@ -2,6 +2,7 @@
 	import Fact from './Fact.svelte';
 	import HeightFact from './HeightFact.svelte';
 	import ArchitectureStyleFact from './ArchitectureStyleFact.svelte';
+	import BuildingTypeFact from './BuildingTypeFact.svelte';
 	import YearFact from './YearFact.svelte';
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
@@ -163,6 +164,13 @@
 		if (key === 'architecture_style') {
 			// Can scale down to 1 quarter on very wide screens
 			if (responsiveWidthScale >= 1.75) return 1; // 700px+
+			return 2;
+		}
+
+		// Building type facts are simpler, need less space
+		if (key === 'building_type') {
+			// Can scale down to 1 quarter on wider screens
+			if (responsiveWidthScale >= 1.25) return 1; // 500px+
 			return 2;
 		}
 
@@ -406,6 +414,12 @@
 						/>
 					{:else if fact.key === 'architecture_style'}
 						<ArchitectureStyleFact
+							value={fact.value}
+							widthClass={`col-span-${fact.widthSpan}`}
+							containerWidth={debouncedWidth}
+						/>
+					{:else if fact.key === 'building_type'}
+						<BuildingTypeFact
 							value={fact.value}
 							widthClass={`col-span-${fact.widthSpan}`}
 							containerWidth={debouncedWidth}
