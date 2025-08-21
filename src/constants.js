@@ -52,13 +52,13 @@ export const CLASSES = {
 		emoji: '🌉',
 		description: 'Bridge',
 		radius: 150,
-		properties: ['constructed', 'length', 'bridge_type', 'clearance_height']
+		properties: ['constructed', 'length', 'bridge_type', 'clearance_height', 'material']
 	},
 	BUILDING: {
 		emoji: '🏢',
 		description:
 			'Building of any kind (e.g., a house, a skyscraper, a factory) or a part of a building (e.g., a portal, a room)',
-		properties: ['constructed', 'height', 'building_type', 'architecture_style']
+		properties: ['constructed', 'height', 'building_type', 'architecture_style', 'material']
 	},
 	BUSINESS_REGULAR: {
 		emoji: '💼',
@@ -75,7 +75,7 @@ export const CLASSES = {
 		emoji: '🏰',
 		description: 'Castle or fortress',
 		radius: 200,
-		properties: ['constructed', 'area', 'architecture_style']
+		properties: ['constructed', 'area', 'architecture_style', 'material']
 	},
 	CEMETERY: {
 		emoji: '⚰️',
@@ -96,7 +96,7 @@ export const CLASSES = {
 	},
 	INSTITUTION: {
 		emoji: '🏛️',
-		description: 'Institution (e.g., a school, a hospital, a government building)',
+		description: 'Institution (e.g., a school, a government building)',
 		properties: ['established', 'employee_count']
 	},
 	LANDMARK: {
@@ -114,6 +114,12 @@ export const CLASSES = {
 		description: 'Medical facility (e.g., a hospital, a clinic)',
 		radius: 200,
 		properties: ['established', 'employee_count', 'bed_count']
+	},
+	HOTEL: {
+		emoji: '🏨',
+		description: 'Hotel',
+		radius: 200,
+		properties: ['established', 'employee_count', 'room_count', 'material', 'architecture_style', 'height']
 	},
 	MEMORIAL: {
 		emoji: '🕯️',
@@ -291,9 +297,17 @@ export const PROPERTIES = {
 			description: 'list of main destinations from a station'
 		}
 	},
+	material: {
+		type: 'string',
+		description: 'primary material used (e.g., wood, steel, concrete), if available; use emojis'
+	},
 	population: {
 		type: 'number',
 		description: 'population of the place (e.g. 100000), if available'
+	},
+	room_count: {
+		type: 'number',
+		description: 'number of rooms, if available'
 	},
 	student_count: {
 		type: 'number',
@@ -393,6 +407,10 @@ export const PROPERTY_TRANSLATIONS = {
 	main_destinations: {
 		en: 'Main Destinations',
 		de: 'Hauptziele'
+	},
+	material: {
+		en: 'Material',
+		de: 'Material'
 	},
 	population: {
 		en: 'Population',
