@@ -2,7 +2,7 @@
 	import Fact from './Fact.svelte';
 	import HeightFact from './HeightFact.svelte';
 	import ArchitectureStyleFact from './ArchitectureStyleFact.svelte';
-	import ConstructedFact from './ConstructedFact.svelte';
+	import YearFact from './YearFact.svelte';
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import { Spinner } from 'flowbite-svelte';
@@ -14,6 +14,9 @@
 
 	let facts = null;
 	let factsLoading = false;
+
+	// Define which properties represent years
+	const YEAR_PROPERTIES = ['constructed', 'created', 'discovered', 'established'];
 
 	export const loadFacts = async () => {
 		factsLoading = true;
@@ -104,8 +107,8 @@
 			return 2;
 		}
 
-		// Constructed facts need more space if they have historical context
-		if (key === 'constructed') {
+		// Year-based facts need more space if they have historical context
+		if (YEAR_PROPERTIES.includes(key)) {
 			return hasHistoricalContext(value) ? 2 : 1;
 		}
 
@@ -250,8 +253,8 @@
 						<HeightFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{:else if fact.key === 'architecture_style'}
 						<ArchitectureStyleFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
-					{:else if fact.key === 'constructed'}
-						<ConstructedFact value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
+					{:else if YEAR_PROPERTIES.includes(fact.key)}
+						<YearFact value={fact.value} propertyKey={fact.key} widthClass={`col-span-${fact.widthSpan}`} />
 					{:else}
 						<Fact label={fact.label} value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
 					{/if}

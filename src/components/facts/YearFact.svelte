@@ -1,18 +1,33 @@
 <script>
-	import { HISTORICAL_EVENTS } from '../../constants.js';
+	import { HISTORICAL_EVENTS, PROPERTY_TRANSLATIONS } from '../../constants.js';
+	import { preferences } from '../../stores.js';
+	import { get } from 'svelte/store';
 
 	export let value;
+	export let propertyKey;
 	export let widthClass = '';
 
-	// Parse the construction year from the value
-	$: constructionYear = parseInt(value);
-	$: isValidYear = !isNaN(constructionYear) && constructionYear > -3000 && constructionYear < 2100;
+	// Parse the year from the value
+	$: year = parseInt(value);
+	$: isValidYear = !isNaN(year) && year > -3000 && year < 2100;
 
 	// Find the most relevant historical event for context
-	$: historicalContext = isValidYear ? getHistoricalContext(constructionYear) : null;
+	$: historicalContext = isValidYear ? getHistoricalContext(year) : null;
+
+	// Get localized label for the property
+	$: label = getLocalizedLabel(propertyKey);
+
+	function getLocalizedLabel(key) {
+		const $language = get(preferences).lang;
+		if (PROPERTY_TRANSLATIONS[key] && PROPERTY_TRANSLATIONS[key][$language]) {
+			return PROPERTY_TRANSLATIONS[key][$language];
+		}
+		// Fallback: capitalize first letter and replace underscores
+		return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+	}
 
 	function getHistoricalContext(year) {
-		// Find events that are contemporaneous or close to the construction year
+		// Find events that are contemporaneous or close to the year
 		let bestMatch = null;
 		let minDistance = Infinity;
 
@@ -24,7 +39,7 @@
 				if (year >= event.start && year <= event.end) {
 					// Year falls within event period
 					return {
-						text: `during ${event.name}`,
+						text: `during<br>${event.name}`,
 						distance: 0
 					};
 				} else if (year < event.start) {
@@ -46,18 +61,19 @@
 		if (bestMatch && minDistance <= 10) {
 			// Within 10 years - show relative timing
 			if (minDistance === 0) {
-				return { text: `same year as ${bestMatch.name}`, distance: minDistance };
+				return { text: `same year as<br>${bestMatch.name}`, distance: minDistance };
 			} else if (year < (bestMatch.end || bestMatch.start)) {
 				const years = minDistance === 1 ? 'year' : 'years';
-				return { text: `${minDistance} ${years} before ${bestMatch.name}`, distance: minDistance };
+				return { text: `${minDistance} ${years} before<br>${bestMatch.name}`, distance: minDistance };
 			} else {
 				const years = minDistance === 1 ? 'year' : 'years';
-				return { text: `${minDistance} ${years} after ${bestMatch.name}`, distance: minDistance };
+				return { text: `${minDistance} ${years} after<br>${bestMatch.name}`, distance: minDistance };
 			}
 		}
 
 		return null;
 	}
+
 </script>
 
 <div
@@ -68,7 +84,7 @@
 		<span
 			class="mb-0.5 text-xs font-medium leading-tight text-gray-600"
 		>
-			Constructed
+			{label}
 		</span>
 		<div class="text-center">
 			<div
@@ -80,7 +96,7 @@
 				<div
 					class="mt-1 text-xs leading-tight text-gray-600"
 				>
-					{historicalContext.text}
+					{@html historicalContext.text}
 				</div>
 			{/if}
 		</div>
