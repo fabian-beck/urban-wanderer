@@ -221,6 +221,55 @@
 		return null;
 	};
 
+	const findOptimalSplit = (parts, separator, addSeparator = false) => {
+		if (parts.length < 2) return null;
+
+		let bestSplit = null;
+		let bestScore = -1;
+
+		// Try each possible split point
+		for (let i = 1; i < parts.length; i++) {
+			const firstLine = parts.slice(0, i).join(separator) + (addSeparator ? separator : '');
+			const secondLine = parts.slice(i).join(separator);
+			
+			const firstLen = firstLine.length;
+			const secondLen = secondLine.length;
+			const totalLen = firstLen + secondLen;
+			
+			// Skip if either line is too short or too long
+			if (firstLen < 2 || secondLen < 2 || firstLen > 20 || secondLen > 20) {
+				continue;
+			}
+			
+			// Calculate score: prefer longer first line, but penalize extreme imbalances
+			let score = 0;
+			
+			// Bonus for longer first line (up to 1.5x second line length)
+			if (firstLen >= secondLen) {
+				score += 10;
+				if (firstLen <= secondLen * 1.5) {
+					score += 5; // Additional bonus for reasonable ratio
+				}
+			}
+			
+			// Penalty for imbalance (the closer to balanced, the better)
+			const imbalance = Math.abs(firstLen - secondLen) / totalLen;
+			score -= imbalance * 20;
+			
+			// Bonus for keeping total length reasonable
+			if (totalLen <= 25) {
+				score += 5;
+			}
+			
+			if (score > bestScore) {
+				bestScore = score;
+				bestSplit = firstLine + '\n' + secondLine;
+			}
+		}
+
+		return bestSplit;
+	};
+
 	const layoutLabel = (label) => {
 		// Step 1: If longer than 25, try to cut at word boundary to get below 25
 		if (label.length > 25) {
@@ -264,18 +313,22 @@
 
 		// Step 2: Try to make two lines if multiple words/parts
 		if (label.length > 10) {
-			// First: Try splitting at word boundary
+			// First: Try splitting at word boundary with longer first line preference
 			const words = label.split(' ');
 			if (words.length > 1) {
-				const mid = Math.floor(words.length / 2);
-				return words.slice(0, mid).join(' ') + '\n' + words.slice(mid).join(' ');
+				const bestSplit = findOptimalSplit(words, ' ');
+				if (bestSplit) {
+					return bestSplit;
+				}
 			}
 
-			// Second: Try splitting at existing hyphen
+			// Second: Try splitting at existing hyphen with longer first line preference
 			const parts = label.split('-');
 			if (parts.length > 1) {
-				const mid = Math.floor(parts.length / 2);
-				return parts.slice(0, mid).join('-') + '-\n' + parts.slice(mid).join('-');
+				const bestSplit = findOptimalSplit(parts, '-', true);
+				if (bestSplit) {
+					return bestSplit;
+				}
 			}
 
 			// Third: Try simple hyphenation for single long compound words
