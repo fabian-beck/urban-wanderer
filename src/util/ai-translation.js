@@ -114,19 +114,34 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 		if (townName && name2.length > townName.length + 5) {
 			name2 = name2.replace(townName, '');
 		}
-		const allowedDistance =
-			Math.max(name1.length, name2.length) / 4 +
-			(Math.max(name1.length, name2.length) - Math.min(name1.length, name2.length)) / 4;
-		if (levenshtein(name1, name2) < allowedDistance && levenshtein(name1, name2) > 0) {
+		const maxLength = Math.max(name1.length, name2.length);
+		const minLength = Math.min(name1.length, name2.length);
+		
+		// Check if one is a substring of the other (or very close to it)
+		const isSubstringLike = name1.includes(name2) || name2.includes(name1);
+		
+		let allowedDistance;
+		if (isSubstringLike) {
+			// More generous for substring cases: allow up to the length difference plus some tolerance
+			const lengthDiff = maxLength - minLength;
+			allowedDistance = Math.max(3, lengthDiff + Math.floor(minLength * 0.1));
+		} else {
+			// Strict matching for non-substring cases to prevent "neuerebracherhof"/"alterebracherhof" matches
+			allowedDistance = Math.max(2, Math.floor(minLength * 0.15));
+		}
+		const distance = levenshtein(name1, name2);
+		const isMatch = name1 === name2 || distance < allowedDistance;
+		
+		// Debug output for matches and near-misses
+		if (distance > 0 && (isMatch || distance <= allowedDistance + 2)) {
 			console.log(
-				'Levenshtein distance:',
-				levenshtein(name1, name2),
-				name1,
-				name2,
-				allowedDistance
+				`Levenshtein: ${distance} (allowed: ${allowedDistance}) ${isMatch ? 'MATCH' : 'NO MATCH'}`,
+				`"${name1}" vs "${name2}"`,
+				isSubstringLike ? '(substring-like)' : '(non-substring)'
 			);
 		}
-		return name1 === name2 || levenshtein(name1, name2) < allowedDistance;
+		
+		return isMatch;
 	};
 
 	const newPlaces = [];
