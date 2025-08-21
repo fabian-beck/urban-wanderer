@@ -56,8 +56,12 @@
 				return 0; // No sorting needed if both stars and distance are equal
 			});
 
+			// Count places with 3+ stars to determine if we need 2-star places
+			const highStarPlaces = sortedPlaces.filter(place => place.stars >= 3);
+			const allowTwoStars = highStarPlaces.length < 5;
+
 			sortedPlaces.forEach((place) => {
-				if (place.lon && place.lat && place.stars > 1) {
+				if (place.lon && place.lat && place.stars > 1 && (place.stars >= 3 || allowTwoStars)) {
 					const isTooClose = highlighted.some((highlightedPlace) => {
 						const distance = haversineDistance(
 							place.lat,
