@@ -137,71 +137,108 @@
 
 	function simpleLayout(facts) {
 		const result = [];
+		const used = new Set(); // Track which facts have been used
 		let i = 0;
 
 		while (i < facts.length) {
+			// Skip already used facts
+			while (i < facts.length && used.has(i)) {
+				i++;
+			}
+			if (i >= facts.length) break;
+
 			// Try to fill a complete row (4 columns)
 			const row = [];
 			let rowWidth = 0;
 
-			// Fill the row as much as possible
-			while (i < facts.length && rowWidth < 4) {
-				const fact = facts[i];
+			// Fill the row as much as possible with sequential facts
+			let j = i;
+			while (j < facts.length && rowWidth < 4) {
+				if (used.has(j)) {
+					j++;
+					continue;
+				}
+
+				const fact = facts[j];
 				const minWidth = getMinWidthSpan(fact.label, fact.value, fact.key);
 
 				if (rowWidth + minWidth <= 4) {
 					// Item fits in current row
-					row.push({ fact, minWidth, index: i });
+					row.push({ fact, minWidth, index: j });
 					rowWidth += minWidth;
-					i++;
+					used.add(j);
+					j++;
 				} else {
-					// Item doesn't fit, break to process current row
+					// Item doesn't fit, break to try gap filling
 					break;
 				}
 			}
 
-			// Now optimize the row to fill gaps
-			if (row.length > 0) {
-				let remainingSpace = 4 - rowWidth;
+			// Now try to fill remaining gaps with smaller facts from ahead
+			let remainingSpace = 4 - rowWidth;
+			if (remainingSpace > 0) {
+				// Look for unused facts that could fill the remaining space
+				for (let k = j; k < facts.length && remainingSpace > 0; k++) {
+					if (used.has(k)) continue;
 
-				if (remainingSpace > 0) {
-					// Distribute remaining space more intelligently
-					if (row.length === 1) {
-						// Single item in row - expand it to fill remaining space
-						const item = row[0];
+					const fact = facts[k];
+					const minWidth = getMinWidthSpan(fact.label, fact.value, fact.key);
+
+					if (minWidth <= remainingSpace) {
+						// This fact fits in the remaining space
+						row.push({ fact, minWidth, index: k });
+						rowWidth += minWidth;
+						remainingSpace -= minWidth;
+						used.add(k);
+					}
+				}
+			}
+
+			// Only after gap-filling, try to expand existing items if there's still space
+			remainingSpace = 4 - rowWidth;
+			if (remainingSpace > 0) {
+				if (row.length === 1) {
+					// Single item in row - expand it to fill remaining space
+					const item = row[0];
+					const maxExpansion = Math.min(remainingSpace, 4 - item.minWidth);
+					item.minWidth += maxExpansion;
+				} else if (row.length > 1) {
+					// Multiple items - try to expand the last added item first
+					let expanded = false;
+					for (let j = row.length - 1; j >= 0 && remainingSpace > 0 && !expanded; j--) {
+						const item = row[j];
 						const maxExpansion = Math.min(remainingSpace, 4 - item.minWidth);
-						item.minWidth += maxExpansion;
-					} else {
-						// Multiple items - try to expand the largest item that can grow
-						let expanded = false;
-						for (let j = row.length - 1; j >= 0 && remainingSpace > 0 && !expanded; j--) {
-							const item = row[j];
-							const maxExpansion = Math.min(remainingSpace, 4 - item.minWidth);
-							if (maxExpansion > 0) {
-								item.minWidth += maxExpansion;
-								remainingSpace -= maxExpansion;
-								expanded = true;
-							}
+						if (maxExpansion > 0) {
+							item.minWidth += maxExpansion;
+							remainingSpace -= maxExpansion;
+							expanded = true;
 						}
+					}
 
-						// If still space remaining, try to expand any item
-						if (remainingSpace > 0) {
-							for (let j = 0; j < row.length && remainingSpace > 0; j++) {
-								const item = row[j];
-								if (item.minWidth < 4) {
-									const expansion = Math.min(remainingSpace, 1);
-									item.minWidth += expansion;
-									remainingSpace -= expansion;
-								}
+					// If still space remaining, distribute among items
+					if (remainingSpace > 0) {
+						for (let j = 0; j < row.length && remainingSpace > 0; j++) {
+							const item = row[j];
+							if (item.minWidth < 4) {
+								const expansion = Math.min(remainingSpace, 1);
+								item.minWidth += expansion;
+								remainingSpace -= expansion;
 							}
 						}
 					}
 				}
+			}
 
-				// Add the optimized row to results
+			// Add the optimized row to results
+			if (row.length > 0) {
 				row.forEach((item) => {
 					result.push({ ...item.fact, widthSpan: item.minWidth });
 				});
+			}
+
+			// Move to next unused fact
+			while (i < facts.length && used.has(i)) {
+				i++;
 			}
 		}
 
