@@ -317,6 +317,7 @@ out skel qt;
 		return waterMapTmp;
 	} catch (error) {
 		console.error('Error loading water map:', error);
+		return [];
 	}
 }
 
@@ -535,6 +536,7 @@ out skel qt;
 		return greenMapTmp;
 	} catch (error) {
 		console.error('Error loading green map:', error);
+		return [];
 	}
 }
 
@@ -699,5 +701,6 @@ out skel qt;
 		return activityMapTmp;
 	} catch (error) {
 		console.error('Error loading activity map:', error);
+		return [];
 	}
 }

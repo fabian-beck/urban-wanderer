@@ -111,10 +111,25 @@ function createPlaces() {
 				const startTime = Date.now();
 				let previousTime = startTime;
 				loadingMessage.set('Loading places ...');
-				// Load maps and update stores
-				loadOsmWaterMap(get(coordinates)).then((mapData) => waterMap.set(mapData));
-				loadOsmGreenMap(get(coordinates)).then((mapData) => greenMap.set(mapData));
-				loadOsmActivityMap(get(coordinates)).then((mapData) => activityMap.set(mapData));
+				// Load maps and update stores with error handling
+				loadOsmWaterMap(get(coordinates))
+					.then((mapData) => waterMap.set(mapData || []))
+					.catch((error) => {
+						console.error('Failed to load water map:', error);
+						waterMap.set([]);
+					});
+				loadOsmGreenMap(get(coordinates))
+					.then((mapData) => greenMap.set(mapData || []))
+					.catch((error) => {
+						console.error('Failed to load green map:', error);
+						greenMap.set([]);
+					});
+				loadOsmActivityMap(get(coordinates))
+					.then((mapData) => activityMap.set(mapData || []))
+					.catch((error) => {
+						console.error('Failed to load activity map:', error);
+						activityMap.set([]);
+					});
 				let [placesTmp, placesOsm] = await Promise.allSettled([
 					loadWikipediaPlaces(get(coordinates), get(preferences), nArticles),
 					loadOsmPlaces(get(coordinates))
