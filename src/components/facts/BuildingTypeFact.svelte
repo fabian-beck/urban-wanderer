@@ -787,12 +787,8 @@
 	}
 
 	function getTypeName(type) {
-		if (!type) return value;
-		const $language = get(preferences).lang;
-		if (typeof type.name === 'object' && type.name[$language]) {
-			return type.name[$language];
-		}
-		return type.name; // fallback to English
+		// Always return the original value, don't use the matched type's name
+		return value;
 	}
 
 	// Determine display based on available width

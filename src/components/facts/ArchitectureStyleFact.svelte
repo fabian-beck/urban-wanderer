@@ -343,12 +343,8 @@
 	}
 
 	function getStyleName(style) {
-		if (!style) return value;
-		const $language = get(preferences).lang;
-		if (typeof style.name === 'object' && style.name[$language]) {
-			return style.name[$language];
-		}
-		return style.name; // fallback to English
+		// Always return the original value, don't use the matched style's name
+		return value;
 	}
 
 	// Determine display based on available width
