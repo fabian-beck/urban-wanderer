@@ -32,7 +32,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **preferences**: User settings (radius, interests, language)
 - **Derived stores**: Categorized places (here, nearby, surrounding)
 
-### Place Classification (`src/constants.js`)
+### Place Classification (`src/constants/place-classes.js`)
 
 Comprehensive classification system with 25+ place types:
 
@@ -127,12 +127,12 @@ Star-based rating combining:
 ```
 src/
 ├── components/          # Svelte UI components
+├── constants/          # Application constants and configurations
 ├── routes/             # SvelteKit page routes
 ├── util/               # Utility modules (AI, geo, text)
 ├── app.html           # HTML template
 ├── app.css            # Global styles
-├── stores.js          # Svelte stores for state management
-└── constants.js       # Application constants and configurations
+└── stores.js          # Svelte stores for state management
 
 android/               # Android native project
 build/                # Production build output
@@ -158,8 +158,11 @@ This application demonstrates modern web-to-mobile development patterns, AI inte
 
 - avoid redundant comments that stated obvious things or unnecessary historical context.
 - Don't start the development server (it is usually already running), use npm run build to test if everything compiles
-- Contants should be defined in @src\constants.js
+- Constants should be defined in src/constants/
 
 - use linter (npm run lint) after substantial code edits
 
 - Avoid comments that comment on removed parts or old versions
+
+- After bigger changes, check CLAUDE.md if it requires updates.
+- when some request required considerable code search, consider updating CLAUDE.md to easier get the right context.

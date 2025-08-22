@@ -87,4 +87,4 @@ export const AI_MODELS = {
 	DEFAULT_ADVANCED: 'gpt-5'
 };
 
-export const AI_REASONING_EFFORT = 'minimal';
+export const AI_REASONING_EFFORT = 'low';

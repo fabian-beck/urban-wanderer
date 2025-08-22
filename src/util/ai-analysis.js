@@ -60,8 +60,8 @@ async function analyzeSinglePlace(place, preferences) {
 
 Available CLASSES are:
 ${Object.keys(CLASSES)
-	.map((classLabel) => `- ${classLabel}: ${CLASSES[classLabel].description}`)
-	.join('\n')}
+			.map((classLabel) => `- ${classLabel}: ${CLASSES[classLabel].description}`)
+			.join('\n')}
         
 Available LABELS are:
 ${LABELS.map((label) => `- ${label.value}: ${label.description}`).join('\n')}

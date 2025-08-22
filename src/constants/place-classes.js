@@ -35,7 +35,7 @@ export const CLASSES = {
 	BUILDING: {
 		emoji: '🏢',
 		description:
-			'Building of any kind (e.g., a house, a skyscraper, a factory) or a part of a building (e.g., a portal, a room)',
+			'Building of any kind (e.g., a house, a skyscraper, a factory, a lighthouse) or a part of a building (e.g., a portal, a room)',
 		properties: ['constructed', 'height', 'building_type', 'architecture_style', 'material']
 	},
 	BUSINESS_REGULAR: {
@@ -61,6 +61,18 @@ export const CLASSES = {
 		radius: 200,
 		properties: ['area', 'established']
 	},
+	CITY_HALL: {
+		emoji: '🏛️',
+		description: 'City hall or municipal building',
+		radius: 150,
+		properties: ['established', 'employee_count', 'building_type', 'architecture_style', 'height']
+	},
+	COURTHOUSE: {
+		emoji: '⚖️',
+		description: 'Courthouse or judicial building',
+		radius: 150,
+		properties: ['established', 'employee_count', 'building_type', 'architecture_style', 'height']
+	},
 	'CITY/DISTRICT': {
 		emoji: '🏙️',
 		description: 'City, village, or district',
@@ -76,10 +88,6 @@ export const CLASSES = {
 		emoji: '🏛️',
 		description: 'Institution (e.g., a school, a government building)',
 		properties: ['established', 'employee_count', 'building_type', 'architecture_style', 'height']
-	},
-	LANDMARK: {
-		emoji: '📍 ',
-		description: 'Landmark'
 	},
 	HARBOUR: {
 		emoji: '⚓',
