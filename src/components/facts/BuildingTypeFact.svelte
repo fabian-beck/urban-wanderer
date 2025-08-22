@@ -818,21 +818,14 @@
 		? `background-image: url('${backgroundImage}'); background-size: 160px 160px; background-repeat: repeat; background-position: center;`
 		: 'background-color: rgb(249 250 251);'}
 >
-	<!-- Semi-transparent overlay for better text readability -->
-	{#if backgroundImage}
-		<div class="absolute inset-0 bg-white/40 backdrop-blur-[0.5px]"></div>
-	{/if}
-
 	<div class="relative z-10 flex flex-col items-center">
 		<span
-			class="mb-0.5 text-xs font-medium leading-tight text-gray-600"
-			style="text-shadow: 0 0 3px #fff, 0 0 6px #fff, 0 0 10px #fff, 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;"
+			class="mb-0.5 text-xs font-medium leading-tight text-gray-600 bg-white/80 px-1 rounded"
 			>{getBuildingTypeLabel()}</span
 		>
 		<div class="text-center">
 			<div
-				class="text-base font-semibold leading-tight text-gray-900"
-				style="text-shadow: 0 0 4px #fff, 0 0 8px #fff, 0 0 12px #fff, 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;"
+				class="text-base font-semibold leading-tight text-gray-900 bg-white/80 px-1 rounded"
 			>
 				{typeName}
 			</div>
