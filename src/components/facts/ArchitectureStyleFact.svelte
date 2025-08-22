@@ -253,7 +253,8 @@
 				'neo gothic',
 				'gothic revival',
 				'neogotisch',
-				'gotik revival'
+				'gotik revival',
+				'neogotik'
 			],
 			neoromanesque: [
 				'neoromanesque',
@@ -291,7 +292,10 @@
 			return ARCHITECTURE_STYLES[cleaned];
 		}
 
-		// Check against all aliases
+		// Check against all aliases - prioritize longer matches
+		let bestMatch = null;
+		let bestMatchLength = 0;
+
 		for (const [styleKey, aliases] of Object.entries(styleAliases)) {
 			for (const alias of aliases) {
 				// Normalize alias for comparison
@@ -300,21 +304,27 @@
 					.normalize('NFD')
 					.replace(/[\u0300-\u036f]/g, ''); // Remove diacritical marks
 
-				// Exact alias match
+				// Exact alias match - always return immediately as this is the best possible match
 				if (cleaned === normalizedAlias) {
 					return ARCHITECTURE_STYLES[styleKey];
 				}
 
-				// Check if input contains the alias
-				if (cleaned.includes(normalizedAlias)) {
-					return ARCHITECTURE_STYLES[styleKey];
+				// Check if input contains the alias - prioritize longer matches
+				if (cleaned.includes(normalizedAlias) && normalizedAlias.length > bestMatchLength) {
+					bestMatch = ARCHITECTURE_STYLES[styleKey];
+					bestMatchLength = normalizedAlias.length;
 				}
 
-				// Check if alias contains the input (for shorter inputs)
-				if (normalizedAlias.includes(cleaned) && cleaned.length >= 4) {
-					return ARCHITECTURE_STYLES[styleKey];
+				// Check if alias contains the input (for shorter inputs) - only if no better match exists
+				if (normalizedAlias.includes(cleaned) && cleaned.length >= 4 && bestMatchLength === 0) {
+					bestMatch = ARCHITECTURE_STYLES[styleKey];
+					bestMatchLength = normalizedAlias.length;
 				}
 			}
+		}
+
+		if (bestMatch) {
+			return bestMatch;
 		}
 
 		// Fallback: check original key-based partial matching
@@ -382,20 +392,15 @@
 		: 'background-color: rgb(249 250 251);'}
 >
 	<div class="relative z-10 flex flex-col items-center">
-		<span
-			class="mb-0.5 text-xs font-medium leading-tight text-gray-600 bg-white/80 px-1 rounded"
+		<span class="mb-0.5 rounded bg-white/80 px-1 text-xs font-medium leading-tight text-gray-600"
 			>{getArchitectureStyleLabel()}</span
 		>
 		<div class="text-center">
-			<div
-				class="text-base font-semibold leading-tight text-gray-900 bg-white/80 px-1 rounded"
-			>
+			<div class="rounded bg-white/80 px-1 text-base font-semibold leading-tight text-gray-900">
 				{styleName}
 			</div>
 			{#if matchedStyle && matchedStyle.description && showDescription}
-				<div
-					class="mt-1 text-xs leading-tight text-gray-600 bg-white/80 px-1 rounded"
-				>
+				<div class="mt-1 rounded bg-white/80 px-1 text-xs leading-tight text-gray-600">
 					{getDescription(matchedStyle)}
 				</div>
 			{/if}

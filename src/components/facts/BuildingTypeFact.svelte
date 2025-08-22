@@ -745,7 +745,10 @@
 			return BUILDING_TYPES[cleaned];
 		}
 
-		// Check against all aliases
+		// Check against all aliases - prioritize longer matches
+		let bestMatch = null;
+		let bestMatchLength = 0;
+
 		for (const [typeKey, aliases] of Object.entries(typeAliases)) {
 			for (const alias of aliases) {
 				// Normalize alias for comparison
@@ -754,21 +757,27 @@
 					.normalize('NFD')
 					.replace(/[\u0300-\u036f]/g, ''); // Remove diacritical marks
 
-				// Exact alias match
+				// Exact alias match - always return immediately as this is the best possible match
 				if (cleaned === normalizedAlias) {
 					return BUILDING_TYPES[typeKey];
 				}
 
-				// Check if input contains the alias
-				if (cleaned.includes(normalizedAlias)) {
-					return BUILDING_TYPES[typeKey];
+				// Check if input contains the alias - prioritize longer matches
+				if (cleaned.includes(normalizedAlias) && normalizedAlias.length > bestMatchLength) {
+					bestMatch = BUILDING_TYPES[typeKey];
+					bestMatchLength = normalizedAlias.length;
 				}
 
-				// Check if alias contains the input (for shorter inputs)
-				if (normalizedAlias.includes(cleaned) && cleaned.length >= 4) {
-					return BUILDING_TYPES[typeKey];
+				// Check if alias contains the input (for shorter inputs) - only if no better match exists
+				if (normalizedAlias.includes(cleaned) && cleaned.length >= 4 && bestMatchLength === 0) {
+					bestMatch = BUILDING_TYPES[typeKey];
+					bestMatchLength = normalizedAlias.length;
 				}
 			}
+		}
+
+		if (bestMatch) {
+			return bestMatch;
 		}
 
 		// Fallback: check original key-based partial matching
