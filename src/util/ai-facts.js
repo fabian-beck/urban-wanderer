@@ -177,14 +177,35 @@ ${place.article || place.description || place.snippet || '[no description availa
 	const facts = JSON.parse(response.output_text).facts;
 	console.log('Extract facts response:', facts);
 
+	// Clean up facts - normalize various null representations
+	const cleanedFacts = {};
+	for (const [key, value] of Object.entries(facts)) {
+		// Handle various null representations that AI might return
+		if (value === null || 
+			value === undefined ||
+			value === '.null' ||
+			value === 'null' ||
+			value === 'NULL' ||
+			value === '.NULL' ||
+			value === 'n/a' ||
+			value === 'N/A' ||
+			value === '' ||
+			value === '.' ||
+			(typeof value === 'string' && value.trim() === '')) {
+			cleanedFacts[key] = null;
+		} else {
+			cleanedFacts[key] = value;
+		}
+	}
+
 	// Cache the result with timestamp
 	factsCache[cacheKey] = {
-		content: facts,
+		content: cleanedFacts,
 		timestamp: Date.now()
 	};
 	saveFactsCache(factsCache);
 
-	return facts;
+	return cleanedFacts;
 }
 
 export async function extractInsightsFromArticle(article, preferences) {

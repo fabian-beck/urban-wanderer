@@ -310,7 +310,7 @@ export const PROPERTIES = {
 		type: 'array',
 		items: {
 			type: 'string',
-			description: 'list of main destinations from a station'
+			description: 'list of main destinations from a station, comma-separated'
 		}
 	},
 	material: {

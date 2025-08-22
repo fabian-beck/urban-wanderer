@@ -254,14 +254,16 @@
 				'gothic revival',
 				'neogotisch',
 				'gotik revival',
-				'neogotik'
+				'neogotik',
+				'neugotik'
 			],
 			neoromanesque: [
 				'neoromanesque',
 				'neo-romanesque',
 				'neo romanesque',
 				'romanesque revival',
-				'neoromanisch'
+				'neoromanisch',
+				'neoromanik'
 			],
 			neorenaissance: [
 				'neorenaissance',

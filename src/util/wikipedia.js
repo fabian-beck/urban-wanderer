@@ -262,7 +262,7 @@ async function wikipediaNameSearchForPlace(name, coordinates, lang) {
 		const distance =
 			Math.sqrt(
 				Math.pow(coords.lat - coordinates.latitude, 2) +
-					Math.pow(coords.lon - coordinates.longitude, 2)
+				Math.pow(coords.lon - coordinates.longitude, 2)
 			) * 111139; // convert degrees to meters
 		// if close enough, return place
 		if (distance < 10000) {
