@@ -375,10 +375,14 @@
 					// Collect all facts with their width spans
 					Object.entries(facts).forEach(([key, value]) => {
 						if (key !== 'other_facts' && value && value !== 'null' && PROPERTIES[key]) {
+							// Skip empty arrays
+							if (Array.isArray(value) && value.length === 0) {
+								return;
+							}
+							
 							const propDefinition = PROPERTIES[key];
 							const label = formatLabel(key);
-							const displayValue =
-								propDefinition.type === 'array' && Array.isArray(value) ? value.join(' ') : value;
+							const displayValue = value;
 							allFacts.push({ key, label, value: displayValue, type: 'property' });
 						}
 					});

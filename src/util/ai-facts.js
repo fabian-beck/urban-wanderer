@@ -128,7 +128,7 @@ export async function extractPlaceFacts(place, factsProperties, coordinates, pre
 	const wikidataContext = await getWikidataContext(place);
 
 	const initialMessage = `
-You are a chat assistant helping a user to find facts about a place in the provided JSON format.
+You are an assistant helping a user to find facts about a place in the provided JSON format.
 
 The place of interest is ${place.title} (${place.cls}) located near ${coordinates.address}. 
 
@@ -181,7 +181,7 @@ ${place.article || place.description || place.snippet || '[no description availa
 	const cleanedFacts = {};
 	for (const [key, value] of Object.entries(facts)) {
 		// Handle various null representations that AI might return
-		if (value === null || 
+		if (value === null ||
 			value === undefined ||
 			value === '.null' ||
 			value === 'null' ||
