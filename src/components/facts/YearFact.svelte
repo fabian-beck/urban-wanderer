@@ -29,11 +29,26 @@
 	}
 
 	function getHistoricalContext(year) {
+		// Filter events based on user preferences
+		const $preferences = get(preferences);
+		const userInterests = $preferences.interests || [];
+		
+		const relevantEvents = HISTORICAL_EVENTS.filter(event => {
+			// If no interests are set, show all events
+			if (userInterests.length === 0) return true;
+			
+			// If event has no labels, consider it generic (always relevant)
+			if (!event.labels || event.labels.length === 0) return true;
+			
+			// Show event if any of its labels match user interests
+			return event.labels.some(label => userInterests.includes(label));
+		});
+
 		// Find events that are contemporaneous or close to the year
 		let bestMatch = null;
 		let minDistance = Infinity;
 
-		for (const event of HISTORICAL_EVENTS) {
+		for (const event of relevantEvents) {
 			let distance;
 
 			if (event.end) {
