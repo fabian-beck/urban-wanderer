@@ -191,6 +191,7 @@ ${place.article || place.description || place.snippet || '[no description availa
 			value === 'N/A' ||
 			value === '' ||
 			value === '.' ||
+			value === '/' ||
 			(typeof value === 'string' && value.trim() === '')) {
 			cleanedFacts[key] = null;
 		} else {

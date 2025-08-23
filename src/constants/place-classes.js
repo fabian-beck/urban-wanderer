@@ -65,7 +65,7 @@ export const CLASSES = {
 		emoji: '🏛️',
 		description: 'City hall or municipal building',
 		radius: 150,
-		properties: ['established', 'employee_count', 'building_type', 'architecture_style', 'height']
+		properties: ['established', 'employee_count', 'building_type', 'architecture_style', 'height', 'material']
 	},
 	COURTHOUSE: {
 		emoji: '⚖️',
@@ -314,8 +314,11 @@ export const PROPERTIES = {
 		}
 	},
 	material: {
-		type: 'string',
-		description: 'primary material used (e.g., wood, steel, concrete), if available; use emojis'
+		type: 'array',
+		items: {
+			type: 'string'
+		},
+		description: 'materials used (e.g., ["🧱 brick", "🪨 stone", "🪵 wood"]), if available; use emojis; restrict to most dominant ones.'
 	},
 	population: {
 		type: 'number',
