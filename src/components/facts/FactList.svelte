@@ -5,6 +5,7 @@
 	import BuildingTypeFact from './BuildingTypeFact.svelte';
 	import YearFact from './YearFact.svelte';
 	import NumberOfPeopleFact from './NumberOfPeopleFact.svelte';
+	import MaterialFact from './MaterialFact.svelte';
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import { Spinner } from 'flowbite-svelte';
@@ -190,6 +191,13 @@
 			// At 400px: 2 quarters, at 500px+: 1 quarter
 			if (responsiveWidthScale >= 1.25) return 1; // 500px+
 			return 2; // <500px
+		}
+
+		// Material facts need space for background images, similar to building types
+		if (key === 'material') {
+			// Can scale down to 1 quarter on wider screens
+			if (responsiveWidthScale >= 1.25) return 1; // 500px+
+			return 2;
 		}
 
 		const labelStr = label?.toString() || '';
@@ -447,6 +455,12 @@
 							value={fact.value}
 							propertyKey={fact.key}
 							placeTitle={place.title}
+							widthClass={`col-span-${fact.widthSpan}`}
+							containerWidth={debouncedWidth}
+						/>
+					{:else if fact.key === 'material'}
+						<MaterialFact
+							value={fact.value}
 							widthClass={`col-span-${fact.widthSpan}`}
 							containerWidth={debouncedWidth}
 						/>

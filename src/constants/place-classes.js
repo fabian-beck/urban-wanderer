@@ -318,7 +318,7 @@ export const PROPERTIES = {
 		items: {
 			type: 'string'
 		},
-		description: 'materials used (e.g., ["🧱 brick", "🪨 stone", "🪵 wood"]), if available; use emojis; restrict to most dominant ones.'
+		description: 'materials used, restricted to most dominant ones.'
 	},
 	population: {
 		type: 'number',
