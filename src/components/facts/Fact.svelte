@@ -26,6 +26,11 @@
 		// Handle everything else as string
 		return val.toString();
 	}
+
+	function getValueLength() {
+		const formattedValue = formatValue(value);
+		return formattedValue.length;
+	}
 </script>
 
 <div
@@ -34,8 +39,11 @@
 	<span class="mb-0.5 text-xs font-medium leading-tight text-gray-600">{label}</span>
 	<span
 		class="text-center font-semibold leading-tight text-gray-900"
-		class:text-base={value?.toString().length < 10}
-		class:text-sm={value?.toString().length >= 10}
+		class:text-xl={getValueLength() <= 5}
+		class:text-lg={getValueLength() > 5 && getValueLength() <= 10}
+		class:text-base={getValueLength() > 10 && getValueLength() <= 20}
+		class:text-sm={getValueLength() > 20 && getValueLength() <= 40}
+		class:text-xs={getValueLength() > 40}
 	>
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 		{@html marked(formatValue(value))}

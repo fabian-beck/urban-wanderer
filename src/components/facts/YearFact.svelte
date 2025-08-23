@@ -128,6 +128,10 @@
 	}
 
 	$: showHistoricalContext = shouldShowHistoricalContext(containerWidth, getWidthSpan(widthClass));
+
+	function getValueLength() {
+		return value ? value.toString().length : 0;
+	}
 </script>
 
 <div
@@ -139,7 +143,14 @@
 			{label}
 		</span>
 		<div class="text-center">
-			<div class="text-base font-semibold leading-tight text-gray-900">
+			<div 
+				class="font-semibold leading-tight text-gray-900"
+				class:text-xl={getValueLength() <= 8}
+				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
+				class:text-base={getValueLength() > 15 && getValueLength() <= 25}
+				class:text-sm={getValueLength() > 25 && getValueLength() <= 40}
+				class:text-xs={getValueLength() > 40}
+			>
 				{value}
 			</div>
 			{#if historicalContext && showHistoricalContext}

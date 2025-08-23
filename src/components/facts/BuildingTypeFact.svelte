@@ -800,6 +800,10 @@
 		return value;
 	}
 
+	function getValueLength() {
+		return value ? value.toString().length : 0;
+	}
+
 	// Determine display based on available width
 	function shouldShowBackgroundImage(containerWidth, widthSpan) {
 		const estimatedFactWidth = (containerWidth / 4) * widthSpan;
@@ -834,7 +838,12 @@
 		>
 		<div class="text-center">
 			<div
-				class="text-base font-semibold leading-tight text-gray-900 bg-white/80 px-1 rounded"
+				class="font-semibold leading-tight text-gray-900 bg-white/80 px-1 rounded"
+				class:text-xl={getValueLength() <= 8}
+				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
+				class:text-base={getValueLength() > 15 && getValueLength() <= 25}
+				class:text-sm={getValueLength() > 25 && getValueLength() <= 40}
+				class:text-xs={getValueLength() > 40}
 			>
 				{typeName}
 			</div>

@@ -359,6 +359,10 @@
 		return value;
 	}
 
+	function getValueLength() {
+		return value ? value.toString().length : 0;
+	}
+
 	// Determine display based on available width
 	function shouldShowDescription(containerWidth, widthSpan) {
 		const estimatedFactWidth = (containerWidth / 4) * widthSpan;
@@ -398,7 +402,14 @@
 			>{getArchitectureStyleLabel()}</span
 		>
 		<div class="text-center">
-			<div class="rounded bg-white/80 px-1 text-base font-semibold leading-tight text-gray-900">
+			<div 
+				class="rounded bg-white/80 px-1 font-semibold leading-tight text-gray-900"
+				class:text-xl={getValueLength() <= 8}
+				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
+				class:text-base={getValueLength() > 15 && getValueLength() <= 25}
+				class:text-sm={getValueLength() > 25 && getValueLength() <= 40}
+				class:text-xs={getValueLength() > 40}
+			>
 				{styleName}
 			</div>
 			{#if matchedStyle && matchedStyle.description && showDescription}

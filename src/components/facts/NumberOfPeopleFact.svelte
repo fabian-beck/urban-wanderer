@@ -160,6 +160,10 @@
 	$: widthSpan = getWidthSpan(widthClass);
 	$: showIcons = shouldShowIcons(containerWidth, widthSpan);
 	$: formattedNumber = count ? formatNumber(count) : value;
+
+	function getValueLength() {
+		return formattedNumber ? formattedNumber.toString().length : 0;
+	}
 </script>
 
 <div
@@ -170,7 +174,14 @@
 			>{getLabel(propertyKey)}</span
 		>
 		<div class="flex flex-col items-center">
-			<div class="mb-1 text-base font-semibold leading-tight text-gray-900">
+			<div 
+				class="mb-1 font-semibold leading-tight text-gray-900"
+				class:text-xl={getValueLength() <= 8}
+				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
+				class:text-base={getValueLength() > 15 && getValueLength() <= 25}
+				class:text-sm={getValueLength() > 25 && getValueLength() <= 40}
+				class:text-xs={getValueLength() > 40}
+			>
 				{formattedNumber}
 			</div>
 			{#if showIcons && isotype.icons > 0}

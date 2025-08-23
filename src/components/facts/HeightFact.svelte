@@ -180,6 +180,10 @@
 		? formatComparison(heightInMeters, comparisons)
 		: { mainValue: value, smaller: null, larger: null };
 	$: showComparisons = shouldShowComparisons(containerWidth, getWidthSpan(widthClass));
+
+	function getValueLength() {
+		return formattedResult.mainValue ? formattedResult.mainValue.toString().length : 0;
+	}
 </script>
 
 <div
@@ -210,7 +214,14 @@
 					<span class="mb-0.5 text-xs font-medium leading-none text-gray-600"
 						>{getHeightLabel()}</span
 					>
-					<div class="text-base font-semibold leading-tight text-gray-900">
+					<div 
+						class="font-semibold leading-tight text-gray-900"
+						class:text-xl={getValueLength() <= 8}
+						class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
+						class:text-base={getValueLength() > 15 && getValueLength() <= 25}
+						class:text-sm={getValueLength() > 25 && getValueLength() <= 40}
+						class:text-xs={getValueLength() > 40}
+					>
 						{formattedResult.mainValue}
 					</div>
 				</div>
@@ -237,7 +248,14 @@
 			<div class="flex flex-col items-center">
 				<span class="mb-0.5 text-xs font-medium leading-none text-gray-600">{getHeightLabel()}</span
 				>
-				<div class="text-base font-semibold leading-tight text-gray-900">
+				<div 
+					class="font-semibold leading-tight text-gray-900"
+					class:text-xl={getValueLength() <= 8}
+					class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
+					class:text-base={getValueLength() > 15 && getValueLength() <= 25}
+					class:text-sm={getValueLength() > 25 && getValueLength() <= 40}
+					class:text-xs={getValueLength() > 40}
+				>
 					{formattedResult.mainValue}
 				</div>
 			</div>
