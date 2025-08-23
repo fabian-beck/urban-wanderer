@@ -449,6 +449,7 @@
 							propertyKey={fact.key}
 							widthClass={`col-span-${fact.widthSpan}`}
 							containerWidth={debouncedWidth}
+							place={place}
 						/>
 					{:else if PEOPLE_COUNT_PROPERTIES.includes(fact.key)}
 						<NumberOfPeopleFact

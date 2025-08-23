@@ -103,6 +103,97 @@ export const HISTORICAL_EVENTS = [
 	{ start: 1644, name: { en: '🐉 Qing Dynasty established', de: '🐉 Qing-Dynastie gegründet' }, labels: ['HISTORY', 'CULTURE'] },
 	{ start: 1978, name: { en: '🇨🇳 Third Plenum reform decision', de: '🇨🇳 Drittes Plenum Reformbeschluss' }, labels: ['HISTORY'] },
 
+	// More Religious Events
+	{ start: 313, name: { en: '✝️ Edict of Milan', de: '✝️ Mailänder Toleranzedikt' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 325, name: { en: '⛪ Council of Nicaea', de: '⛪ Konzil von Nicäa' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 622, name: { en: '☪️ Islamic Hijra', de: '☪️ Islamische Hidschra' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 1054, name: { en: '⛪ Great Schism', de: '⛪ Großes Schisma' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 1187, name: { en: '🏰 Saladin captures Jerusalem', de: '🏰 Saladin erobert Jerusalem' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 1378, end: 1417, name: { en: '⛪ Western Schism', de: '⛪ Abendländisches Schisma' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 1534, name: { en: '👑 Act of Supremacy England', de: '👑 Suprematsakte England' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 1545, end: 1563, name: { en: '⛪ Council of Trent', de: '⛪ Konzil von Trient' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 1598, name: { en: '📜 Edict of Nantes', de: '📜 Edikt von Nantes' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 1648, name: { en: '📜 Peace of Westphalia', de: '📜 Westfälischer Friede' }, labels: ['RELIGION', 'HISTORY'] },
+	{ start: 1962, end: 1965, name: { en: '⛪ Second Vatican Council', de: '⛪ Zweites Vatikanisches Konzil' }, labels: ['RELIGION', 'HISTORY'] },
+
+	// More Architecture Events
+	{ start: -2560, name: { en: '🔺 Great Pyramid built', de: '🔺 Große Pyramide erbaut' }, labels: ['ARCHITECTURE', 'HISTORY'] },
+	{ start: -447, name: { en: '🏛️ Parthenon completed', de: '🏛️ Parthenon vollendet' }, labels: ['ARCHITECTURE', 'HISTORY'] },
+	{ start: 80, name: { en: '🏛️ Colosseum completed', de: '🏛️ Kolosseum vollendet' }, labels: ['ARCHITECTURE', 'HISTORY'] },
+	{ start: 532, name: { en: '⛪ Hagia Sophia begun', de: '⛪ Hagia Sophia begonnen' }, labels: ['ARCHITECTURE', 'RELIGION', 'HISTORY'] },
+	{ start: 1163, name: { en: '⛪ Notre-Dame construction begins', de: '⛪ Notre-Dame Baubeginn' }, labels: ['ARCHITECTURE', 'RELIGION', 'HISTORY'] },
+	{ start: 1248, name: { en: '⛪ Cologne Cathedral begun', de: '⛪ Kölner Dom begonnen' }, labels: ['ARCHITECTURE', 'RELIGION', 'HISTORY'] },
+	{ start: 1506, name: { en: '⛪ St. Peter\'s Basilica begun', de: '⛪ Petersdom begonnen' }, labels: ['ARCHITECTURE', 'RELIGION', 'HISTORY'] },
+	{ start: 1792, name: { en: '🏛️ White House cornerstone', de: '🏛️ Grundstein Weißes Haus' }, labels: ['ARCHITECTURE', 'HISTORY'] },
+	{ start: 1883, name: { en: '🌉 Brooklyn Bridge opens', de: '🌉 Brooklyn Bridge eröffnet' }, labels: ['ARCHITECTURE', 'TRANSPORTATION', 'HISTORY'] },
+	{ start: 1930, name: { en: '🏢 Chrysler Building completed', de: '🏢 Chrysler Building vollendet' }, labels: ['ARCHITECTURE', 'HISTORY'] },
+	{ start: 1931, name: { en: '🏢 Empire State Building completed', de: '🏢 Empire State Building vollendet' }, labels: ['ARCHITECTURE', 'HISTORY'] },
+	{ start: 1973, name: { en: '🏢 Sydney Opera House opens', de: '🏢 Opernhaus Sydney eröffnet' }, labels: ['ARCHITECTURE', 'CULTURE', 'HISTORY'] },
+
+	// More Educational Events  
+	{ start: 1088, name: { en: '🎓 University of Bologna founded', de: '🎓 Universität Bologna gegründet' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1150, name: { en: '🎓 University of Paris founded', de: '🎓 Universität Paris gegründet' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1209, name: { en: '🎓 Cambridge University founded', de: '🎓 Universität Cambridge gegründet' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1348, name: { en: '🎓 Charles University Prague founded', de: '🎓 Karls-Universität Prag gegründet' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1386, name: { en: '🎓 Heidelberg University founded', de: '🎓 Universität Heidelberg gegründet' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1543, name: { en: '🌍 Copernicus heliocentric theory', de: '🌍 Kopernikus heliozentrisches Weltbild' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1642, name: { en: '🍎 Newton born', de: '🍎 Newton geboren' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1751, name: { en: '📚 Encyclopédie published', de: '📚 Encyclopédie veröffentlicht' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1810, name: { en: '🎓 Humboldt University Berlin', de: '🎓 Humboldt-Universität Berlin' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1837, name: { en: '🎓 Mount Holyoke College', de: '🎓 Mount Holyoke College' }, labels: ['EDUCATION', 'HISTORY'] },
+	{ start: 1945, name: { en: '🌍 UNESCO founded', de: '🌍 UNESCO gegründet' }, labels: ['EDUCATION', 'CULTURE', 'HISTORY'] },
+
+	// More Sports Events
+	{ start: 1857, name: { en: '⚽ Sheffield FC founded', de: '⚽ Sheffield FC gegründet' }, labels: ['SPORTS', 'HISTORY'] },
+	{ start: 1877, name: { en: '🎾 Wimbledon first championship', de: '🎾 Wimbledon erste Meisterschaft' }, labels: ['SPORTS', 'HISTORY'] },
+	{ start: 1892, name: { en: '🏀 first basketball game', de: '🏀 erstes Basketball-Spiel' }, labels: ['SPORTS', 'HISTORY'] },
+	{ start: 1903, name: { en: '🏁 Tour de France first race', de: '🏁 Tour de France erstes Rennen' }, labels: ['SPORTS', 'HISTORY'] },
+	{ start: 1924, name: { en: '🥇 first Winter Olympics', de: '🥇 erste Winterolympiade' }, labels: ['SPORTS', 'HISTORY'] },
+	{ start: 1958, name: { en: '⚽ Brazil wins World Cup', de: '⚽ Brasilien gewinnt WM' }, labels: ['SPORTS', 'HISTORY'] },
+	{ start: 1967, name: { en: '🏈 Super Bowl I', de: '🏈 erster Super Bowl' }, labels: ['SPORTS', 'HISTORY'] },
+	{ start: 1972, name: { en: '♟️ Fischer vs Spassky', de: '♟️ Fischer gegen Spassky' }, labels: ['SPORTS', 'HISTORY'] },
+
+	// More Nature & Geography Events
+	{ start: 1871, name: { en: '🌲 first national park law', de: '🌲 erstes Nationalpark-Gesetz' }, labels: ['NATURE', 'HISTORY'] },
+	{ start: 1916, name: { en: '🦅 National Park Service created', de: '🦅 Nationalpark-Service gegründet' }, labels: ['NATURE', 'HISTORY'] },
+	{ start: 1962, name: { en: '🐦 Silent Spring published', de: '🐦 Stummer Frühling veröffentlicht' }, labels: ['NATURE', 'HISTORY'] },
+	{ start: 1971, name: { en: '🌿 Greenpeace founded', de: '🌿 Greenpeace gegründet' }, labels: ['NATURE', 'HISTORY'] },
+	{ start: 1973, name: { en: '🐾 Endangered Species Act', de: '🐾 Artenschutzgesetz' }, labels: ['NATURE', 'HISTORY'] },
+	{ start: 1992, name: { en: '🌍 Rio Earth Summit', de: '🌍 Rio-Erdgipfel' }, labels: ['NATURE', 'GEOGRAPHY', 'HISTORY'] },
+	{ start: 1997, name: { en: '🌡️ Kyoto Protocol', de: '🌡️ Kyoto-Protokoll' }, labels: ['NATURE', 'HISTORY'] },
+	{ start: 2015, name: { en: '🌡️ Paris Climate Agreement', de: '🌡️ Pariser Klimaabkommen' }, labels: ['NATURE', 'HISTORY'] },
+
+	// More Transportation Events
+	{ start: 1807, name: { en: '⛵ first steamboat service', de: '⛵ erster Dampfschiff-Service' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+	{ start: 1814, name: { en: '🚂 first steam locomotive', de: '🚂 erste Dampflokomotive' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+	{ start: 1839, name: { en: '🚲 first bicycle', de: '🚲 erstes Fahrrad' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+	{ start: 1863, name: { en: '🚇 London Underground opens', de: '🚇 Londoner U-Bahn eröffnet' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+	{ start: 1886, name: { en: '🚗 Mercedes-Benz first car', de: '🚗 Mercedes-Benz erstes Auto' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+	{ start: 1900, name: { en: '🚁 first helicopter flight', de: '🚁 erster Hubschrauberflug' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+	{ start: 1935, name: { en: '🛣️ first Autobahn opens', de: '🛣️ erste Autobahn eröffnet' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+	{ start: 1957, name: { en: '✈️ jet age begins', de: '✈️ Jet-Zeitalter beginnt' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+	{ start: 1981, name: { en: '🚄 TGV high-speed rail', de: '🚄 TGV Hochgeschwindigkeitsbahn' }, labels: ['TRANSPORTATION', 'HISTORY'] },
+
+	// More Culture Events  
+	{ start: 1605, name: { en: '🎭 King Lear first performed', de: '🎭 König Lear uraufgeführt' }, labels: ['CULTURE', 'HISTORY'] },
+	{ start: 1725, name: { en: '🎵 Bach Brandenburg Concertos', de: '🎵 Bach Brandenburgische Konzerte' }, labels: ['CULTURE', 'HISTORY'] },
+	{ start: 1784, name: { en: '🎵 Mozart Marriage of Figaro', de: '🎵 Mozart Figaros Hochzeit' }, labels: ['CULTURE', 'HISTORY'] },
+	{ start: 1874, name: { en: '🎨 first Impressionist exhibition', de: '🎨 erste Impressionisten-Ausstellung' }, labels: ['CULTURE', 'HISTORY'] },
+	{ start: 1913, name: { en: '🎵 Rite of Spring premiere', de: '🎵 Sacre du printemps Uraufführung' }, labels: ['CULTURE', 'HISTORY'] },
+	{ start: 1929, name: { en: '🏛️ Museum of Modern Art opens', de: '🏛️ Museum of Modern Art eröffnet' }, labels: ['CULTURE', 'HISTORY'] },
+	{ start: 1959, name: { en: '🎵 Guggenheim Museum opens', de: '🎵 Guggenheim Museum eröffnet' }, labels: ['CULTURE', 'ARCHITECTURE', 'HISTORY'] },
+	{ start: 1977, name: { en: '🎪 Pompidou Centre opens', de: '🎪 Centre Pompidou eröffnet' }, labels: ['CULTURE', 'ARCHITECTURE', 'HISTORY'] },
+
+	// More Activities/Entertainment Events
+	{ start: 1901, name: { en: '🎪 first movie theater', de: '🎪 erstes Kino' }, labels: ['ACTIVITIES', 'CULTURE', 'HISTORY'] },
+	{ start: 1920, name: { en: '📻 first radio broadcast', de: '📻 erste Radiosendung' }, labels: ['ACTIVITIES', 'CULTURE', 'HISTORY'] },
+	{ start: 1948, name: { en: '📺 television boom begins', de: '📺 Fernsehen-Boom beginnt' }, labels: ['ACTIVITIES', 'CULTURE', 'HISTORY'] },
+	{ start: 1958, name: { en: '🎮 first video game', de: '🎮 erstes Videospiel' }, labels: ['ACTIVITIES', 'CULTURE', 'HISTORY'] },
+	{ start: 1971, name: { en: '🎮 first arcade game', de: '🎮 erstes Arcade-Spiel' }, labels: ['ACTIVITIES', 'CULTURE', 'HISTORY'] },
+	{ start: 1975, name: { en: '🎬 Jaws creates blockbuster', de: '🎬 Der weiße Hai schafft Blockbuster' }, labels: ['ACTIVITIES', 'CULTURE', 'HISTORY'] },
+	{ start: 1981, name: { en: '🎵 MTV Music Television', de: '🎵 MTV Music Television' }, labels: ['ACTIVITIES', 'CULTURE', 'HISTORY'] },
+	{ start: 2005, name: { en: '📱 YouTube founded', de: '📱 YouTube gegründet' }, labels: ['ACTIVITIES', 'CULTURE', 'HISTORY'] },
+
 	// Recent History
 	{
 		start: 2001,

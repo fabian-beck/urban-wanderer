@@ -1,6 +1,6 @@
 <script>
 	import { HISTORICAL_EVENTS } from '../../constants/reference-data.js';
-	import { PROPERTY_TRANSLATIONS } from '../../constants/place-classes.js';
+	import { PROPERTY_TRANSLATIONS, CLASSES } from '../../constants/place-classes.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
 
@@ -8,6 +8,7 @@
 	export let propertyKey;
 	export let widthClass = '';
 	export let containerWidth = 400; // Available container width
+	export let place = null; // Place object for label matching
 
 	// Parse the year from the value
 	$: year = parseInt(value);
@@ -28,10 +29,18 @@
 		return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
 	}
 
+	function getPlaceLabels(placeClass) {
+		const classData = CLASSES[placeClass];
+		return classData?.labels || [];
+	}
+
 	function getHistoricalContext(year) {
-		// Filter events based on user preferences
+		// Filter events based on user preferences and place labels
 		const $preferences = get(preferences);
 		const userInterests = $preferences.interests || [];
+		
+		// Get place labels from place class
+		const placeLabels = place?.cls ? getPlaceLabels(place.cls) : [];
 		
 		const relevantEvents = HISTORICAL_EVENTS.filter(event => {
 			// If no interests are set, show all events
@@ -47,6 +56,7 @@
 		// Find events that are contemporaneous or close to the year
 		let bestMatch = null;
 		let minDistance = Infinity;
+		let bestScore = -1;
 
 		for (const event of relevantEvents) {
 			let distance;
@@ -54,14 +64,31 @@
 			if (event.end) {
 				// Event with duration
 				if (year >= event.start && year <= event.end) {
-					// Year falls within event period
-					const eventName = getEventName(event);
-					const $language = get(preferences).lang;
-					const duringText = $language === 'de' ? 'während' : 'during';
-					return {
-						text: `${duringText}<br>${eventName}`,
-						distance: 0
-					};
+					// Year falls within event period - check if this matches place labels
+					const eventLabels = event.labels || [];
+					const matchesPlace = eventLabels.some(label => placeLabels.includes(label));
+					
+					if (matchesPlace) {
+						// Perfect match: within event period AND matches place type
+						const eventName = getEventName(event);
+						const $language = get(preferences).lang;
+						const duringText = $language === 'de' ? 'während' : 'during';
+						return {
+							text: `${duringText}<br>${eventName}`,
+							distance: 0
+						};
+					}
+					
+					// Store as potential match if no place-specific match found
+					if (bestScore < 2) {
+						const eventName = getEventName(event);
+						const $language = get(preferences).lang;
+						const duringText = $language === 'de' ? 'während' : 'during';
+						bestMatch = event;
+						bestScore = 2;
+						minDistance = 0;
+					}
+					continue;
 				} else if (year < event.start) {
 					distance = event.start - year;
 				} else {
@@ -72,8 +99,21 @@
 				distance = Math.abs(year - event.start);
 			}
 
-			if (distance < minDistance) {
+			// Calculate score based on distance and place label matching
+			let score = 0;
+			const eventLabels = event.labels || [];
+			const matchesPlace = eventLabels.some(label => placeLabels.includes(label));
+			
+			if (matchesPlace) {
+				score = 3; // Highest priority for place-matching events
+			} else {
+				score = 1; // Lower priority for non-matching events
+			}
+
+			// Consider this event if it has a better score, or same score but closer distance
+			if (score > bestScore || (score === bestScore && distance < minDistance)) {
 				minDistance = distance;
+				bestScore = score;
 				bestMatch = event;
 			}
 		}
@@ -84,8 +124,14 @@
 
 			// Within 10 years - show relative timing
 			if (minDistance === 0) {
-				const sameYearText = $language === 'de' ? 'gleiches Jahr wie' : 'same year as';
-				return { text: `${sameYearText}<br>${eventName}`, distance: minDistance };
+				// Check if this is a duration event and year falls within it
+				if (bestMatch.end && year >= bestMatch.start && year <= bestMatch.end) {
+					const duringText = $language === 'de' ? 'während' : 'during';
+					return { text: `${duringText}<br>${eventName}`, distance: minDistance };
+				} else {
+					const sameYearText = $language === 'de' ? 'gleiches Jahr wie' : 'same year as';
+					return { text: `${sameYearText}<br>${eventName}`, distance: minDistance };
+				}
 			} else if (year < (bestMatch.end || bestMatch.start)) {
 				const years =
 					minDistance === 1
