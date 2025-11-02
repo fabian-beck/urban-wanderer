@@ -19,8 +19,11 @@
 	import { onMount } from 'svelte';
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
+	import UserPreferences from '../components/UserPreferences.svelte';
 
 	export let params = {};
+
+	let preferencesVisible = false;
 
 	let urlCoordinates = null;
 	let urlUpdateTimeout = null;
@@ -100,6 +103,10 @@
 			<img src="urban-wanderer-icon.png" alt="logo" class="w-24" />
 		</div>
 		<h1 class="uw-font text-center text-3xl text-primary-800">{appName}</h1>
+		<div class="mx-6 mt-6 text-center">
+			<p class="mb-3 text-sm text-gray-600">To personalize the guide, set your preferences.</p>
+			<Button on:click={() => (preferencesVisible = true)}>Open Preferences</Button>
+		</div>
 		{#if $loading}
 			<div class="m-6 text-center">
 				<p><Spinner /></p>
@@ -111,3 +118,4 @@
 	{/if}
 </main>
 <Location loading={$loading} update={() => updateLocation(false)} />
+<UserPreferences bind:visible={preferencesVisible} />

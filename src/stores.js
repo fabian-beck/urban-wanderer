@@ -108,33 +108,37 @@ function createPlaces() {
 		subscribe,
 		set,
 		update: async () => {
+			const currentCoordinates = get(coordinates);
+			if (!currentCoordinates) {
+				return;
+			}
 			try {
 				// init timer
 				const startTime = Date.now();
 				let previousTime = startTime;
 				loadingMessage.set('Loading places ...');
 				// Load maps and update stores with error handling
-				loadOsmWaterMap(get(coordinates))
+				loadOsmWaterMap(currentCoordinates)
 					.then((mapData) => waterMap.set(mapData || []))
 					.catch((error) => {
 						console.error('Failed to load water map:', error);
 						waterMap.set([]);
 					});
-				loadOsmGreenMap(get(coordinates))
+				loadOsmGreenMap(currentCoordinates)
 					.then((mapData) => greenMap.set(mapData || []))
 					.catch((error) => {
 						console.error('Failed to load green map:', error);
 						greenMap.set([]);
 					});
-				loadOsmActivityMap(get(coordinates))
+				loadOsmActivityMap(currentCoordinates)
 					.then((mapData) => activityMap.set(mapData || []))
 					.catch((error) => {
 						console.error('Failed to load activity map:', error);
 						activityMap.set([]);
 					});
 				let [placesTmp, placesOsm] = await Promise.allSettled([
-					loadWikipediaPlaces(get(coordinates), get(preferences), nArticles),
-					loadOsmPlaces(get(coordinates))
+					loadWikipediaPlaces(currentCoordinates, get(preferences), nArticles),
+					loadOsmPlaces(currentCoordinates)
 				]).then((results) => [
 					results[0].status === 'fulfilled' ? results[0].value : [],
 					results[1].status === 'fulfilled' ? results[1].value : []
@@ -145,7 +149,7 @@ function createPlaces() {
 				loadingMessage.set('Grouping places ...');
 				const groupedPlaces = await groupDuplicatePlaces(
 					get(places),
-					get(coordinates),
+					currentCoordinates,
 					get(preferences)
 				);
 				set(groupedPlaces);
@@ -357,6 +361,11 @@ function mergePlaces(placesTmp, placesOsm) {
 }
 
 async function pregenerateStoryInBackground() {
+	const currentCoordinates = get(coordinates);
+	if (!currentCoordinates) {
+		return;
+	}
+
 	// Load facts before story generation
 	await loadMetadata();
 
@@ -373,7 +382,7 @@ async function pregenerateStoryInBackground() {
 			get(placesHere),
 			get(placesNearby),
 			get(placesSurrounding),
-			get(coordinates),
+			currentCoordinates,
 			get(preferences)
 		);
 		storyTexts.set([firstStoryResult.text]);
