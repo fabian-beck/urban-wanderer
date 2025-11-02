@@ -37,6 +37,7 @@
 </script>
 
 <Modal title="Preferences" bind:open={visible} autoclose on:close={places.update}>
+	<h3 class="mb-4 text-lg font-semibold border-b pb-2">Personalization</h3>
 	<Label>My Interests</Label>
 	<div class="grid grid-cols-2 gap-4">
 		{#each LABELS as label}
@@ -58,10 +59,12 @@
 			</Checkbox>
 		{/each}
 	</div>
-	<Label>Guide character</Label>
-	<Select bind:value={$preferences.guideCharacter} items={characterOptions} />
 	<Label>Familiarity with the area</Label>
 	<Select bind:value={$preferences.familiarity} items={FAMILIARITY} />
+	<Label>Guide character</Label>
+	<Select bind:value={$preferences.guideCharacter} items={characterOptions} />
+
+	<h3 class="mb-4 mt-8 text-lg font-semibold border-b pb-2">Language</h3>
 	<Label>Content presentation language</Label>
 	<Select bind:value={$preferences.lang} items={langOptions} />
 	<Label>Content source languages</Label>
@@ -85,10 +88,14 @@
 			{lang.name}
 		</Checkbox>
 	{/each}
+
+	<h3 class="mb-4 mt-8 text-lg font-semibold border-b pb-2">Discovery</h3>
 	<Label>Search radius ({$preferences.radius}&nbsp;m)</Label>
 	<Range id="range1" bind:value={$preferences.radius} min="100" max="3000" step="100" />
 	<Label>Audio (autoplay)</Label>
 	<Toggle bind:checked={$preferences.audio} />
+
+	<h3 class="mb-4 mt-8 text-lg font-semibold border-b pb-2">AI</h3>
 	<Label>AI Model for Simple Tasks</Label>
 	<Select bind:value={$preferences.aiModelSimple} items={AI_MODELS.SIMPLE} />
 	<Label>AI Model for Advanced Tasks</Label>
