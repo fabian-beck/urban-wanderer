@@ -146,7 +146,6 @@
 				{/if}
 			{/if}
 			<hr class="my-4" />
-			<h3 class="mb-2 text-lg">Facts</h3>
 			<FactList {place} bind:this={placeFactListComponent} />
 			{#if place.lon && place.lat}
 				<hr class="my-4" />
