@@ -20,8 +20,13 @@
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
 	import UserPreferences from '../components/UserPreferences.svelte';
+	import { preferences } from '../stores.js';
+	import { LABELS, FAMILIARITY, LANGUAGES } from '../constants/ui-config.js';
 
 	export let params = {};
+
+	$: familiarityLabel = FAMILIARITY.find((f) => f.value === $preferences.familiarity)?.name || $preferences.familiarity;
+	$: languageLabel = LANGUAGES.find((l) => l.value === $preferences.lang)?.name || $preferences.lang;
 
 	let preferencesVisible = false;
 
@@ -106,6 +111,13 @@
 		<div class="mx-6 mt-6 text-center">
 			<p class="mb-3 text-sm text-gray-600">To personalize the guide, set your preferences.</p>
 			<Button on:click={() => (preferencesVisible = true)}>Open Preferences</Button>
+			<p class="mt-4 text-xs text-gray-500">
+				Interests: {LABELS.filter((label) => $preferences.labels.includes(label.value))
+					.map((label) => label.name.split(' ')[0])
+					.join(' ')}, Familiarity: <strong>{familiarityLabel}</strong>, Guide: <strong
+					>{$preferences.guideCharacter}</strong
+				>, Language: <strong>{languageLabel}</strong>, Radius: <strong>{$preferences.radius}m</strong>
+			</p>
 		</div>
 		{#if $loading}
 			<div class="m-6 text-center">
