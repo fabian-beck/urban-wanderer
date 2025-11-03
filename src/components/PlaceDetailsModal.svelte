@@ -33,6 +33,7 @@
 	let placeFactListComponent;
 	let imageElement;
 	let isPortrait = false;
+	let isExpanded = false;
 
 	// Function to determine if image is portrait
 	const onImageLoad = () => {
@@ -102,7 +103,15 @@
 			{#if place.pageid || place.wikipedia || place.description}
 				<div class="flex flex-auto">
 					{#if summary}
-						{summary}
+						<div
+							on:click={() => (isExpanded = !isExpanded)}
+							on:keydown={(e) => e.key === 'Enter' && (isExpanded = !isExpanded)}
+							role="button"
+							tabindex="0"
+							class={`cursor-pointer ${isExpanded ? '' : 'line-clamp-3'}`}
+						>
+							{summary}
+						</div>
 					{:else}
 						...
 					{/if}
