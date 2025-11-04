@@ -108,23 +108,24 @@
 			<img src="urban-wanderer-icon.png" alt="logo" class="w-24" />
 		</div>
 		<h1 class="uw-font text-center text-3xl text-primary-800">{appName}</h1>
-		<div class="mx-6 mt-6 text-center">
-			<p class="mb-3 text-sm text-gray-600">To personalize the guide, set your preferences.</p>
-			<Button on:click={() => (preferencesVisible = true)}>Open Preferences</Button>
-			<p class="mt-4 text-xs text-gray-500">
-				Interests: {LABELS.filter((label) => $preferences.labels.includes(label.value))
-					.map((label) => label.name.split(' ')[0])
-					.join(' ')}, Familiarity: <strong>{familiarityLabel}</strong>, Guide: <strong
-					>{$preferences.guideCharacter}</strong
-				>, Language: <strong>{languageLabel}</strong>, Radius: <strong>{$preferences.radius}m</strong>
-			</p>
-		</div>
 		{#if $loading}
 			<div class="m-6 text-center">
 				<p><Spinner /></p>
 				{#if $loadingMessage}
 					<p class="mt-2 text-xs text-gray-600">{$loadingMessage}</p>
 				{/if}
+			</div>
+		{:else}
+			<div class="mx-6 mt-6 text-center">
+				<p class="mb-3 text-sm text-gray-600">To personalize the guide, set your preferences.</p>
+				<Button on:click={() => (preferencesVisible = true)}>Open Preferences</Button>
+				<p class="mt-4 text-xs text-gray-500">
+					Interests: {LABELS.filter((label) => $preferences.labels.includes(label.value))
+						.map((label) => label.name.split(' ')[0])
+						.join(' ')}, Familiarity: <strong>{familiarityLabel}</strong>, Guide: <strong
+						>{$preferences.guideCharacter}</strong
+					>, Language: <strong>{languageLabel}</strong>, Radius: <strong>{$preferences.radius}m</strong>
+				</p>
 			</div>
 		{/if}
 	{/if}
