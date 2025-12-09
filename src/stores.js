@@ -205,7 +205,7 @@ export const placesHere = derived(
 			.filter((place) => {
 				if (
 					(!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) &&
-					place.stars > 0 &&
+					place.stars > 2 &&
 					!$placesSurrounding.includes(place)
 				) {
 					return true;
@@ -230,7 +230,7 @@ export const placesNearby = derived(
 				if (
 					!$placesSurrounding.includes(place) &&
 					!$placesHere.includes(place) &&
-					place.stars > 0
+					place.stars > 2
 				) {
 					return true;
 				}
