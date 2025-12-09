@@ -56,7 +56,20 @@ out skel qt;
 			},
 			body: `data=${encodeURIComponent(overpassQuery)}`
 		});
-		const data = await response.json();
+
+		if (!response.ok) {
+			throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
+		}
+
+		const text = await response.text();
+		let data;
+		try {
+			data = JSON.parse(text);
+		} catch (parseError) {
+			console.error('Failed to parse Overpass API response:', text.substring(0, 200));
+			throw new Error('Invalid JSON response from Overpass API');
+		}
+
 		console.log('OSM response:', data);
 		const places = data.elements
 			.filter((element) => element.tags?.name)
@@ -185,7 +198,20 @@ out skel qt;
 			},
 			body: `data=${encodeURIComponent(overpassQuery)}`
 		});
-		const data = await response.json();
+
+		if (!response.ok) {
+			throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
+		}
+
+		const text = await response.text();
+		let data;
+		try {
+			data = JSON.parse(text);
+		} catch (parseError) {
+			console.error('Failed to parse Overpass API response:', text.substring(0, 200));
+			throw new Error('Invalid JSON response from Overpass API');
+		}
+
 		console.log('Water map response:', data);
 		// Helper function to determine waterway width based on OSM data
 		const getWaterwayWidth = (tags) => {
@@ -422,7 +448,20 @@ out skel qt;
 			},
 			body: `data=${encodeURIComponent(overpassQuery)}`
 		});
-		const data = await response.json();
+
+		if (!response.ok) {
+			throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
+		}
+
+		const text = await response.text();
+		let data;
+		try {
+			data = JSON.parse(text);
+		} catch (parseError) {
+			console.error('Failed to parse Overpass API response:', text.substring(0, 200));
+			throw new Error('Invalid JSON response from Overpass API');
+		}
+
 		console.log('Green map response:', data);
 
 		const greenMapTmp = new Array(GRID_ARRAY_SIZE)
@@ -592,7 +631,20 @@ out skel qt;
 			},
 			body: `data=${encodeURIComponent(overpassQuery)}`
 		});
-		const data = await response.json();
+
+		if (!response.ok) {
+			throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
+		}
+
+		const text = await response.text();
+		let data;
+		try {
+			data = JSON.parse(text);
+		} catch (parseError) {
+			console.error('Failed to parse Overpass API response:', text.substring(0, 200));
+			throw new Error('Invalid JSON response from Overpass API');
+		}
+
 		console.log('Activity map response:', data);
 
 		const activityMapTmp = new Array(GRID_ARRAY_SIZE)
