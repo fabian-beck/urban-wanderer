@@ -184,11 +184,19 @@ async function selectBestImageForPlace(images, place, size, lang) {
 						`Image scoring for ${place.title}: "${filename}" (ObjectName: "${objectName}") → score: ${score}`
 					);
 
+					const metadata = {
+						source: imageinfo.descriptionurl,
+						license: extmetadata.LicenseShortName?.value || extmetadata.License?.value,
+						licenseUrl: extmetadata.LicenseUrl?.value,
+						artist: extmetadata.Artist?.value || extmetadata.Credit?.value
+					};
+
 					return {
 						url: imageinfo.thumburl || imageinfo.url,
 						score: score,
 						filename: filename,
-						objectName: objectName
+						objectName: objectName,
+						metadata: metadata
 					};
 				} catch (error) {
 					console.error(`Error fetching metadata for ${img.title}:`, error);
@@ -244,6 +252,28 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 			const pageid = Object.keys(data.query.pages)[0];
 			if (data.query.pages[pageid].thumbnail) {
 				place[attribute] = data.query.pages[pageid].thumbnail?.source;
+
+				// Also fetch metadata for the primary image
+				const pageimageTitle = data.query.pages[pageid].pageimage;
+				if (pageimageTitle) {
+					try {
+						const metadataResponse = await fetch(
+							`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&titles=File:${encodeURIComponent(pageimageTitle)}&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=${size}`
+						);
+						const metadataData = await metadataResponse.json();
+						const metadataPage = Object.values(metadataData.query.pages)[0];
+						if (metadataPage.imageinfo && metadataPage.imageinfo.length > 0) {
+							const imageinfo = metadataPage.imageinfo[0];
+							const extmetadata = imageinfo.extmetadata || {};
+							place.imageSource = imageinfo.descriptionurl;
+							place.imageLicense = extmetadata.LicenseShortName?.value || extmetadata.License?.value;
+							place.imageLicenseUrl = extmetadata.LicenseUrl?.value;
+							place.imageArtist = extmetadata.Artist?.value || extmetadata.Credit?.value;
+						}
+					} catch (error) {
+						console.error(`Error fetching metadata for ${pageimageTitle}:`, error);
+					}
+				}
 			} else {
 				// load images from wiki page and select best match based on captions
 				const response2 = await fetch(
@@ -259,7 +289,13 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 						place.lang || lang
 					);
 					if (bestImage) {
-						place[attribute] = bestImage;
+						place[attribute] = bestImage.url;
+						if (bestImage.metadata) {
+							place.imageSource = bestImage.metadata.source;
+							place.imageLicense = bestImage.metadata.license;
+							place.imageLicenseUrl = bestImage.metadata.licenseUrl;
+							place.imageArtist = bestImage.metadata.artist;
+						}
 					}
 				}
 			}

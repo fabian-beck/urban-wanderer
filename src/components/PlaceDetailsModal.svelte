@@ -11,6 +11,7 @@
 	import { get } from 'svelte/store';
 	import {
 		coordinates,
+		places,
 		placesSurrounding,
 		preferences,
 		placeDetailsVisible,
@@ -27,6 +28,11 @@
 		placeDetailsVisible,
 		($placeDetailsVisible) => $placeDetailsVisible === place.title
 	);
+
+	// Reactive place that updates when the store updates (for image metadata, etc.)
+	const reactivePlace = derived(places, ($places) => {
+		return $places.find((p) => p.title === place.title) || place;
+	});
 
 	$: isSurroundingPlace = $placesSurrounding.find((p) => p.title === place.title);
 	let summary = '';
@@ -46,6 +52,23 @@
 	const getLabelName = (labelValue) => {
 		const label = LABELS.find((l) => l.value === labelValue);
 		return label ? label.name : null;
+	};
+
+	// Get platform name from source URL
+	const getPlatformName = (url) => {
+		if (!url) return null;
+		if (url.includes('commons.wikimedia.org')) return 'Wikimedia Commons';
+		if (url.includes('wikipedia.org')) return 'Wikipedia';
+		return 'Source';
+	};
+
+	// Format author name, cleaning up HTML tags
+	const formatAuthor = (artist) => {
+		if (!artist) return null;
+		// Remove HTML tags and decode entities
+		const cleaned = artist.replace(/<[^>]*>/g, '').trim();
+		// Truncate if too long
+		return cleaned.length > 30 ? cleaned.substring(0, 27) + '...' : cleaned;
 	};
 
 	// Trigger fact loading when modal becomes visible
@@ -90,14 +113,50 @@
 		<span class="text-xl"><PlaceTitle {place} /></span>
 	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
-		{#if place.image}
-			<img
-				bind:this={imageElement}
-				src={place.image}
-				alt={place.title}
-				on:load={onImageLoad}
-				class="mb-2 w-full {isPortrait ? 'aspect-square object-cover' : 'h-64 object-cover'}"
-			/>
+		{#if $reactivePlace.image}
+			<div class="relative mb-2 overflow-visible">
+				<img
+					bind:this={imageElement}
+					src={$reactivePlace.image}
+					alt={$reactivePlace.title}
+					on:load={onImageLoad}
+					class="w-full {isPortrait ? 'aspect-square object-cover' : 'h-64 object-cover'}"
+				/>
+				{#if $reactivePlace.imageSource || $reactivePlace.imageLicense}
+					<div
+						class="absolute bottom-0 right-0 z-10 flex items-center gap-0.5 rounded-tl bg-black/70 px-0.5 py-[1px] text-[8px] leading-tight text-white hover:bg-black/90"
+					>
+						{#if $reactivePlace.imageSource}
+							<a
+								href={$reactivePlace.imageSource}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="hover:underline"
+								aria-label="View image source"
+							>
+								{getPlatformName($reactivePlace.imageSource)}
+							</a>
+						{/if}
+						{#if formatAuthor($reactivePlace.imageArtist)}
+							<span class="opacity-70">({formatAuthor($reactivePlace.imageArtist)})</span>
+						{/if}
+						{#if ($reactivePlace.imageSource || $reactivePlace.imageArtist) && $reactivePlace.imageLicense}
+							<span class="opacity-50">·</span>
+						{/if}
+						{#if $reactivePlace.imageLicense}
+							<a
+								href={$reactivePlace.imageLicenseUrl || $reactivePlace.imageSource}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="hover:underline"
+								aria-label="View image license"
+							>
+								{$reactivePlace.imageLicense}
+							</a>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		{/if}
 		<div class="p-4">
 			{#if place.pageid || place.wikipedia || place.description}

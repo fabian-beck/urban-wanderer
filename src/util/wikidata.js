@@ -342,10 +342,16 @@ export async function loadWikidataImages(places, attribute, size) {
 				const imageClaim = entity.claims.P18[0];
 				const imageFilename = imageClaim.mainsnak.datavalue.value;
 
-				const commonsUrl = await getCommonsImageUrl(imageFilename, size);
+				const imageData = await getCommonsImageUrl(imageFilename, size);
 
-				if (commonsUrl) {
-					place[attribute] = commonsUrl;
+				if (imageData) {
+					place[attribute] = imageData.url;
+					if (imageData.metadata) {
+						place.imageSource = imageData.metadata.source;
+						place.imageLicense = imageData.metadata.license;
+						place.imageLicenseUrl = imageData.metadata.licenseUrl;
+						place.imageArtist = imageData.metadata.artist;
+					}
 					console.log(`✓ Loaded Wikidata image for ${place.title}: ${imageFilename}`);
 				}
 			} catch (error) {
@@ -356,15 +362,15 @@ export async function loadWikidataImages(places, attribute, size) {
 }
 
 /**
- * Get Commons image URL for a given filename
+ * Get Commons image URL and metadata for a given filename
  * @param {string} filename - Image filename from Wikidata
  * @param {number} size - Desired image width in pixels
- * @returns {Promise<string|null>} Image URL or null if not found
+ * @returns {Promise<Object|null>} Object with url and metadata, or null if not found
  */
 async function getCommonsImageUrl(filename, size) {
 	try {
 		const response = await fetch(
-			`https://commons.wikimedia.org/w/api.php?action=query&format=json&titles=File:${encodeURIComponent(filename)}&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=${size}`
+			`https://commons.wikimedia.org/w/api.php?action=query&format=json&titles=File:${encodeURIComponent(filename)}&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=${size}`
 		);
 
 		const data = await response.json();
@@ -372,7 +378,18 @@ async function getCommonsImageUrl(filename, size) {
 		const page = Object.values(pages)[0];
 
 		if (page.imageinfo && page.imageinfo.length > 0) {
-			return page.imageinfo[0].thumburl || page.imageinfo[0].url;
+			const imageinfo = page.imageinfo[0];
+			const extmetadata = imageinfo.extmetadata || {};
+
+			return {
+				url: imageinfo.thumburl || imageinfo.url,
+				metadata: {
+					source: imageinfo.descriptionurl,
+					license: extmetadata.LicenseShortName?.value || extmetadata.License?.value,
+					licenseUrl: extmetadata.LicenseUrl?.value,
+					artist: extmetadata.Artist?.value || extmetadata.Credit?.value
+				}
+			};
 		}
 
 		return null;
