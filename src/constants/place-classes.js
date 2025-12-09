@@ -299,7 +299,7 @@ export const PROPERTIES = {
 	height: {
 		type: 'string',
 		description:
-			'height of the place (e.g., "100m"), if available; number and unit (meters preferred), no extra explanations'
+			'height of the place (e.g., "100m"), if available; number and unit (meters preferred), no extra explanations; when multiple heights exist (e.g., building body vs. towers), always use the maximum height'
 	},
 	length: {
 		type: 'string',
