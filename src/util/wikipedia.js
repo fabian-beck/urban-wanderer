@@ -116,19 +116,119 @@ export async function loadWikipediaExtracts(places, lang) {
 	);
 }
 
+async function selectBestImageForPlace(images, place, size, lang) {
+	const placeTitle = place.title.toLowerCase();
+	const excludedPrefixes = ['File:Pictogram', 'File:Icon', 'File:Logo', 'File:Disambig'];
+	const excludedExtensions = ['.svg', '.djvu', '.pdf', '.ogv', '.webm'];
+
+	const imageScores = await Promise.all(
+		images
+			.filter((img) => {
+				const title = img.title;
+				if (excludedPrefixes.some((prefix) => title.startsWith(prefix))) {
+					return false;
+				}
+				if (excludedExtensions.some((ext) => title.toLowerCase().endsWith(ext))) {
+					return false;
+				}
+				return true;
+			})
+			.slice(0, 5)
+			.map(async (img) => {
+				try {
+					const response = await fetch(
+						`https://${lang}.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(img.title)}&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=${size}`
+					);
+					const data = await response.json();
+					const page = Object.values(data.query.pages)[0];
+
+					if (!page.imageinfo || page.imageinfo.length === 0) {
+						return null;
+					}
+
+					const imageinfo = page.imageinfo[0];
+					const extmetadata = imageinfo.extmetadata || {};
+
+					let score = 0;
+					const filename = img.title.replace('File:', '').replace(/\.(jpg|jpeg|png|gif)$/i, '');
+
+					if (filename.toLowerCase().includes(placeTitle)) {
+						score += 10;
+					}
+
+					const objectName = extmetadata.ObjectName?.value || '';
+					const imageDesc = extmetadata.ImageDescription?.value || '';
+					const categories = extmetadata.Categories?.value || '';
+
+					const combinedText = `${objectName} ${imageDesc} ${categories}`.toLowerCase();
+
+					if (combinedText.includes(placeTitle)) {
+						score += 8;
+					}
+
+					const placeWords = placeTitle.split(' ').filter((w) => w.length > 3);
+					const matchingWords = placeWords.filter((word) => combinedText.includes(word));
+					score += matchingWords.length * 2;
+
+					if (objectName.toLowerCase().includes('interior')) {
+						score -= 3;
+					}
+					if (objectName.toLowerCase().includes('detail')) {
+						score -= 2;
+					}
+					if (combinedText.includes('map') || combinedText.includes('diagram')) {
+						score -= 5;
+					}
+
+					console.log(
+						`Image scoring for ${place.title}: "${filename}" (ObjectName: "${objectName}") → score: ${score}`
+					);
+
+					return {
+						url: imageinfo.thumburl || imageinfo.url,
+						score: score,
+						filename: filename,
+						objectName: objectName
+					};
+				} catch (error) {
+					console.error(`Error fetching metadata for ${img.title}:`, error);
+					return null;
+				}
+			})
+	);
+
+	const validImages = imageScores.filter((img) => img !== null && img.score > 0);
+
+	if (validImages.length === 0) {
+		console.log(`No suitable image found for ${place.title}`);
+		return null;
+	}
+
+	validImages.sort((a, b) => b.score - a.score);
+	const bestImage = validImages[0];
+
+	console.log(
+		`Selected best image for ${place.title}: "${bestImage.filename}" with score ${bestImage.score}`
+	);
+
+	return bestImage.url;
+}
+
 export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 	await Promise.all(
 		places.map(async (place) => {
 			let response;
 			if (place.wikipedia) {
-				if (place.wikipedia.includes('#')) {
-					console.warn(
-						`Not loading image (${attribute}) as Wikipedia reference contains "#": ${place.wikipedia}`
-					);
-					return;
-				}
 				const placeLang = place.wikipedia.split(':')[0];
-				const placeTitle = place.wikipedia.split(':')[1];
+				let placeTitle = place.wikipedia.split(':')[1];
+
+				if (placeTitle.includes('#')) {
+					placeTitle = placeTitle.split('#')[0];
+					console.log(
+						`Stripped anchor from Wikipedia reference for image loading: ${place.wikipedia} → ${placeLang}:${placeTitle}`
+					);
+				}
+
 				response = await fetch(
 					`https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${placeTitle}&origin=*&pithumbsize=${size}`
 				);
@@ -145,21 +245,21 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 			if (data.query.pages[pageid].thumbnail) {
 				place[attribute] = data.query.pages[pageid].thumbnail?.source;
 			} else {
-				// load first image from wiki page
+				// load images from wiki page and select best match based on captions
 				const response2 = await fetch(
-					`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&prop=images&pageids=${place.pageid}&origin=*`
+					`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&prop=images&pageids=${place.pageid}&origin=*&imlimit=10`
 				);
 				const data2 = await response2.json();
-				const images = data2.query.pages[place.pageid].images;
+				const images = data2.query.pages[place.pageid]?.images;
 				if (images) {
-					const firstImage = images[0].title;
-					const response3 = await fetch(
-						`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&titles=${firstImage}&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=${size}`
+					const bestImage = await selectBestImageForPlace(
+						images,
+						place,
+						size,
+						place.lang || lang
 					);
-					const data3 = await response3.json();
-					const imageinfo = Object.values(data3.query.pages)[0].imageinfo;
-					if (imageinfo) {
-						place[attribute] = imageinfo[0].url;
+					if (bestImage) {
+						place[attribute] = bestImage;
 					}
 				}
 			}
@@ -262,7 +362,7 @@ async function wikipediaNameSearchForPlace(name, coordinates, lang) {
 		const distance =
 			Math.sqrt(
 				Math.pow(coords.lat - coordinates.latitude, 2) +
-				Math.pow(coords.lon - coordinates.longitude, 2)
+					Math.pow(coords.lon - coordinates.longitude, 2)
 			) * 111139; // convert degrees to meters
 		// if close enough, return place
 		if (distance < 10000) {
