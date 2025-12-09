@@ -14,6 +14,7 @@ import {
 	getRandomWikipediaPlaceCoordinates,
 	loadWikipediaImageUrls
 } from './util/wikipedia.js';
+import { loadWikidataImages } from './util/wikidata.js';
 import {
 	loadOsmPlaces,
 	loadOsmAddressData,
@@ -310,12 +311,15 @@ function rate() {
 
 async function loadMetadata() {
 	// Load images asynchronously and trigger store updates when complete
-	loadWikipediaImageUrls(get(places), 'imageThumb', 100, get(preferences).lang).then(() =>
-		places.set(get(places))
-	);
-	loadWikipediaImageUrls(get(places), 'image', 500, get(preferences).lang).then(() =>
-		places.set(get(places))
-	);
+	// 1. Try Wikipedia images first
+	loadWikipediaImageUrls(get(places), 'imageThumb', 100, get(preferences).lang).then(() => {
+		// 2. Try Wikidata for places without images
+		loadWikidataImages(get(places), 'imageThumb', 100).then(() => places.set(get(places)));
+	});
+	loadWikipediaImageUrls(get(places), 'image', 500, get(preferences).lang).then(() => {
+		// 2. Try Wikidata for places without images
+		loadWikidataImages(get(places), 'image', 500).then(() => places.set(get(places)));
+	});
 
 	await Promise.all([
 		loadWikipediaArticleTexts(get(placesHere), get(preferences).lang),

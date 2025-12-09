@@ -13,7 +13,8 @@
       "WebFetch(domain:flowbite-svelte.com)",
       "Bash(npm run build:*)",
       "WebSearch",
-      "Bash(npx prettier --write src/util/wikipedia.js)"
+      "Bash(npx prettier --write src/util/wikipedia.js)",
+      "Bash(npx prettier:*)"
     ],
     "deny": []
   }

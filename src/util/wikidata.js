@@ -299,3 +299,85 @@ ${wikidataInfo}`;
 
 	return '';
 }
+
+/**
+ * Load images from Wikidata for places that don't have images yet
+ * @param {Array} places - Array of place objects
+ * @param {string} attribute - Attribute name to store image URL ('image' or 'imageThumb')
+ * @param {number} size - Desired image width in pixels
+ */
+export async function loadWikidataImages(places, attribute, size) {
+	await Promise.all(
+		places.map(async (place) => {
+			if (place[attribute]) {
+				return;
+			}
+
+			if (!place.wikidata) {
+				return;
+			}
+
+			try {
+				const wikidataId = place.wikidata;
+				console.log(`Fetching Wikidata image for ${place.title} (${wikidataId})`);
+
+				const response = await fetch(
+					`https://www.wikidata.org/wiki/Special:EntityData/${wikidataId}.json`
+				);
+
+				if (!response.ok) {
+					console.error(
+						`Failed to fetch Wikidata for ${wikidataId}. HTTP status: ${response.status}`
+					);
+					return;
+				}
+
+				const data = await response.json();
+				const entity = data.entities[wikidataId];
+
+				if (!entity || !entity.claims || !entity.claims.P18) {
+					return;
+				}
+
+				const imageClaim = entity.claims.P18[0];
+				const imageFilename = imageClaim.mainsnak.datavalue.value;
+
+				const commonsUrl = await getCommonsImageUrl(imageFilename, size);
+
+				if (commonsUrl) {
+					place[attribute] = commonsUrl;
+					console.log(`✓ Loaded Wikidata image for ${place.title}: ${imageFilename}`);
+				}
+			} catch (error) {
+				console.error(`Error fetching Wikidata image for ${place.title}:`, error);
+			}
+		})
+	);
+}
+
+/**
+ * Get Commons image URL for a given filename
+ * @param {string} filename - Image filename from Wikidata
+ * @param {number} size - Desired image width in pixels
+ * @returns {Promise<string|null>} Image URL or null if not found
+ */
+async function getCommonsImageUrl(filename, size) {
+	try {
+		const response = await fetch(
+			`https://commons.wikimedia.org/w/api.php?action=query&format=json&titles=File:${encodeURIComponent(filename)}&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=${size}`
+		);
+
+		const data = await response.json();
+		const pages = data.query.pages;
+		const page = Object.values(pages)[0];
+
+		if (page.imageinfo && page.imageinfo.length > 0) {
+			return page.imageinfo[0].thumburl || page.imageinfo[0].url;
+		}
+
+		return null;
+	} catch (error) {
+		console.error(`Error fetching Commons image URL for ${filename}:`, error);
+		return null;
+	}
+}
