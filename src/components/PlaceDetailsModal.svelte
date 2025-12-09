@@ -124,7 +124,7 @@
 				/>
 				{#if $reactivePlace.imageSource || $reactivePlace.imageLicense}
 					<div
-						class="absolute bottom-0 right-0 z-10 flex items-center gap-0.5 rounded-tl bg-black/70 px-0.5 py-[1px] text-[8px] leading-tight text-white hover:bg-black/90"
+						class="absolute bottom-0 right-2 z-10 flex items-center gap-0.5 rounded-tl bg-black/70 px-0.5 py-[1px] text-[8px] leading-tight text-white hover:bg-black/90"
 					>
 						{#if $reactivePlace.imageSource}
 							<a
