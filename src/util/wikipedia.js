@@ -5,10 +5,16 @@ export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
 		return;
 	}
 	const places = [];
-	preferences.sourceLanguages?.forEach(async (lang) => {
-		places.push(
-			...(await wikipediaGeoSearchForPlaces(coordinates, lang, preferences.radius, nArticles))
-		);
+	// Use Promise.all to properly await all language searches
+	const languageResults = await Promise.all(
+		preferences.sourceLanguages?.map((lang) =>
+			wikipediaGeoSearchForPlaces(coordinates, lang, preferences.radius, nArticles)
+		) || []
+	);
+	languageResults.forEach((result) => {
+		if (result) {
+			places.push(...result);
+		}
 	});
 	const searchAndAddPlace = async (title) => {
 		if (title && !places.find((place) => place?.title === title)) {
@@ -19,19 +25,21 @@ export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
 			places.push(place);
 		}
 	};
+
+	// Await all address-based searches
 	if (coordinates.town) {
-		searchAndAddPlace(coordinates.town);
+		await searchAndAddPlace(coordinates.town);
 		if (coordinates.village) {
-			searchAndAddPlace(`${coordinates.village} (${coordinates.town})`);
+			await searchAndAddPlace(`${coordinates.village} (${coordinates.town})`);
 		}
 		if (coordinates.suburb) {
-			searchAndAddPlace(`${coordinates.suburb} (${coordinates.town})`);
+			await searchAndAddPlace(`${coordinates.suburb} (${coordinates.town})`);
 		}
 		if (coordinates.road) {
-			searchAndAddPlace(`${coordinates.road} (${coordinates.town})`);
+			await searchAndAddPlace(`${coordinates.road} (${coordinates.town})`);
 		}
 	} else {
-		searchAndAddPlace(coordinates.village);
+		await searchAndAddPlace(coordinates.village);
 	}
 	console.log('Wikipedia places:', places);
 	return places;
@@ -266,7 +274,8 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 							const imageinfo = metadataPage.imageinfo[0];
 							const extmetadata = imageinfo.extmetadata || {};
 							place.imageSource = imageinfo.descriptionurl;
-							place.imageLicense = extmetadata.LicenseShortName?.value || extmetadata.License?.value;
+							place.imageLicense =
+								extmetadata.LicenseShortName?.value || extmetadata.License?.value;
 							place.imageLicenseUrl = extmetadata.LicenseUrl?.value;
 							place.imageArtist = extmetadata.Artist?.value || extmetadata.Credit?.value;
 						}
@@ -282,12 +291,7 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 				const data2 = await response2.json();
 				const images = data2.query.pages[place.pageid]?.images;
 				if (images) {
-					const bestImage = await selectBestImageForPlace(
-						images,
-						place,
-						size,
-						place.lang || lang
-					);
+					const bestImage = await selectBestImageForPlace(images, place, size, place.lang || lang);
 					if (bestImage) {
 						place[attribute] = bestImage.url;
 						if (bestImage.metadata) {

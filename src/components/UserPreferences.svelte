@@ -11,6 +11,7 @@
 	} from '../constants/ui-config.js';
 	import { clearAnalysisCache } from '../util/ai-analysis.js';
 	import { clearInsightsCache, clearFactsCache } from '../util/ai-facts.js';
+	import { clearOsmCache } from '../util/osm.js';
 
 	export let visible = false;
 	const langOptions = [
@@ -28,8 +29,8 @@
 		clearAnalysisCache();
 		clearInsightsCache();
 		clearFactsCache();
+		clearOsmCache();
 		cacheCleared = true;
-		// Reset the feedback after 3 seconds
 		setTimeout(() => {
 			cacheCleared = false;
 		}, 3000);
@@ -37,7 +38,7 @@
 </script>
 
 <Modal title="Preferences" bind:open={visible} autoclose on:close={places.update}>
-	<h3 class="mb-4 text-lg font-semibold border-b pb-2">Personalization</h3>
+	<h3 class="mb-4 border-b pb-2 text-lg font-semibold">Personalization</h3>
 	<Label>My Interests</Label>
 	<div class="grid grid-cols-2 gap-4">
 		{#each LABELS as label}
@@ -64,7 +65,7 @@
 	<Label>Guide character</Label>
 	<Select bind:value={$preferences.guideCharacter} items={characterOptions} />
 
-	<h3 class="mb-4 mt-8 text-lg font-semibold border-b pb-2">Language</h3>
+	<h3 class="mb-4 mt-8 border-b pb-2 text-lg font-semibold">Language</h3>
 	<Label>Content presentation language</Label>
 	<Select bind:value={$preferences.lang} items={langOptions} />
 	<Label>Content source languages</Label>
@@ -89,13 +90,13 @@
 		</Checkbox>
 	{/each}
 
-	<h3 class="mb-4 mt-8 text-lg font-semibold border-b pb-2">Discovery</h3>
+	<h3 class="mb-4 mt-8 border-b pb-2 text-lg font-semibold">Discovery</h3>
 	<Label>Search radius ({$preferences.radius}&nbsp;m)</Label>
 	<Range id="range1" bind:value={$preferences.radius} min="100" max="3000" step="100" />
 	<Label>Audio (autoplay)</Label>
 	<Toggle bind:checked={$preferences.audio} />
 
-	<h3 class="mb-4 mt-8 text-lg font-semibold border-b pb-2">AI</h3>
+	<h3 class="mb-4 mt-8 border-b pb-2 text-lg font-semibold">AI</h3>
 	<Label>AI Model for Simple Tasks</Label>
 	<Select bind:value={$preferences.aiModelSimple} items={AI_MODELS.SIMPLE} />
 	<Label>AI Model for Advanced Tasks</Label>
@@ -103,14 +104,14 @@
 
 	<div class="mt-6 border-t border-gray-200 pt-4">
 		<Label>Cache Management</Label>
-		<div class="mb-2 text-xs text-gray-500">Clear cached AI data to force fresh generation.</div>
+		<div class="mb-2 text-xs text-gray-500">Clear cached data to force fresh generation.</div>
 		<Button
 			color={cacheCleared ? 'green' : 'alternative'}
 			size="sm"
 			on:click={handleClearCache}
 			disabled={cacheCleared}
 		>
-			{cacheCleared ? '✓ Caches Cleared!' : 'Clear AI Caches'}
+			{cacheCleared ? '✓ Caches Cleared!' : 'Clear Cached Data'}
 		</Button>
 	</div>
 </Modal>

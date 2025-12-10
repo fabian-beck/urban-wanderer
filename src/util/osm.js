@@ -1,8 +1,107 @@
 import { GRID_ARRAY_SIZE, GRID_CELL_SIZE, OSM_SEARCH_RADIUS } from '../constants/core.js';
 
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+const CACHE_PREFIX = 'osm_cache_';
+const MAX_CACHE_ENTRIES = 50;
+
+function getCacheKey(coordinates, queryType, radius) {
+	const lat = coordinates.latitude.toFixed(4);
+	const lon = coordinates.longitude.toFixed(4);
+	return `${CACHE_PREFIX}${queryType}_${lat}_${lon}_${radius}`;
+}
+
+function getCachedData(key) {
+	try {
+		if (typeof localStorage === 'undefined') {
+			console.log('[OSM Cache] localStorage not available');
+			return null;
+		}
+
+		const cached = localStorage.getItem(key);
+		if (cached) {
+			const parsed = JSON.parse(cached);
+			const age = Date.now() - parsed.timestamp;
+			const ageMinutes = (age / 60000).toFixed(1);
+
+			if (age < CACHE_DURATION) {
+				const dataLength = Array.isArray(parsed.data) ? parsed.data.length : 'N/A';
+				console.log(`[OSM Cache] HIT for ${key} (age: ${ageMinutes}m, items: ${dataLength})`);
+				return JSON.parse(JSON.stringify(parsed.data));
+			} else {
+				console.log(`[OSM Cache] EXPIRED for ${key} (age: ${ageMinutes}m)`);
+				localStorage.removeItem(key);
+			}
+		} else {
+			console.log(`[OSM Cache] MISS for ${key}`);
+		}
+	} catch (error) {
+		console.error('[OSM Cache] Error reading from cache:', error);
+	}
+	return null;
+}
+
+function setCachedData(key, data) {
+	try {
+		if (typeof localStorage === 'undefined') {
+			console.log('[OSM Cache] localStorage not available for writing');
+			return;
+		}
+
+		const cacheEntry = {
+			data,
+			timestamp: Date.now()
+		};
+
+		const dataLength = Array.isArray(data) ? data.length : 'N/A';
+		localStorage.setItem(key, JSON.stringify(cacheEntry));
+		console.log(`[OSM Cache] STORED ${key} (items: ${dataLength})`);
+
+		cleanupOldCacheEntries();
+	} catch (error) {
+		console.error('[OSM Cache] Error writing to cache:', error);
+		if (error.name === 'QuotaExceededError') {
+			console.error('[OSM Cache] Storage quota exceeded, clearing old entries');
+			cleanupOldCacheEntries();
+		}
+	}
+}
+
+function cleanupOldCacheEntries() {
+	try {
+		if (typeof localStorage === 'undefined') return;
+
+		const cacheKeys = [];
+		for (let i = 0; i < localStorage.length; i++) {
+			const key = localStorage.key(i);
+			if (key && key.startsWith(CACHE_PREFIX)) {
+				const cached = localStorage.getItem(key);
+				if (cached) {
+					const parsed = JSON.parse(cached);
+					cacheKeys.push({ key, timestamp: parsed.timestamp });
+				}
+			}
+		}
+
+		if (cacheKeys.length > MAX_CACHE_ENTRIES) {
+			cacheKeys.sort((a, b) => a.timestamp - b.timestamp);
+			const toRemove = cacheKeys.slice(0, cacheKeys.length - MAX_CACHE_ENTRIES);
+			toRemove.forEach((entry) => localStorage.removeItem(entry.key));
+		}
+	} catch (error) {
+		console.error('Error cleaning up cache:', error);
+	}
+}
+
 export async function loadOsmPlaces(coordinates) {
 	try {
 		const radius = 150;
+		const cacheKey = getCacheKey(coordinates, 'places', radius);
+		const cached = getCachedData(cacheKey);
+		if (cached) {
+			console.log(`[OSM Cache] Returning ${cached.length} cached places`);
+			return cached;
+		}
+		console.log('[OSM Cache] No cache found, fetching from API');
 		const waterway =
 			'river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point';
 		const amenities = 'museum|school|college|university|library|place_of_worship';
@@ -101,6 +200,12 @@ out skel qt;
 			});
 
 		console.log('OSM places:', places);
+		if (places.length > 0) {
+			console.log(`[OSM Cache] Caching ${places.length} places with key: ${cacheKey}`);
+			setCachedData(cacheKey, places);
+		} else {
+			console.log('[OSM Cache] Not caching - no places found');
+		}
 		return places;
 	} catch (error) {
 		console.error('Could not load OSM places:', error);
@@ -163,6 +268,10 @@ export function coordsToGridY(lat, lon, centerLat, centerLon) {
 // water map
 export async function loadOsmWaterMap(coordinates) {
 	try {
+		const cacheKey = getCacheKey(coordinates, 'watermap', OSM_SEARCH_RADIUS);
+		const cached = getCachedData(cacheKey);
+		if (cached) return cached;
+
 		const increaseWaterLevel = (x, y, value) => {
 			if (value < 0.1) {
 				return;
@@ -340,6 +449,9 @@ out skel qt;
 				drawThickLine(x1, y1, x2, y2, waterwayRadius, waterIntensity);
 			}
 		}
+		if (waterPolylines.length > 0) {
+			setCachedData(cacheKey, waterMapTmp);
+		}
 		return waterMapTmp;
 	} catch (error) {
 		console.error('Error loading water map:', error);
@@ -350,6 +462,10 @@ out skel qt;
 // green map
 export async function loadOsmGreenMap(coordinates) {
 	try {
+		const cacheKey = getCacheKey(coordinates, 'greenmap', OSM_SEARCH_RADIUS);
+		const cached = getCachedData(cacheKey);
+		if (cached) return cached;
+
 		const increaseGreenLevel = (x, y, value) => {
 			if (value < 0.05) {
 				return;
@@ -572,6 +688,9 @@ out skel qt;
 			increaseGreenLevel(x, y, 0.6);
 		}
 
+		if (greenAreas.length > 0 || trees.length > 0) {
+			setCachedData(cacheKey, greenMapTmp);
+		}
 		return greenMapTmp;
 	} catch (error) {
 		console.error('Error loading green map:', error);
@@ -581,6 +700,10 @@ out skel qt;
 
 export async function loadOsmActivityMap(coordinates) {
 	try {
+		const cacheKey = getCacheKey(coordinates, 'activitymap', 600);
+		const cached = getCachedData(cacheKey);
+		if (cached) return cached;
+
 		const increaseActivityLevel = (x, y, value) => {
 			if (value < 0.05) {
 				return;
@@ -750,9 +873,31 @@ out skel qt;
 			increaseActivityLevel(x, y, 0.8);
 		}
 
+		if (activityAreas.length > 0 || activityNodes.length > 0) {
+			setCachedData(cacheKey, activityMapTmp);
+		}
 		return activityMapTmp;
 	} catch (error) {
 		console.error('Error loading activity map:', error);
 		return [];
+	}
+}
+
+export function clearOsmCache() {
+	try {
+		if (typeof localStorage === 'undefined') return;
+
+		const keysToRemove = [];
+		for (let i = 0; i < localStorage.length; i++) {
+			const key = localStorage.key(i);
+			if (key && key.startsWith(CACHE_PREFIX)) {
+				keysToRemove.push(key);
+			}
+		}
+
+		keysToRemove.forEach((key) => localStorage.removeItem(key));
+		console.log(`Cleared ${keysToRemove.length} OSM cache entries`);
+	} catch (error) {
+		console.error('Error clearing cache:', error);
 	}
 }
