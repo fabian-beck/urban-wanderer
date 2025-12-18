@@ -10,6 +10,18 @@ Urban Wanderer is a geo-based app that provides relevant information for your cu
 npm install
 ```
 
+## Configure OpenAI API Key
+
+The app requires an OpenAI API key for AI-powered features. Create a file at `src/.openai_api_key.js` with the following content:
+
+```javascript
+export const OPENAI_API_KEY = 'your-openai-api-key-here';
+```
+
+Replace `'your-openai-api-key-here'` with your actual OpenAI API key from [platform.openai.com](https://platform.openai.com/api-keys).
+
+**Note:** This file is gitignored to keep your API key secure.
+
 ## Developing
 
 ```bash
