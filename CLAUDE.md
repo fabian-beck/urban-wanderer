@@ -18,9 +18,10 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **Real-time Location Services**: Uses Capacitor Geolocation API
 - **AI-Powered Place Analysis**: Integrates OpenAI API for intelligent content generation
 - **Wikipedia Integration**: Fetches articles and metadata for nearby places
-- **OpenStreetMap Integration**: Additional place data and mapping
-- **Multi-language Support**: German and English interfaces
-- **Offline-first Architecture**: Local storage for user preferences
+- **OpenStreetMap Integration**: POI data, map overlays, and caching
+- **Wikidata Integration**: Structured data enrichment and image fallback
+- **Multi-language Support**: German and English interfaces with AI translation
+- **Offline-first Architecture**: Multi-level caching (OSM, AI analysis, user preferences)
 - **Responsive Design**: Works across mobile and desktop
 
 ## Core Components
@@ -42,8 +43,20 @@ Comprehensive classification system with 25+ place types:
 
 ### Utility Modules (`src/util/`)
 
-- **ai.js**: OpenAI integration for place analysis and content generation
-- **geo.js**: Wikipedia and OSM API integration, location utilities
+**AI Modules:**
+- **ai-core.js**: OpenAI client configuration
+- **ai-analysis.js**: Place classification, labeling, and importance rating
+- **ai-translation.js**: Multi-language place name translation and deduplication
+- **ai-story.js**: AI-powered location storytelling
+- **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment
+- **ai-history.js**: Historical content generation
+- **ai-comment.js**: Place commentary generation
+- **ai-speech.js**: Text-to-speech integration
+
+**Data Integration:**
+- **wikipedia.js**: Wikipedia API integration (articles, extracts, images, metadata)
+- **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
+- **wikidata.js**: Wikidata integration (structured data, image fallback)
 - **text.js**: Text processing utilities
 
 ### UI Components (`src/components/`)
@@ -92,17 +105,28 @@ The app is configured for Android deployment through Capacitor:
 - Image URLs and metadata
 - Multi-language support
 
-### OpenStreetMap (Nominatim)
+### OpenStreetMap (Nominatim & Overpass)
 
 - Reverse geocoding for addresses
-- Additional place data and metadata
+- POI data (amenities, tourism, historic, man-made, leisure)
+- Map overlays (water, green spaces, commercial activity)
 - Overpass API for detailed place information
+- 15-minute localStorage caching with automatic cleanup
+
+### Wikidata
+
+- Structured entity data (45+ properties: architecture, events, physical characteristics)
+- Image fallback for places without Wikipedia images
+- Enhanced context for AI fact extraction
+- Entity label resolution for human-readable data
 
 ### OpenAI Integration
 
 - GPT-powered place analysis and storytelling
+- Intelligent place classification (25+ categories)
+- Multi-language translation and deduplication
 - Content generation based on user preferences
-- Intelligent place categorization and rating
+- Structured fact extraction from articles
 
 ## User Personalization
 
@@ -139,13 +163,43 @@ build/                # Production build output
 static/               # Static assets
 ```
 
+## Data Processing Pipeline
+
+The application processes location data through 9 distinct stages:
+
+1. **Location Acquisition**: GPS, random location, or search-based coordinates
+2. **Parallel Data Fetching**: Concurrent Wikipedia, OSM, and map overlay requests
+3. **Data Merging**: Combines Wikipedia and OSM data by matching place titles
+4. **Deduplication & Translation**: AI-powered grouping using Levenshtein distance
+5. **Content Enrichment**: Wikipedia extracts for all places
+6. **AI Analysis**: Classification, labeling, and importance rating
+7. **Rating & Categorization**: Star-based rating and filtering into here/nearby/surrounding
+8. **Metadata Loading**: Images (Wikipedia → Wikidata fallback), articles, AI insights
+9. **Story Generation**: Background pregeneration with Wikidata-enhanced context
+
 ## Performance Considerations
 
-- Efficient place loading with parallel API calls
-- Image lazy loading and thumbnail optimization
-- Local caching of user preferences
-- Progressive place analysis with loading states
-- Optimized bundle size with Vite
+**Parallel Processing:**
+- All API calls use `Promise.all()` for concurrent execution
+- Map overlays load independently in background
+- Image loading (thumbnails + full-size) happens asynchronously
+
+**Multi-level Caching:**
+- **OSM places & maps**: 15-minute localStorage cache with max 50 entries
+- **AI analysis results**: Persistent localStorage with TTL-based cleanup
+- **AI facts & insights**: Content-based cache keys for cross-session reuse
+- **User preferences**: Persistent localStorage
+
+**Progressive Loading:**
+- Core place data loads first
+- Images load progressively (Wikipedia first, Wikidata fallback)
+- Articles and insights load in background
+- Story segments pregenerated for instant continuation
+
+**Smart Image Selection:**
+- Relevance scoring algorithm for Wikipedia images
+- Metadata extraction (license, artist, source)
+- Thumbnail optimization (100px) and full-size (500px) variants
 
 ## Security & Privacy
 
