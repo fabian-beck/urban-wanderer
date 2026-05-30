@@ -348,15 +348,8 @@ function rate() {
 
 async function loadMetadata() {
 	// Load images asynchronously and trigger store updates when complete
-	// 1. Try Wikipedia images first
-	loadWikipediaImageUrls(get(places), 'imageThumb', 100, get(preferences).lang).then(() => {
-		// 2. Try Wikidata for places without images
-		loadWikidataImages(get(places), 'imageThumb', 100).then(() => places.set(get(places)));
-	});
-	loadWikipediaImageUrls(get(places), 'image', 500, get(preferences).lang).then(() => {
-		// 2. Try Wikidata for places without images
-		loadWikidataImages(get(places), 'image', 500).then(() => places.set(get(places)));
-	});
+	loadPlaceImages('imageThumb', 100);
+	loadPlaceImages('image', 500);
 
 	await Promise.all([
 		loadWikipediaArticleTexts(get(placesHere), get(preferences).lang),
@@ -373,6 +366,26 @@ async function loadMetadata() {
 			place.insights = await extractInsightsFromArticle(place.article, get(preferences));
 		})
 	);
+}
+
+async function loadPlaceImages(attribute, size) {
+	try {
+		// 1. Try Wikipedia images first
+		await loadWikipediaImageUrls(get(places), attribute, size, get(preferences).lang);
+	} catch (error) {
+		console.error(`Could not load Wikipedia ${attribute} data:`, error);
+	} finally {
+		places.set(get(places));
+	}
+
+	try {
+		// 2. Try Wikidata for places without images
+		await loadWikidataImages(get(places), attribute, size);
+	} catch (error) {
+		console.error(`Could not load Wikidata ${attribute} data:`, error);
+	} finally {
+		places.set(get(places));
+	}
 }
 
 function mergePlaces(placesTmp, placesOsm) {

@@ -227,81 +227,112 @@ async function selectBestImageForPlace(images, place, size, lang) {
 		`Selected best image for ${place.title}: "${bestImage.filename}" with score ${bestImage.score}`
 	);
 
-	return bestImage.url;
+	return bestImage;
 }
 
 export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 	await Promise.all(
 		places.map(async (place) => {
-			let response;
-			if (place.wikipedia) {
-				const placeLang = place.wikipedia.split(':')[0];
-				let placeTitle = place.wikipedia.split(':')[1];
+			try {
+				let response;
+				let imageLang = place.lang || lang;
+				if (place.wikipedia) {
+					const separatorIndex = place.wikipedia.indexOf(':');
+					if (separatorIndex === -1) {
+						return;
+					}
+					const placeLang = place.wikipedia.slice(0, separatorIndex);
+					let placeTitle = place.wikipedia.slice(separatorIndex + 1);
+					imageLang = placeLang;
 
-				if (placeTitle.includes('#')) {
-					placeTitle = placeTitle.split('#')[0];
-					console.log(
-						`Stripped anchor from Wikipedia reference for image loading: ${place.wikipedia} → ${placeLang}:${placeTitle}`
+					if (placeTitle.includes('#')) {
+						placeTitle = placeTitle.split('#')[0];
+						console.log(
+							`Stripped anchor from Wikipedia reference for image loading: ${place.wikipedia} → ${placeLang}:${placeTitle}`
+						);
+					}
+
+					response = await fetch(
+						`https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(placeTitle)}&origin=*&pithumbsize=${size}`
+					);
+				} else if (place.pageid) {
+					response = await fetch(
+						`https://${imageLang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=${size}`
 					);
 				}
+				if (!response) {
+					return;
+				}
+				if (!response.ok) {
+					console.error(
+						`Failed to fetch ${attribute} for place: ${place.title}. HTTP status: ${response.status}`
+					);
+					return;
+				}
+				const data = await response.json();
+				const page = Object.values(data.query?.pages || {})[0];
+				if (!page || page.missing) {
+					return;
+				}
+				const pageid = page.pageid || place.pageid;
+				if (page.thumbnail) {
+					place[attribute] = page.thumbnail?.source;
 
-				response = await fetch(
-					`https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${placeTitle}&origin=*&pithumbsize=${size}`
-				);
-			} else if (place.pageid) {
-				response = await fetch(
-					`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=pageimages&pithumbsize=${size}`
-				);
-			}
-			if (!response) {
-				return;
-			}
-			const data = await response.json();
-			const pageid = Object.keys(data.query.pages)[0];
-			if (data.query.pages[pageid].thumbnail) {
-				place[attribute] = data.query.pages[pageid].thumbnail?.source;
-
-				// Also fetch metadata for the primary image
-				const pageimageTitle = data.query.pages[pageid].pageimage;
-				if (pageimageTitle) {
-					try {
-						const metadataResponse = await fetch(
-							`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&titles=File:${encodeURIComponent(pageimageTitle)}&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=${size}`
+					// Also fetch metadata for the primary image
+					const pageimageTitle = page.pageimage;
+					if (pageimageTitle) {
+						try {
+							const metadataResponse = await fetch(
+								`https://${imageLang}.wikipedia.org/w/api.php?action=query&format=json&titles=File:${encodeURIComponent(pageimageTitle)}&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=${size}`
+							);
+							const metadataData = await metadataResponse.json();
+							const metadataPage = Object.values(metadataData.query.pages)[0];
+							if (metadataPage.imageinfo && metadataPage.imageinfo.length > 0) {
+								const imageinfo = metadataPage.imageinfo[0];
+								const extmetadata = imageinfo.extmetadata || {};
+								place.imageSource = imageinfo.descriptionurl;
+								place.imageLicense =
+									extmetadata.LicenseShortName?.value || extmetadata.License?.value;
+								place.imageLicenseUrl = extmetadata.LicenseUrl?.value;
+								place.imageArtist = extmetadata.Artist?.value || extmetadata.Credit?.value;
+							}
+						} catch (error) {
+							console.error(`Error fetching metadata for ${pageimageTitle}:`, error);
+						}
+					}
+				} else {
+					// load images from wiki page and select best match based on captions
+					if (!pageid) {
+						return;
+					}
+					const response2 = await fetch(
+						`https://${imageLang}.wikipedia.org/w/api.php?action=query&format=json&prop=images&pageids=${pageid}&origin=*&imlimit=10`
+					);
+					if (!response2.ok) {
+						console.error(
+							`Failed to fetch fallback images for place: ${place.title}. HTTP status: ${response2.status}`
 						);
-						const metadataData = await metadataResponse.json();
-						const metadataPage = Object.values(metadataData.query.pages)[0];
-						if (metadataPage.imageinfo && metadataPage.imageinfo.length > 0) {
-							const imageinfo = metadataPage.imageinfo[0];
-							const extmetadata = imageinfo.extmetadata || {};
-							place.imageSource = imageinfo.descriptionurl;
-							place.imageLicense =
-								extmetadata.LicenseShortName?.value || extmetadata.License?.value;
-							place.imageLicenseUrl = extmetadata.LicenseUrl?.value;
-							place.imageArtist = extmetadata.Artist?.value || extmetadata.Credit?.value;
-						}
-					} catch (error) {
-						console.error(`Error fetching metadata for ${pageimageTitle}:`, error);
+						return;
 					}
-				}
-			} else {
-				// load images from wiki page and select best match based on captions
-				const response2 = await fetch(
-					`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&prop=images&pageids=${place.pageid}&origin=*&imlimit=10`
-				);
-				const data2 = await response2.json();
-				const images = data2.query.pages[place.pageid]?.images;
-				if (images) {
-					const bestImage = await selectBestImageForPlace(images, place, size, place.lang || lang);
-					if (bestImage) {
-						place[attribute] = bestImage.url;
-						if (bestImage.metadata) {
-							place.imageSource = bestImage.metadata.source;
-							place.imageLicense = bestImage.metadata.license;
-							place.imageLicenseUrl = bestImage.metadata.licenseUrl;
-							place.imageArtist = bestImage.metadata.artist;
+					const data2 = await response2.json();
+					const images =
+						data2.query?.pages?.[pageid]?.images ||
+						Object.values(data2.query?.pages || {})[0]?.images;
+					if (images) {
+						const bestImage = await selectBestImageForPlace(images, place, size, imageLang);
+						if (bestImage) {
+							place[attribute] = bestImage.url;
+							if (bestImage.metadata) {
+								place.imageSource = bestImage.metadata.source;
+								place.imageLicense = bestImage.metadata.license;
+								place.imageLicenseUrl = bestImage.metadata.licenseUrl;
+								place.imageArtist = bestImage.metadata.artist;
+							}
 						}
 					}
 				}
+			} catch (error) {
+				console.error(`Error loading ${attribute} for ${place.title}:`, error);
 			}
 		})
 	);

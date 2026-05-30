@@ -20,9 +20,9 @@
 		<div class="w-row -ml-2 flex w-full space-x-2">
 			<div class="h-16 w-16">
 				{#if place.imageThumb}
-					<!-- svelte-ignore a11y-missing-attribute -->
 					<img
 						src={place.imageThumb}
+						alt={place.title}
 						class="!h-16 !w-16 !max-w-16 rounded-full border-2 object-cover object-center"
 					/>
 				{:else}
