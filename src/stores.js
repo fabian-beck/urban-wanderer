@@ -22,6 +22,7 @@ import {
 	loadOsmGreenMap,
 	loadOsmActivityMap
 } from './util/osm.js';
+import { setDebugConsoleEnabled } from './util/debug-console.js';
 
 let prefsInitialized = false;
 
@@ -33,6 +34,7 @@ const DEFAULT_PREFERENCES = {
 	lang: 'de',
 	sourceLanguages: ['de', 'en'],
 	audio: true,
+	debug: false,
 	aiModelSimple: AI_MODELS.DEFAULT_SIMPLE,
 	aiModelAdvanced: AI_MODELS.DEFAULT_ADVANCED
 };
@@ -129,6 +131,7 @@ const loadPreferences = () => {
 
 // Subscribe to preferences store to save changes
 preferences.subscribe((prefs) => {
+	setDebugConsoleEnabled(prefs.debug);
 	if (!prefsInitialized) {
 		prefsInitialized = true;
 		return;

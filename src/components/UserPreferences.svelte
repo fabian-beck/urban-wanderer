@@ -1,4 +1,5 @@
 <script>
+	import { afterUpdate } from 'svelte';
 	import { Label, Range, Checkbox, Modal, Select, Toggle, Button } from 'flowbite-svelte';
 	import { preferences } from '../stores.js';
 	import { places } from '../stores.js';
@@ -12,6 +13,7 @@
 	import { clearAnalysisCache } from '../util/ai-analysis.js';
 	import { clearInsightsCache, clearFactsCache } from '../util/ai-facts.js';
 	import { clearOsmCache } from '../util/osm.js';
+	import { clearDebugConsole, debugLogs } from '../util/debug-console.js';
 
 	export let visible = false;
 	const langOptions = [
@@ -24,6 +26,23 @@
 	}));
 
 	let cacheCleared = false;
+	let debugLogPanel;
+	let previousDebugVisible = false;
+	let previousLogCount = 0;
+
+	afterUpdate(() => {
+		const shouldScroll =
+			debugLogPanel &&
+			$preferences.debug &&
+			($debugLogs.length !== previousLogCount || !previousDebugVisible);
+
+		previousDebugVisible = $preferences.debug;
+		previousLogCount = $debugLogs.length;
+
+		if (shouldScroll) {
+			debugLogPanel.scrollTop = debugLogPanel.scrollHeight;
+		}
+	});
 
 	function handleClearCache() {
 		clearAnalysisCache();
@@ -113,5 +132,41 @@
 		>
 			{cacheCleared ? '✓ Caches Cleared!' : 'Clear Cached Data'}
 		</Button>
+	</div>
+
+	<div class="mt-6 border-t border-gray-200 pt-4">
+		<div class="flex items-center justify-between gap-4">
+			<Label>Debug mode</Label>
+			<Toggle bind:checked={$preferences.debug} />
+		</div>
+
+		{#if $preferences.debug}
+			<div class="mt-4 flex items-center justify-between gap-4">
+				<Label>Console logs ({$debugLogs.length})</Label>
+				<Button color="alternative" size="xs" on:click={clearDebugConsole}>Clear</Button>
+			</div>
+			<div
+				bind:this={debugLogPanel}
+				class="mt-2 max-h-80 overflow-auto rounded border border-gray-200 bg-gray-950 p-3 font-mono text-xs text-gray-100"
+			>
+				{#if $debugLogs.length}
+					{#each $debugLogs as log (log.id)}
+						<div class="mb-2 border-b border-gray-800 pb-2 last:mb-0 last:border-b-0 last:pb-0">
+							<span class="text-gray-400">{log.timestamp}</span>
+							<span
+								class={log.level === 'error'
+									? 'text-red-300'
+									: log.level === 'warn'
+										? 'text-yellow-300'
+										: 'text-blue-300'}>[{log.level}]</span
+							>
+							<span class="whitespace-pre-wrap break-words">{log.message}</span>
+						</div>
+					{/each}
+				{:else}
+					<div class="text-gray-400">No logs yet.</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </Modal>
