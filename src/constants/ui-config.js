@@ -75,16 +75,18 @@ export const FAMILIARITY = [
 
 export const AI_MODELS = {
 	SIMPLE: [
-		{ value: 'gpt-5-nano', name: 'GPT-5 Nano (fastest)' },
-		{ value: 'gpt-5-mini', name: 'GPT-5 Mini (default)' },
-		{ value: 'gpt-5', name: 'GPT-5 (best quality)' }
+		{ value: 'gpt-5.4-nano', name: 'GPT-5.4 Nano (fastest)' },
+		{ value: 'gpt-5.4-mini', name: 'GPT-5.4 Mini (default)' },
+		{ value: 'gpt-5.4', name: 'GPT-5.4 (higher quality)' },
+		{ value: 'gpt-5.5', name: 'GPT-5.5 (best quality)' }
 	],
 	ADVANCED: [
-		{ value: 'gpt-5-mini', name: 'GPT-5 Mini (faster)' },
-		{ value: 'gpt-5', name: 'GPT-5 (default)' }
+		{ value: 'gpt-5.4-mini', name: 'GPT-5.4 Mini (faster)' },
+		{ value: 'gpt-5.4', name: 'GPT-5.4 (default)' },
+		{ value: 'gpt-5.5', name: 'GPT-5.5 (best quality)' }
 	],
-	DEFAULT_SIMPLE: 'gpt-5-mini',
-	DEFAULT_ADVANCED: 'gpt-5'
+	DEFAULT_SIMPLE: 'gpt-5.4-mini',
+	DEFAULT_ADVANCED: 'gpt-5.4'
 };
 
-export const AI_REASONING_EFFORT = 'minimal';
+export const AI_REASONING_EFFORT = 'low';

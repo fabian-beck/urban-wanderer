@@ -2,7 +2,7 @@ import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
 import { nArticles } from './constants/core.js';
 import { CLASSES } from './constants/place-classes.js';
-import { LABELS } from './constants/ui-config.js';
+import { AI_MODELS, LABELS } from './constants/ui-config.js';
 import { analyzePlaces } from './util/ai-analysis.js';
 import { groupDuplicatePlaces } from './util/ai-translation.js';
 import { generateStory } from './util/ai-story.js';
@@ -24,6 +24,51 @@ import {
 } from './util/osm.js';
 
 let prefsInitialized = false;
+
+const DEFAULT_PREFERENCES = {
+	radius: 500,
+	labels: LABELS.map((label) => label.value),
+	guideCharacter: 'friendly and helpful',
+	familiarity: 'unfamiliar',
+	lang: 'de',
+	sourceLanguages: ['de', 'en'],
+	audio: true,
+	aiModelSimple: AI_MODELS.DEFAULT_SIMPLE,
+	aiModelAdvanced: AI_MODELS.DEFAULT_ADVANCED
+};
+
+const LEGACY_AI_MODEL_MIGRATIONS = {
+	simple: {
+		'gpt-5-nano': 'gpt-5.4-nano',
+		'gpt-5-mini': AI_MODELS.DEFAULT_SIMPLE,
+		'gpt-5': 'gpt-5.4'
+	},
+	advanced: {
+		'gpt-5-mini': 'gpt-5.4-mini',
+		'gpt-5': AI_MODELS.DEFAULT_ADVANCED
+	}
+};
+
+function getValidAiModel(type, value) {
+	const options = type === 'advanced' ? AI_MODELS.ADVANCED : AI_MODELS.SIMPLE;
+	const fallback = type === 'advanced' ? AI_MODELS.DEFAULT_ADVANCED : AI_MODELS.DEFAULT_SIMPLE;
+	const legacyValue = LEGACY_AI_MODEL_MIGRATIONS[type]?.[value];
+
+	if (legacyValue) {
+		return legacyValue;
+	}
+	if (options.some((option) => option.value === value)) {
+		return value;
+	}
+	return fallback;
+}
+
+function normalizePreferences(prefs) {
+	const normalized = { ...DEFAULT_PREFERENCES, ...prefs };
+	normalized.aiModelSimple = getValidAiModel('simple', normalized.aiModelSimple);
+	normalized.aiModelAdvanced = getValidAiModel('advanced', normalized.aiModelAdvanced);
+	return normalized;
+}
 
 // Coordinates stores
 function createCoordinates() {
@@ -59,17 +104,7 @@ function createCoordinates() {
 export const coordinates = createCoordinates();
 
 // Uers preferences store
-export const preferences = writable({
-	radius: 500,
-	labels: LABELS.map((label) => label.value),
-	guideCharacter: 'friendly and helpful',
-	familiarity: 'unfamiliar',
-	lang: 'de',
-	sourceLanguages: ['de', 'en'],
-	audio: true,
-	aiModelSimple: 'gpt-5-mini',
-	aiModelAdvanced: 'gpt-5'
-});
+export const preferences = writable({ ...DEFAULT_PREFERENCES });
 
 // Function to save preferences to local storage
 const savePreferences = (prefs) => {
@@ -84,8 +119,10 @@ const loadPreferences = () => {
 	if (typeof localStorage !== 'undefined') {
 		const storedPrefs = localStorage.getItem('preferences');
 		if (storedPrefs) {
-			console.log('Loading preferences:', JSON.parse(storedPrefs));
-			preferences.set(JSON.parse(storedPrefs));
+			const parsedPrefs = JSON.parse(storedPrefs);
+			const normalizedPrefs = normalizePreferences(parsedPrefs);
+			console.log('Loading preferences:', normalizedPrefs);
+			preferences.set(normalizedPrefs);
 		}
 	}
 };
