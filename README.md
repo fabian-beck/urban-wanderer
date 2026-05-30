@@ -45,11 +45,32 @@ You can preview the production build with `npm run preview`.
 
 # Run as Android App (supported by Capacitor)
 
-After building, sync the code to the capicitor app.
+## Build a Debug APK
 
-```bash
+Make sure Android Studio is installed and the Android SDK path in `android/local.properties` points to an SDK location owned by your Windows user, for example:
 
-npx cap sync
+```properties
+sdk.dir=C\:\\Users\\your-user\\AppData\\Local\\Android\\Sdk
 ```
 
-Use Android Studio to run or build the app (`android` directory).
+Then build the APK with one command:
+
+```bash
+npm run build:apk
+```
+
+This command builds the Svelte app, syncs the web output into Capacitor, and runs Gradle's `assembleDebug` task. On Windows, the script automatically uses Android Studio's bundled JDK from `C:\Program Files\Android\Android Studio\jbr` when `JAVA_HOME` is not set.
+
+The generated debug APK is written to:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+To build an unsigned release APK instead, run:
+
+```bash
+npm run build:apk -- --release
+```
+
+You can still open the `android` directory in Android Studio to run the app on an emulator or device.
