@@ -1,5 +1,7 @@
 <script>
-	import { Modal } from 'flowbite-svelte';
+	import Alert from 'flowbite-svelte/Alert.svelte';
+	import Modal from 'flowbite-svelte/Modal.svelte';
+	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { marked } from 'marked';
 	import { extractHistoricEvents } from '../util/ai-history.js';
 	import {
@@ -15,7 +17,6 @@
 	import { CLASSES } from '../constants/place-classes.js';
 	import { errorMessage, events } from '../stores.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';
-	import { Spinner, Alert } from 'flowbite-svelte';
 
 	export let visible = false;
 

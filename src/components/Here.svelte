@@ -1,7 +1,8 @@
 <script>
 	import { placesHere, placesSurrounding } from '../stores';
 	import PlaceItem from './PlaceItem.svelte';
-	import { Listgroup, Alert } from 'flowbite-svelte';
+	import Alert from 'flowbite-svelte/Alert.svelte';
+	import Listgroup from 'flowbite-svelte/Listgroup.svelte';
 	import { FlagOutline } from 'flowbite-svelte-icons';
 </script>
 

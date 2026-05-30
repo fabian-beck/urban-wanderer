@@ -1,16 +1,14 @@
 <script>
 	import { appName } from '../constants/core.js';
-	import {
-		Navbar,
-		NavBrand,
-		NavHamburger,
-		NavUl,
-		NavLi,
-		Modal,
-		Button,
-		Input,
-		Label
-	} from 'flowbite-svelte';
+	import Button from 'flowbite-svelte/Button.svelte';
+	import Input from 'flowbite-svelte/Input.svelte';
+	import Label from 'flowbite-svelte/Label.svelte';
+	import Modal from 'flowbite-svelte/Modal.svelte';
+	import NavBrand from 'flowbite-svelte/NavBrand.svelte';
+	import NavHamburger from 'flowbite-svelte/NavHamburger.svelte';
+	import NavLi from 'flowbite-svelte/NavLi.svelte';
+	import Navbar from 'flowbite-svelte/Navbar.svelte';
+	import NavUl from 'flowbite-svelte/NavUl.svelte';
 	import UserPreferences from './UserPreferences.svelte';
 
 	export let updateRandom;

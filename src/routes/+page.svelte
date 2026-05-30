@@ -13,7 +13,10 @@
 	import Header from '../components/Header.svelte';
 	import Location from '../components/Position.svelte';
 	import Nearby from '../components/Nearby.svelte';
-	import { Alert, CloseButton, Spinner, Button } from 'flowbite-svelte';
+	import Alert from 'flowbite-svelte/Alert.svelte';
+	import Button from 'flowbite-svelte/Button.svelte';
+	import CloseButton from 'flowbite-svelte/CloseButton.svelte';
+	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { appName } from '../constants/core.js';
 	import Here from '../components/Here.svelte';
 	import { onMount } from 'svelte';
@@ -23,10 +26,10 @@
 	import { preferences } from '../stores.js';
 	import { LABELS, FAMILIARITY, LANGUAGES } from '../constants/ui-config.js';
 
-	export let params = {};
-
-	$: familiarityLabel = FAMILIARITY.find((f) => f.value === $preferences.familiarity)?.name || $preferences.familiarity;
-	$: languageLabel = LANGUAGES.find((l) => l.value === $preferences.lang)?.name || $preferences.lang;
+	$: familiarityLabel =
+		FAMILIARITY.find((f) => f.value === $preferences.familiarity)?.name || $preferences.familiarity;
+	$: languageLabel =
+		LANGUAGES.find((l) => l.value === $preferences.lang)?.name || $preferences.lang;
 
 	let preferencesVisible = false;
 
@@ -122,9 +125,9 @@
 				<p class="mt-4 text-xs text-gray-500">
 					Interests: {LABELS.filter((label) => $preferences.labels.includes(label.value))
 						.map((label) => label.name.split(' ')[0])
-						.join(' ')}, Familiarity: <strong>{familiarityLabel}</strong>, Guide: <strong
-						>{$preferences.guideCharacter}</strong
-					>, Language: <strong>{languageLabel}</strong>, Radius: <strong>{$preferences.radius}m</strong>
+						.join(' ')}, Familiarity: <strong>{familiarityLabel}</strong>, Guide:
+					<strong>{$preferences.guideCharacter}</strong>, Language:
+					<strong>{languageLabel}</strong>, Radius: <strong>{$preferences.radius}m</strong>
 				</p>
 			</div>
 		{/if}

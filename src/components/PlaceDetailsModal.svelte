@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
-	import { Button, Modal } from 'flowbite-svelte';
+	import Button from 'flowbite-svelte/Button.svelte';
+	import Modal from 'flowbite-svelte/Modal.svelte';
 	import {
 		FileOutline,
 		MapPinAltOutline,

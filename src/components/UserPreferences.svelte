@@ -1,6 +1,12 @@
 <script>
 	import { afterUpdate } from 'svelte';
-	import { Label, Range, Checkbox, Modal, Select, Toggle, Button } from 'flowbite-svelte';
+	import Button from 'flowbite-svelte/Button.svelte';
+	import Checkbox from 'flowbite-svelte/Checkbox.svelte';
+	import Label from 'flowbite-svelte/Label.svelte';
+	import Modal from 'flowbite-svelte/Modal.svelte';
+	import Range from 'flowbite-svelte/Range.svelte';
+	import Select from 'flowbite-svelte/Select.svelte';
+	import Toggle from 'flowbite-svelte/Toggle.svelte';
 	import { preferences } from '../stores.js';
 	import { places } from '../stores.js';
 	import {

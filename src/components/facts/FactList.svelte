@@ -8,7 +8,7 @@
 	import MaterialFact from './MaterialFact.svelte';
 	import { extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
-	import { Spinner } from 'flowbite-svelte';
+	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../../constants/place-classes.js';
 	import { HISTORICAL_EVENTS } from '../../constants/reference-data.js';
 	import { preferences } from '../../stores.js';
@@ -25,9 +25,17 @@
 
 	// Define which properties represent years
 	const YEAR_PROPERTIES = ['constructed', 'created', 'discovered', 'established'];
-	
+
 	// Define which properties represent people counts
-	const PEOPLE_COUNT_PROPERTIES = ['population', 'student_count', 'employee_count', 'capacity', 'visit_count', 'yearly_passenger_count', 'bed_count'];
+	const PEOPLE_COUNT_PROPERTIES = [
+		'population',
+		'student_count',
+		'employee_count',
+		'capacity',
+		'visit_count',
+		'yearly_passenger_count',
+		'bed_count'
+	];
 
 	// Track container width changes with debounced updates
 	let debouncedWidth = containerWidth;
@@ -387,7 +395,7 @@
 							if (Array.isArray(value) && value.length === 0) {
 								return;
 							}
-							
+
 							const propDefinition = PROPERTIES[key];
 							const label = formatLabel(key);
 							const displayValue = value;
@@ -449,7 +457,7 @@
 							propertyKey={fact.key}
 							widthClass={`col-span-${fact.widthSpan}`}
 							containerWidth={debouncedWidth}
-							place={place}
+							{place}
 						/>
 					{:else if PEOPLE_COUNT_PROPERTIES.includes(fact.key)}
 						<NumberOfPeopleFact

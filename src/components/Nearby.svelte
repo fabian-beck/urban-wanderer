@@ -1,5 +1,6 @@
 <script>
-	import { Listgroup, Alert } from 'flowbite-svelte';
+	import Alert from 'flowbite-svelte/Alert.svelte';
+	import Listgroup from 'flowbite-svelte/Listgroup.svelte';
 	import PlaceItem from './PlaceItem.svelte';
 	import { placesNearby, preferences } from '../stores.js';
 	import { LandmarkOutline } from 'flowbite-svelte-icons';

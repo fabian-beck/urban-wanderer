@@ -1,5 +1,9 @@
 <script>
-	import { Modal } from 'flowbite-svelte';
+	import Alert from 'flowbite-svelte/Alert.svelte';
+	import Button from 'flowbite-svelte/Button.svelte';
+	import CloseButton from 'flowbite-svelte/CloseButton.svelte';
+	import Modal from 'flowbite-svelte/Modal.svelte';
+	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { marked } from 'marked';
 	import { generateStory } from '../util/ai-story.js';
 	import { textToSpeech } from '../util/ai-speech.js';
@@ -24,7 +28,6 @@
 		placeDetailsVisible
 	} from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
-	import { Button, Spinner, Alert, CloseButton } from 'flowbite-svelte';
 
 	let loading = false;
 

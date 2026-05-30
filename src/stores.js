@@ -12,7 +12,8 @@ import {
 	loadWikipediaArticleTexts,
 	loadWikipediaExtracts,
 	getRandomWikipediaPlaceCoordinates,
-	loadWikipediaImageUrls
+	loadWikipediaImageUrls,
+	searchWikipediaPlaceCoordinates
 } from './util/wikipedia.js';
 import { loadWikidataImages } from './util/wikidata.js';
 import {
@@ -521,7 +522,6 @@ export async function updateLocation(coords) {
 export async function searchForPlace(placeName) {
 	try {
 		loading.set(true);
-		const { searchWikipediaPlaceCoordinates } = await import('./util/wikipedia.js');
 		loadingMessage.set(`Searching for "${placeName}"...`);
 		const placeData = await searchWikipediaPlaceCoordinates(placeName, get(preferences).lang);
 

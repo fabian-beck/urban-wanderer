@@ -1,7 +1,7 @@
 <script>
 	import { generateLocationComment } from '../util/ai-comment.js';
 	import { placesHere, placesSurrounding, coordinates, preferences } from '../stores.js';
-	import { Spinner } from 'flowbite-svelte';
+	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { AnnotationOutline } from 'flowbite-svelte-icons';
 
 	let comment = '';
