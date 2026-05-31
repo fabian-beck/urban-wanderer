@@ -25,11 +25,11 @@
 </script>
 
 <div
-	class="fixed bottom-0 left-0 right-0 m-2 flex min-h-10 items-center justify-center rounded-lg bg-gray-100 p-4 pt-6"
+	class="fixed bottom-0 left-0 right-0 m-2 flex min-h-10 items-center justify-center rounded-lg border border-slate-200/70 bg-slate-100/75 p-4 pt-6 shadow-lg shadow-gray-900/10 backdrop-blur-md"
 >
 	{#if $coordinates}
 		<div
-			class="absolute -top-12 right-0 m-2 flex items-center justify-center rounded-full bg-gray-200 p-1"
+			class="absolute -top-12 right-0 m-2 flex items-center justify-center rounded-full border border-slate-200/70 bg-slate-100/75 p-1 shadow-md shadow-gray-900/10 backdrop-blur-md"
 		>
 			<Button
 				on:click={() => (storyVisible = true)}
@@ -43,7 +43,7 @@
 			</Button>
 		</div>
 		<div
-			class="absolute -top-12 right-16 m-2 flex items-center justify-center rounded-full bg-gray-200 p-1"
+			class="absolute -top-12 right-16 m-2 flex items-center justify-center rounded-full border border-slate-200/70 bg-slate-100/75 p-1 shadow-md shadow-gray-900/10 backdrop-blur-md"
 		>
 			<Button
 				on:click={() => (historyVisible = true)}
