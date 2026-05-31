@@ -104,7 +104,7 @@ Accepted results undergo the same title cleanup (strip parentheses, split on com
 
 **Source:** [src/util/osm.js](../src/util/osm.js) `loadOsmPlaces()`  
 **Search radius:** 150 m (hardcoded)  
-**Cache:** 15-minute TTL, key format `osm_cache_places_{lat4dp}_{lon4dp}_150`
+**Cache:** 15-minute TTL, key format `osm_cache_places_{lat3dp}_{lon3dp}_150`
 
 The Overpass query targets six OSM tag categories:
 
@@ -132,7 +132,12 @@ For each element type (node, way, relation) × each category, the query uses `ar
 }
 ```
 
-OSM data is only cached if the result set is non-empty. On `QuotaExceededError`, the cleanup routine removes the oldest entries until the total drops to 50.
+Successful OSM responses are cached even when the result set is empty, so sparse locations do not repeatedly hit Overpass. On `QuotaExceededError`, the cleanup routine removes the oldest entries until the total drops to 50.
+
+All Overpass requests go through `loadOverpassJson()`:
+- Requests are serialized through a shared queue with at least 1.5 s between request completions and the next start.
+- Identical in-flight Overpass queries reuse the same promise instead of starting duplicate HTTP requests.
+- HTTP 429 responses set a global cooldown, using `Retry-After` when provided and falling back to 60 s.
 
 ---
 
@@ -561,10 +566,10 @@ Fetches shops, food and drink venues, entertainment amenities, and commercial la
 
 | Cache | Storage | TTL | Key format | Max entries |
 |-------|---------|-----|------------|-------------|
-| OSM places | localStorage | 15 min | `osm_cache_places_{lat4dp}_{lon4dp}_150` | 50 total OSM entries |
-| OSM water map | localStorage | 15 min | `osm_cache_watermap_{lat4dp}_{lon4dp}_500` | (shared 50 limit) |
-| OSM green map | localStorage | 15 min | `osm_cache_greenmap_{lat4dp}_{lon4dp}_500` | (shared 50 limit) |
-| OSM activity map | localStorage | 15 min | `osm_cache_activitymap_{lat4dp}_{lon4dp}_600` | (shared 50 limit) |
+| OSM places | localStorage | 15 min | `osm_cache_places_{lat3dp}_{lon3dp}_150` | 50 total OSM entries |
+| OSM water map | localStorage | 15 min | `osm_cache_watermap_{lat3dp}_{lon3dp}_500` | (shared 50 limit) |
+| OSM green map | localStorage | 15 min | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500` | (shared 50 limit) |
+| OSM activity map | localStorage | 15 min | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600` | (shared 50 limit) |
 | Place analysis | localStorage | 7 days | `place.title` (within `urban-wanderer-analysis-cache`) | unbounded |
 | Insights | localStorage | 7 days | `{article[0:100]}|{lang}` (within `urban-wanderer-insights-cache`) | unbounded |
 | Facts | localStorage | 7 days | `{title}|{sortedPropertyNames}|{lang}` (within `urban-wanderer-facts-cache`) | unbounded |

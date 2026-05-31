@@ -3,11 +3,98 @@ import { GRID_ARRAY_SIZE, GRID_CELL_SIZE, OSM_SEARCH_RADIUS } from '../constants
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 const CACHE_PREFIX = 'osm_cache_';
 const MAX_CACHE_ENTRIES = 50;
+const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_MIN_REQUEST_INTERVAL = 1500;
+const OVERPASS_DEFAULT_COOLDOWN = 60 * 1000;
+
+let overpassQueue = Promise.resolve();
+let overpassLastRequestAt = 0;
+let overpassCooldownUntil = 0;
+const overpassRequestsInFlight = new Map();
 
 function getCacheKey(coordinates, queryType, radius) {
-	const lat = coordinates.latitude.toFixed(4);
-	const lon = coordinates.longitude.toFixed(4);
+	const lat = coordinates.latitude.toFixed(3);
+	const lon = coordinates.longitude.toFixed(3);
 	return `${CACHE_PREFIX}${queryType}_${lat}_${lon}_${radius}`;
+}
+
+function wait(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfter(header) {
+	if (!header) return null;
+
+	const seconds = Number(header);
+	if (Number.isFinite(seconds)) {
+		return Math.max(0, seconds * 1000);
+	}
+
+	const retryDate = Date.parse(header);
+	if (!Number.isNaN(retryDate)) {
+		return Math.max(0, retryDate - Date.now());
+	}
+
+	return null;
+}
+
+async function runOverpassRequest(overpassQuery) {
+	const now = Date.now();
+	if (now < overpassCooldownUntil) {
+		const secondsRemaining = Math.ceil((overpassCooldownUntil - now) / 1000);
+		throw new Error(`Overpass API cooling down after rate limit; retry in ${secondsRemaining}s`);
+	}
+
+	const delay = Math.max(0, OVERPASS_MIN_REQUEST_INTERVAL - (now - overpassLastRequestAt));
+	if (delay > 0) {
+		await wait(delay);
+	}
+
+	const response = await fetch(OVERPASS_ENDPOINT, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded'
+		},
+		body: `data=${encodeURIComponent(overpassQuery)}`
+	});
+	overpassLastRequestAt = Date.now();
+
+	if (response.status === 429) {
+		const retryAfter = parseRetryAfter(response.headers.get('Retry-After'));
+		const cooldown = retryAfter ?? OVERPASS_DEFAULT_COOLDOWN;
+		overpassCooldownUntil = Date.now() + cooldown;
+		throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
+	}
+
+	if (!response.ok) {
+		throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
+	}
+
+	const text = await response.text();
+	try {
+		return JSON.parse(text);
+	} catch (parseError) {
+		console.error('Failed to parse Overpass API response:', text.substring(0, 200));
+		throw new Error('Invalid JSON response from Overpass API');
+	}
+}
+
+function loadOverpassJson(overpassQuery) {
+	const requestKey = overpassQuery.replace(/\s+/g, ' ').trim();
+	const inFlight = overpassRequestsInFlight.get(requestKey);
+	if (inFlight) {
+		console.log('[OSM API] Reusing in-flight Overpass request');
+		return inFlight;
+	}
+
+	const request = overpassQueue.then(() => runOverpassRequest(overpassQuery));
+	overpassQueue = request.catch(() => {});
+	overpassRequestsInFlight.set(requestKey, request);
+	request.then(
+		() => overpassRequestsInFlight.delete(requestKey),
+		() => overpassRequestsInFlight.delete(requestKey)
+	);
+	return request;
 }
 
 function getCachedData(key) {
@@ -148,26 +235,7 @@ out body;
 >;
 out skel qt;
 `;
-		const response = await fetch('https://overpass-api.de/api/interpreter', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded'
-			},
-			body: `data=${encodeURIComponent(overpassQuery)}`
-		});
-
-		if (!response.ok) {
-			throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
-		}
-
-		const text = await response.text();
-		let data;
-		try {
-			data = JSON.parse(text);
-		} catch (parseError) {
-			console.error('Failed to parse Overpass API response:', text.substring(0, 200));
-			throw new Error('Invalid JSON response from Overpass API');
-		}
+		const data = await loadOverpassJson(overpassQuery);
 
 		console.log('OSM response:', data);
 		const places = data.elements
@@ -200,12 +268,8 @@ out skel qt;
 			});
 
 		console.log('OSM places:', places);
-		if (places.length > 0) {
-			console.log(`[OSM Cache] Caching ${places.length} places with key: ${cacheKey}`);
-			setCachedData(cacheKey, places);
-		} else {
-			console.log('[OSM Cache] Not caching - no places found');
-		}
+		console.log(`[OSM Cache] Caching ${places.length} places with key: ${cacheKey}`);
+		setCachedData(cacheKey, places);
 		return places;
 	} catch (error) {
 		console.error('Could not load OSM places:', error);
@@ -300,26 +364,7 @@ out body;
 >;
 out skel qt;
 `;
-		const response = await fetch('https://overpass-api.de/api/interpreter', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded'
-			},
-			body: `data=${encodeURIComponent(overpassQuery)}`
-		});
-
-		if (!response.ok) {
-			throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
-		}
-
-		const text = await response.text();
-		let data;
-		try {
-			data = JSON.parse(text);
-		} catch (parseError) {
-			console.error('Failed to parse Overpass API response:', text.substring(0, 200));
-			throw new Error('Invalid JSON response from Overpass API');
-		}
+		const data = await loadOverpassJson(overpassQuery);
 
 		console.log('Water map response:', data);
 		// Helper function to determine waterway width based on OSM data
@@ -449,9 +494,7 @@ out skel qt;
 				drawThickLine(x1, y1, x2, y2, waterwayRadius, waterIntensity);
 			}
 		}
-		if (waterPolylines.length > 0) {
-			setCachedData(cacheKey, waterMapTmp);
-		}
+		setCachedData(cacheKey, waterMapTmp);
 		return waterMapTmp;
 	} catch (error) {
 		console.error('Error loading water map:', error);
@@ -557,26 +600,7 @@ out body;
 >;
 out skel qt;
 `;
-		const response = await fetch('https://overpass-api.de/api/interpreter', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded'
-			},
-			body: `data=${encodeURIComponent(overpassQuery)}`
-		});
-
-		if (!response.ok) {
-			throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
-		}
-
-		const text = await response.text();
-		let data;
-		try {
-			data = JSON.parse(text);
-		} catch (parseError) {
-			console.error('Failed to parse Overpass API response:', text.substring(0, 200));
-			throw new Error('Invalid JSON response from Overpass API');
-		}
+		const data = await loadOverpassJson(overpassQuery);
 
 		console.log('Green map response:', data);
 
@@ -688,9 +712,7 @@ out skel qt;
 			increaseGreenLevel(x, y, 0.6);
 		}
 
-		if (greenAreas.length > 0 || trees.length > 0) {
-			setCachedData(cacheKey, greenMapTmp);
-		}
+		setCachedData(cacheKey, greenMapTmp);
 		return greenMapTmp;
 	} catch (error) {
 		console.error('Error loading green map:', error);
@@ -747,26 +769,7 @@ out body;
 out skel qt;
 `;
 
-		const response = await fetch('https://overpass-api.de/api/interpreter', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded'
-			},
-			body: `data=${encodeURIComponent(overpassQuery)}`
-		});
-
-		if (!response.ok) {
-			throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
-		}
-
-		const text = await response.text();
-		let data;
-		try {
-			data = JSON.parse(text);
-		} catch (parseError) {
-			console.error('Failed to parse Overpass API response:', text.substring(0, 200));
-			throw new Error('Invalid JSON response from Overpass API');
-		}
+		const data = await loadOverpassJson(overpassQuery);
 
 		console.log('Activity map response:', data);
 
@@ -873,9 +876,7 @@ out skel qt;
 			increaseActivityLevel(x, y, 0.8);
 		}
 
-		if (activityAreas.length > 0 || activityNodes.length > 0) {
-			setCachedData(cacheKey, activityMapTmp);
-		}
+		setCachedData(cacheKey, activityMapTmp);
 		return activityMapTmp;
 	} catch (error) {
 		console.error('Error loading activity map:', error);
