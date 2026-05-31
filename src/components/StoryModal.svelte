@@ -9,6 +9,7 @@
 	import { textToSpeech } from '../util/ai-speech.js';
 	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
+	import { createLogger } from '../util/logger.js';
 	import { CLASSES } from '../constants/place-classes.js';
 	import {
 		errorMessage,
@@ -30,6 +31,7 @@
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
 
 	let loading = false;
+	const logger = createLogger('story.modal');
 
 	// Function to make marked places clickable
 	const makeClickablePlaces = (htmlContent) => {
@@ -112,7 +114,7 @@
 			// Start preloading the next story part
 			preloadNextStoryPart(newStoryTexts);
 		} catch (error) {
-			console.error('Error generating story', error);
+			logger.error('Story generation failed', error);
 			errorMessage.set('Error generating story: ' + error);
 		}
 		loading = false;

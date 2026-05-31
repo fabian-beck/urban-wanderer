@@ -14,6 +14,7 @@
 	} from '../stores.js';
 	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
+	import { createLogger } from '../util/logger.js';
 	import { CLASSES } from '../constants/place-classes.js';
 	import { errorMessage, events } from '../stores.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';
@@ -21,6 +22,7 @@
 	export let visible = false;
 
 	let loading = false;
+	const logger = createLogger('history.modal');
 
 	// Function to make place names clickable with icons
 	const makeClickablePlaces = (htmlContent) => {
@@ -102,7 +104,7 @@
 			// set events
 			events.set(eventsTmp);
 		} catch (error) {
-			console.error('Error extracting history', error);
+			logger.error('History extraction failed', error);
 			errorMessage.set('Error extracting history: ' + error);
 		}
 		loading = false;
@@ -148,13 +150,13 @@
 						{#each $events as event}
 							<li class="mt-2">
 								<span class="text-sm font-bold text-primary-800">{event.date_string}</span>
-								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								<div
 									on:click={handlePlaceClick}
 									on:keydown={handleKeydown}
 									role="button"
 									tabindex="0"
 								>
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 									{@html makeClickablePlaces(marked(markPlacesInText(event.text)))}
 								</div>
 								<div

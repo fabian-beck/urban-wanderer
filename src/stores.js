@@ -24,6 +24,7 @@ import {
 	loadOsmActivityMap
 } from './util/osm.js';
 import { setDebugConsoleEnabled } from './util/debug-console.js';
+import { createLogger, setDebugLoggingEnabled } from './util/logger.js';
 import {
 	createPerformanceRun,
 	formatDuration,
@@ -33,6 +34,10 @@ import {
 } from './util/performance.js';
 
 let prefsInitialized = false;
+const logger = createLogger('stores');
+const placesLogger = createLogger('places');
+const metadataLogger = createLogger('metadata');
+const storyLogger = createLogger('story');
 
 const DEFAULT_PREFERENCES = {
 	radius: 500,
@@ -113,7 +118,10 @@ function createCoordinates() {
 							{ enableHighAccuracy: true }
 						)
 					).coords;
-					console.log('Received coordinates:', coords);
+					logger.info('Coordinates received', {
+						latitude: coords.latitude,
+						longitude: coords.longitude
+					});
 				}
 				perf.checkpoint('coordinates acquired', {
 					latitude: coords.latitude,
@@ -139,7 +147,7 @@ function createCoordinates() {
 				});
 			} catch (error) {
 				perf.fail(error);
-				console.error(error);
+				logger.error('Coordinates update failed', error);
 				errorMessage.set(error);
 			}
 		},
@@ -154,7 +162,7 @@ export const preferences = writable({ ...DEFAULT_PREFERENCES });
 // Function to save preferences to local storage
 const savePreferences = (prefs) => {
 	if (typeof localStorage !== 'undefined') {
-		console.log('Saving preferences:', prefs);
+		logger.debug('Preferences saved', prefs);
 		localStorage.setItem('preferences', JSON.stringify(prefs));
 	}
 };
@@ -166,7 +174,7 @@ const loadPreferences = () => {
 		if (storedPrefs) {
 			const parsedPrefs = JSON.parse(storedPrefs);
 			const normalizedPrefs = normalizePreferences(parsedPrefs);
-			console.log('Loading preferences:', normalizedPrefs);
+			logger.debug('Preferences loaded', normalizedPrefs);
 			preferences.set(normalizedPrefs);
 		}
 	}
@@ -175,6 +183,7 @@ const loadPreferences = () => {
 // Subscribe to preferences store to save changes
 preferences.subscribe((prefs) => {
 	setDebugConsoleEnabled(prefs.debug);
+	setDebugLoggingEnabled(prefs.debug);
 	if (!prefsInitialized) {
 		prefsInitialized = true;
 		return;
@@ -216,7 +225,7 @@ function createPlaces() {
 					})
 					.catch((error) => {
 						mapPerf.fail(error);
-						console.error(`Failed to load ${label}:`, error);
+						placesLogger.error(`Map load failed: ${label}`, error);
 						store.set([]);
 					});
 			};
@@ -273,7 +282,10 @@ function createPlaces() {
 				);
 				stageDurations.analysisMs = analysisDurationMs;
 				set(analyzedPlaces);
-				console.log('Places after analysis:', get(places));
+				placesLogger.info('Analysis complete', {
+					analyzedPlaces: analyzedPlaces.length,
+					filteredPlaces: placeCountBeforeAnalysis - analyzedPlaces.length
+				});
 				perf.checkpoint('analysis complete', {
 					analyzedPlaces: analyzedPlaces.length,
 					filteredPlaces: placeCountBeforeAnalysis - analyzedPlaces.length
@@ -310,7 +322,7 @@ function createPlaces() {
 				});
 			} catch (error) {
 				perf.fail(error);
-				console.error(error);
+				placesLogger.error('Places update failed', error);
 				errorMessage.set('Could not load places: ' + error);
 			}
 		},
@@ -399,7 +411,7 @@ function createLoadingMessage() {
 	return {
 		subscribe,
 		set: (message) => {
-			console.log(message);
+			logger.info('Loading message', { message });
 			originalSet(message);
 		},
 		reset: () => originalSet(null)
@@ -508,7 +520,7 @@ async function loadPlaceImages(attribute, size) {
 			{ size, places: get(places)?.length || 0 }
 		);
 	} catch (error) {
-		console.error(`Could not load Wikipedia ${attribute} data:`, error);
+		metadataLogger.warn(`Wikipedia ${attribute} load failed`, error);
 	} finally {
 		places.set(get(places));
 		perf.checkpoint('wikipedia images attempted', {
@@ -524,7 +536,7 @@ async function loadPlaceImages(attribute, size) {
 			{ size, missingImages: get(places).filter((place) => !place[attribute]).length }
 		);
 	} catch (error) {
-		console.error(`Could not load Wikidata ${attribute} data:`, error);
+		metadataLogger.warn(`Wikidata ${attribute} load failed`, error);
 	} finally {
 		places.set(get(places));
 		perf.end({
@@ -605,7 +617,7 @@ async function pregenerateStoryInBackground() {
 		});
 	} catch (error) {
 		perf.fail(error);
-		console.error('Background story generation failed:', error);
+		storyLogger.error('Background story generation failed', error);
 		storyLoading.set(false);
 	}
 }
@@ -635,7 +647,7 @@ export async function preloadNextStoryPart(currentStories) {
 		);
 		preloadedStory.set(nextStoryResult);
 	} catch (error) {
-		console.error('Error preloading next story part:', error);
+		storyLogger.error('Next story preload failed', error);
 	} finally {
 		preloadingStory.set(false);
 	}
@@ -686,7 +698,7 @@ export async function updateLocation(coords) {
 		loadingMessage.reset();
 		loading.set(false);
 		errorMessage.set('Error updating location: ' + error);
-		console.error('Error updating location', error);
+		logger.error('Location update failed', error);
 	}
 }
 
@@ -718,6 +730,6 @@ export async function searchForPlace(placeName) {
 		loadingMessage.reset();
 		loading.set(false);
 		errorMessage.set(`Error searching for place: ${error.message}`);
-		console.error('Error searching for place:', error);
+		logger.error('Place search failed', error);
 	}
 }

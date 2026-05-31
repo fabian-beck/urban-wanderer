@@ -3,6 +3,9 @@ import { CLASSES } from '../constants/place-classes.js';
 import { openai, getAiModel } from './ai-core.js';
 import { ANALYSIS_CACHE_KEY as CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
 import { withPerformance } from './performance.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('ai.analysis');
 
 function loadAnalysisCache() {
 	if (typeof localStorage === 'undefined') return {};
@@ -22,7 +25,7 @@ function loadAnalysisCache() {
 			return validCache;
 		}
 	} catch (error) {
-		console.warn('Failed to load analysis cache:', error);
+		logger.warn('Analysis cache load failed', error);
 	}
 	return {};
 }
@@ -33,7 +36,7 @@ function saveAnalysisCache(cache) {
 	try {
 		localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
 	} catch (error) {
-		console.warn('Failed to save analysis cache:', error);
+		logger.warn('Analysis cache save failed', error);
 	}
 }
 
@@ -51,7 +54,7 @@ export function clearAnalysisCache() {
 	}
 	// Clear in-memory cache
 	analysisCache = {};
-	console.log('Analysis cache cleared (both localStorage and memory)');
+	logger.info('Analysis cache cleared');
 }
 
 export function getLastAnalysisCacheStats() {
@@ -151,9 +154,11 @@ FURTHER INSTRUCTIONS:
 			jsonStart !== -1 && jsonEnd > jsonStart ? text.slice(jsonStart, jsonEnd) : text;
 		json = JSON.parse(jsonText);
 	} catch (parseError) {
-		console.error('JSON parse error for place:', place.title);
-		console.error('Response text:', response.output_text);
-		console.error('Parse error:', parseError);
+		logger.error('Analysis response parse failed', {
+			title: place.title,
+			responseText: response.output_text,
+			error: parseError
+		});
 		// Fallback to empty analysis
 		json = { cls: 'other', labels: [], importance: 0 };
 	}
@@ -167,7 +172,10 @@ FURTHER INSTRUCTIONS:
 }
 
 export async function analyzePlaces(places, preferences) {
-	console.log('Places before analysis:', places);
+	logger.debug('Places before analysis', {
+		count: places.length,
+		places: places.map((place) => ({ title: place.title, type: place.type, lang: place.lang }))
+	});
 	// get places with cached analysis using improved cache key
 	const placesWithoutCachedAnalysis = places.filter((place) => {
 		const cacheKey = createAnalysisCacheKey(place);
@@ -178,16 +186,19 @@ export async function analyzePlaces(places, preferences) {
 		uncached: placesWithoutCachedAnalysis.length,
 		total: places.length
 	};
-	console.info('[perf] ai.analysis.cache', lastAnalysisCacheStats);
+	logger.info('Cache summary', lastAnalysisCacheStats);
 
 	if (placesWithoutCachedAnalysis.length > 0) {
-		console.log(`Analyzing ${placesWithoutCachedAnalysis.length} uncached places`);
+		logger.info('Analyzing uncached places', {
+			uncached: placesWithoutCachedAnalysis.length,
+			total: places.length
+		});
 		// analyze each place separately, but concurrently
 		await Promise.all(
 			placesWithoutCachedAnalysis.map((place) => analyzeSinglePlace(place, preferences))
 		);
 	} else {
-		console.log('All places found in cache');
+		logger.info('All places found in cache', { total: places.length });
 	}
 
 	const newPlaces = places.map((place) => {

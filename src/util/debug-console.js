@@ -29,7 +29,16 @@ function stringify(value) {
 		return 'undefined';
 	}
 	try {
-		return JSON.stringify(value, null, 2);
+		return JSON.stringify(
+			value,
+			(_, nestedValue) => {
+				if (nestedValue instanceof Error) {
+					return nestedValue.stack || nestedValue.message;
+				}
+				return nestedValue;
+			},
+			2
+		);
 	} catch {
 		return String(value);
 	}

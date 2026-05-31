@@ -1,7 +1,9 @@
 import { MAX_ARTICLE_LENGTH } from '../constants/core.js';
 import { withPerformance } from './performance.js';
+import { createLogger } from './logger.js';
 
 const wikiJsonRequestCache = new Map();
+const logger = createLogger('wiki');
 
 async function fetchWikiJson(url, context, { cache = false } = {}) {
 	if (cache && wikiJsonRequestCache.has(url)) {
@@ -12,12 +14,12 @@ async function fetchWikiJson(url, context, { cache = false } = {}) {
 		try {
 			const response = await fetch(url);
 			if (!response.ok) {
-				console.warn(`[wiki] ${context} failed with HTTP ${response.status}`);
+				logger.warn(`${context} failed with HTTP ${response.status}`);
 				return null;
 			}
 			return await response.json();
 		} catch (error) {
-			console.warn(`[wiki] ${context} failed: ${error.message}`);
+			logger.warn(`${context} failed`, error);
 			return null;
 		}
 	})();
@@ -113,7 +115,8 @@ export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
 			places.push(result.place);
 		}
 	});
-	console.log('Wikipedia places:', places);
+	logger.info('Places loaded', { places: places.length });
+	logger.debug('Places loaded details', { places });
 	return places;
 }
 
@@ -133,7 +136,10 @@ export async function loadWikipediaArticleTexts(places, lang) {
 			// Extract WikiData ID if available
 			if (pageData.pageprops?.wikibase_item) {
 				place.wikidata = pageData.pageprops.wikibase_item;
-				console.log(`📋 Found WikiData ID from Wikipedia: ${place.title} → ${place.wikidata}`);
+				logger.debug('Wikidata ID found from Wikipedia', {
+					title: place.title,
+					wikidata: place.wikidata
+				});
 			}
 			// delete all wiki tables
 			place.article = place.article.replace(/\{\|[\s\S]*?\|\}/g, '');
@@ -168,9 +174,7 @@ export async function loadWikipediaExtracts(places, lang) {
 			continue;
 		}
 		if (place.wikipedia.includes('#')) {
-			console.warn(
-				`Not loading description as Wikipedia reference contains "#": ${place.wikipedia}`
-			);
+			logger.warn('Skipping extract with anchor reference', { wikipedia: place.wikipedia });
 			continue;
 		}
 
@@ -200,7 +204,7 @@ export async function loadWikipediaExtracts(places, lang) {
 			for (const entry of chunk) {
 				const page = data.query.pages[entry.pageid];
 				if (!page || page.missing) {
-					console.warn(`Extract not found for place: ${entry.place.title}`);
+					logger.warn('Extract not found', { title: entry.place.title });
 					continue;
 				}
 				entry.place.description = page.extract;
@@ -234,7 +238,7 @@ export async function loadWikipediaExtracts(places, lang) {
 					normalizedTitles.get(normalizeWikiTitle(entry.title)) || normalizeWikiTitle(entry.title);
 				const page = pagesByTitle.get(normalizedTitle);
 				if (!page || page.missing) {
-					console.warn(`Extract not found for place: ${entry.place.title}`);
+					logger.warn('Extract not found', { title: entry.place.title });
 					continue;
 				}
 				entry.place.description = page.extract;
@@ -313,9 +317,12 @@ async function selectBestImageForPlace(images, place, size, lang) {
 						score -= 5;
 					}
 
-					console.log(
-						`Image scoring for ${place.title}: "${filename}" (ObjectName: "${objectName}") → score: ${score}`
-					);
+					logger.debug('Image scored', {
+						title: place.title,
+						filename,
+						objectName,
+						score
+					});
 
 					const metadata = {
 						source: imageinfo.descriptionurl,
@@ -332,7 +339,7 @@ async function selectBestImageForPlace(images, place, size, lang) {
 						metadata: metadata
 					};
 				} catch (error) {
-					console.warn(`[wiki] image metadata ${img.title} failed: ${error.message}`);
+					logger.warn(`Image metadata ${img.title} failed`, error);
 					return null;
 				}
 			})
@@ -341,16 +348,18 @@ async function selectBestImageForPlace(images, place, size, lang) {
 	const validImages = imageScores.filter((img) => img !== null && img.score > 0);
 
 	if (validImages.length === 0) {
-		console.log(`No suitable image found for ${place.title}`);
+		logger.debug('No suitable image found', { title: place.title });
 		return null;
 	}
 
 	validImages.sort((a, b) => b.score - a.score);
 	const bestImage = validImages[0];
 
-	console.log(
-		`Selected best image for ${place.title}: "${bestImage.filename}" with score ${bestImage.score}`
-	);
+	logger.info('Best fallback image selected', {
+		title: place.title,
+		filename: bestImage.filename,
+		score: bestImage.score
+	});
 
 	return bestImage;
 }
@@ -372,9 +381,10 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 
 					if (placeTitle.includes('#')) {
 						placeTitle = placeTitle.split('#')[0];
-						console.log(
-							`Stripped anchor from Wikipedia reference for image loading: ${place.wikipedia} → ${placeLang}:${placeTitle}`
-						);
+						logger.debug('Stripped anchor for image loading', {
+							wikipedia: place.wikipedia,
+							target: `${placeLang}:${placeTitle}`
+						});
 					}
 
 					response = await fetch(
@@ -389,16 +399,16 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 					return;
 				}
 				if (!response.ok) {
-					console.warn(
-						`[wiki] ${attribute} pageimage for ${place.title} failed with HTTP ${response.status}`
-					);
+					logger.warn(`${attribute} pageimage failed with HTTP ${response.status}`, {
+						title: place.title
+					});
 					return;
 				}
 				let data;
 				try {
 					data = await response.json();
 				} catch (error) {
-					console.warn(`[wiki] ${attribute} pageimage for ${place.title} failed: ${error.message}`);
+					logger.warn(`${attribute} pageimage failed`, { title: place.title, error });
 					return;
 				}
 				const page = Object.values(data.query?.pages || {})[0];
@@ -432,7 +442,7 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 								place.imageArtist = extmetadata.Artist?.value || extmetadata.Credit?.value;
 							}
 						} catch (error) {
-							console.warn(`[wiki] pageimage metadata ${pageimageTitle} failed: ${error.message}`);
+							logger.warn(`Pageimage metadata ${pageimageTitle} failed`, error);
 						}
 					}
 				} else {
@@ -444,16 +454,16 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 						`https://${imageLang}.wikipedia.org/w/api.php?action=query&format=json&prop=images&pageids=${pageid}&origin=*&imlimit=10`
 					);
 					if (!response2.ok) {
-						console.warn(
-							`[wiki] fallback images for ${place.title} failed with HTTP ${response2.status}`
-						);
+						logger.warn(`Fallback images failed with HTTP ${response2.status}`, {
+							title: place.title
+						});
 						return;
 					}
 					let data2;
 					try {
 						data2 = await response2.json();
 					} catch (error) {
-						console.warn(`[wiki] fallback images for ${place.title} failed: ${error.message}`);
+						logger.warn('Fallback images failed', { title: place.title, error });
 						return;
 					}
 					const images =
@@ -473,7 +483,7 @@ export async function loadWikipediaImageUrls(places, attribute, size, lang) {
 					}
 				}
 			} catch (error) {
-				console.warn(`[wiki] loading ${attribute} for ${place.title} failed: ${error.message}`);
+				logger.warn(`Loading ${attribute} failed`, { title: place.title, error });
 			}
 		})
 	);
@@ -516,7 +526,7 @@ export async function searchWikipediaPlaceCoordinates(placeName, lang) {
 			// Check if this page has coordinates
 			if (page.coordinates && page.coordinates.length > 0) {
 				const coords = page.coordinates[0];
-				console.log(`Found coordinates for "${title}":`, coords);
+				logger.info('Coordinates found', { title, latitude: coords.lat, longitude: coords.lon });
 				return {
 					latitude: coords.lat,
 					longitude: coords.lon,
@@ -525,7 +535,7 @@ export async function searchWikipediaPlaceCoordinates(placeName, lang) {
 				};
 			}
 		} catch (error) {
-			console.warn(`Error checking coordinates for "${title}":`, error);
+			logger.warn('Coordinate check failed', { title, error });
 			continue;
 		}
 	}
@@ -551,7 +561,8 @@ async function wikipediaGeoSearchForPlaces(coordinates, lang, radius, nArticles)
 		place.title = place.title.split(',')[0];
 		place.lang = lang;
 	});
-	console.log('Wikipedia geosearch response:', data);
+	logger.info('Geosearch complete', { lang, places: data.query.geosearch.length });
+	logger.debug('Geosearch response', { data });
 	return data.query.geosearch;
 }
 
@@ -602,11 +613,15 @@ async function wikipediaNameSearchForPlace(name, coordinates, lang) {
 				name.toLowerCase().includes(searchResult.title.toLowerCase()) ||
 				searchResult.title.toLowerCase().includes(name.toLowerCase())
 			) {
-				console.log('Wikipedia name search response:', [name, searchResult]);
+				logger.info('Name search matched article', {
+					name,
+					title: searchResult.title,
+					pageid: searchResult.pageid
+				});
 				return searchResult;
 			}
 		}
 	}
-	console.warn(`Could not find Wikipedia article for ${name}.`);
+	logger.warn('Name search found no nearby article', { name });
 	return;
 }

@@ -44,6 +44,7 @@ Comprehensive classification system with 25+ place types:
 ### Utility Modules (`src/util/`)
 
 **AI Modules:**
+
 - **ai-core.js**: OpenAI client configuration
 - **ai-analysis.js**: Place classification, labeling, and importance rating
 - **ai-translation.js**: Multi-language place name translation and deduplication
@@ -54,10 +55,17 @@ Comprehensive classification system with 25+ place types:
 - **ai-speech.js**: Text-to-speech integration
 
 **Data Integration:**
+
 - **wikipedia.js**: Wikipedia API integration (articles, extracts, images, metadata)
 - **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
 - **text.js**: Text processing utilities
+
+**Logging:**
+
+- Use `createLogger(scope)` from `src/util/logger.js` instead of direct `console.*` calls.
+- Keep main lifecycle events, counts, warnings, and failures at `info`/`warn`/`error`.
+- Put raw API payloads, prompts, full responses, and matching traces behind `debug`; the existing debug preference enables debug-level logs.
 
 ### UI Components (`src/components/`)
 
@@ -180,23 +188,27 @@ The application processes location data through 9 distinct stages:
 ## Performance Considerations
 
 **Parallel Processing:**
+
 - All API calls use `Promise.all()` for concurrent execution
 - Map overlays load independently in background
 - Image loading (thumbnails + full-size) happens asynchronously
 
 **Multi-level Caching:**
+
 - **OSM places & maps**: 15-minute localStorage cache with max 50 entries
 - **AI analysis results**: Persistent localStorage with TTL-based cleanup
 - **AI facts & insights**: Content-based cache keys for cross-session reuse
 - **User preferences**: Persistent localStorage
 
 **Progressive Loading:**
+
 - Core place data loads first
 - Images load progressively (Wikipedia first, Wikidata fallback)
 - Articles and insights load in background
 - Story segments pregenerated for instant continuation
 
 **Smart Image Selection:**
+
 - Relevance scoring algorithm for Wikipedia images
 - Metadata extraction (license, artist, source)
 - Thumbnail optimization (100px) and full-size (500px) variants

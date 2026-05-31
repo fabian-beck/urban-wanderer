@@ -1,5 +1,6 @@
 import { GRID_ARRAY_SIZE, GRID_CELL_SIZE, OSM_SEARCH_RADIUS } from '../constants/core.js';
 import { getPerformanceNow, logPerformance } from './performance.js';
+import { createLogger } from './logger.js';
 
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 const CACHE_PREFIX = 'osm_cache_';
@@ -12,6 +13,7 @@ let overpassQueue = Promise.resolve();
 let overpassLastRequestAt = 0;
 let overpassCooldownUntil = 0;
 const overpassRequestsInFlight = new Map();
+const logger = createLogger('osm');
 
 function getCacheKey(coordinates, queryType, radius) {
 	const lat = coordinates.latitude.toFixed(3);
@@ -81,7 +83,7 @@ async function runOverpassRequest(overpassQuery) {
 	try {
 		return JSON.parse(text);
 	} catch {
-		console.error('Failed to parse Overpass API response:', text.substring(0, 200));
+		logger.error('Overpass JSON parse failed', { responsePreview: text.substring(0, 200) });
 		throw new Error('Invalid JSON response from Overpass API');
 	}
 }
@@ -90,7 +92,7 @@ function loadOverpassJson(overpassQuery) {
 	const requestKey = overpassQuery.replace(/\s+/g, ' ').trim();
 	const inFlight = overpassRequestsInFlight.get(requestKey);
 	if (inFlight) {
-		console.log('[OSM API] Reusing in-flight Overpass request');
+		logger.debug('Reusing in-flight Overpass request');
 		return inFlight;
 	}
 
@@ -114,7 +116,7 @@ function loadOverpassJson(overpassQuery) {
 function getCachedData(key) {
 	try {
 		if (typeof localStorage === 'undefined') {
-			console.log('[OSM Cache] localStorage not available');
+			logger.debug('Cache unavailable');
 			return null;
 		}
 
@@ -126,17 +128,17 @@ function getCachedData(key) {
 
 			if (age < CACHE_DURATION) {
 				const dataLength = Array.isArray(parsed.data) ? parsed.data.length : 'N/A';
-				console.log(`[OSM Cache] HIT for ${key} (age: ${ageMinutes}m, items: ${dataLength})`);
+				logger.debug('Cache hit', { key, ageMinutes, items: dataLength });
 				return JSON.parse(JSON.stringify(parsed.data));
 			} else {
-				console.log(`[OSM Cache] EXPIRED for ${key} (age: ${ageMinutes}m)`);
+				logger.debug('Cache expired', { key, ageMinutes });
 				localStorage.removeItem(key);
 			}
 		} else {
-			console.log(`[OSM Cache] MISS for ${key}`);
+			logger.debug('Cache miss', { key });
 		}
 	} catch (error) {
-		console.error('[OSM Cache] Error reading from cache:', error);
+		logger.warn('Cache read failed', error);
 	}
 	return null;
 }
@@ -144,7 +146,7 @@ function getCachedData(key) {
 function setCachedData(key, data) {
 	try {
 		if (typeof localStorage === 'undefined') {
-			console.log('[OSM Cache] localStorage not available for writing');
+			logger.debug('Cache write skipped');
 			return;
 		}
 
@@ -155,13 +157,13 @@ function setCachedData(key, data) {
 
 		const dataLength = Array.isArray(data) ? data.length : 'N/A';
 		localStorage.setItem(key, JSON.stringify(cacheEntry));
-		console.log(`[OSM Cache] STORED ${key} (items: ${dataLength})`);
+		logger.debug('Cache stored', { key, items: dataLength });
 
 		cleanupOldCacheEntries();
 	} catch (error) {
-		console.error('[OSM Cache] Error writing to cache:', error);
+		logger.warn('Cache write failed', error);
 		if (error.name === 'QuotaExceededError') {
-			console.error('[OSM Cache] Storage quota exceeded, clearing old entries');
+			logger.warn('Cache quota exceeded; cleaning old entries');
 			cleanupOldCacheEntries();
 		}
 	}
@@ -189,7 +191,7 @@ function cleanupOldCacheEntries() {
 			toRemove.forEach((entry) => localStorage.removeItem(entry.key));
 		}
 	} catch (error) {
-		console.error('Error cleaning up cache:', error);
+		logger.warn('Cache cleanup failed', error);
 	}
 }
 
@@ -199,10 +201,10 @@ export async function loadOsmPlaces(coordinates) {
 		const cacheKey = getCacheKey(coordinates, 'places', radius);
 		const cached = getCachedData(cacheKey);
 		if (cached) {
-			console.log(`[OSM Cache] Returning ${cached.length} cached places`);
+			logger.info('Places loaded from cache', { places: cached.length });
 			return cached;
 		}
-		console.log('[OSM Cache] No cache found, fetching from API');
+		logger.info('Loading places from Overpass');
 		const waterway =
 			'river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point';
 		const amenities = 'museum|school|college|university|library|place_of_worship';
@@ -251,7 +253,7 @@ out skel qt;
 `;
 		const data = await loadOverpassJson(overpassQuery);
 
-		console.log('OSM response:', data);
+		logger.debug('Places response', { elements: data.elements?.length || 0, data });
 		const places = data.elements
 			.filter((element) => element.tags?.name)
 			.map((element) => {
@@ -281,12 +283,12 @@ out skel qt;
 				};
 			});
 
-		console.log('OSM places:', places);
-		console.log(`[OSM Cache] Caching ${places.length} places with key: ${cacheKey}`);
+		logger.info('Places loaded', { places: places.length });
+		logger.debug('Places parsed', { places });
 		setCachedData(cacheKey, places);
 		return places;
 	} catch (error) {
-		console.error('Could not load OSM places:', error);
+		logger.error('Places load failed', error);
 		return []; // Return empty array on error
 	}
 }
@@ -380,7 +382,7 @@ out skel qt;
 `;
 		const data = await loadOverpassJson(overpassQuery);
 
-		console.log('Water map response:', data);
+		logger.debug('Water map response', { elements: data.elements?.length || 0, data });
 		// Helper function to determine waterway width based on OSM data
 		const getWaterwayWidth = (tags) => {
 			// Use explicit width if available
@@ -440,7 +442,8 @@ out skel qt;
 					nodes: nodes
 				};
 			});
-		console.log('Water polylines:', waterPolylines);
+		logger.info('Water map data loaded', { polylines: waterPolylines.length });
+		logger.debug('Water polylines', { waterPolylines });
 		// Helper function to draw a thick line by filling all points within radius
 		const drawThickLine = (x1, y1, x2, y2, radius, intensity) => {
 			// Bresenham line algorithm to get the center line points
@@ -511,7 +514,7 @@ out skel qt;
 		setCachedData(cacheKey, waterMapTmp);
 		return waterMapTmp;
 	} catch (error) {
-		console.error('Error loading water map:', error);
+		logger.error('Water map load failed', error);
 		return [];
 	}
 }
@@ -616,7 +619,7 @@ out skel qt;
 `;
 		const data = await loadOverpassJson(overpassQuery);
 
-		console.log('Green map response:', data);
+		logger.debug('Green map response', { elements: data.elements?.length || 0, data });
 
 		const greenMapTmp = new Array(GRID_ARRAY_SIZE)
 			.fill(0)
@@ -688,8 +691,8 @@ out skel qt;
 				name: element.tags?.name || 'Tree'
 			}));
 
-		console.log('Green areas:', greenAreas);
-		console.log('Trees:', trees);
+		logger.info('Green map data loaded', { areas: greenAreas.length, trees: trees.length });
+		logger.debug('Green map features', { greenAreas, trees });
 
 		// Fill in green areas
 		for (const area of greenAreas) {
@@ -729,7 +732,7 @@ out skel qt;
 		setCachedData(cacheKey, greenMapTmp);
 		return greenMapTmp;
 	} catch (error) {
-		console.error('Error loading green map:', error);
+		logger.error('Green map load failed', error);
 		return [];
 	}
 }
@@ -785,7 +788,7 @@ out skel qt;
 
 		const data = await loadOverpassJson(overpassQuery);
 
-		console.log('Activity map response:', data);
+		logger.debug('Activity map response', { elements: data.elements?.length || 0, data });
 
 		const activityMapTmp = new Array(GRID_ARRAY_SIZE)
 			.fill(0)
@@ -836,8 +839,11 @@ out skel qt;
 				name: element.tags?.name || 'Activity'
 			}));
 
-		console.log('Activity areas:', activityAreas);
-		console.log('Activity nodes:', activityNodes);
+		logger.info('Activity map data loaded', {
+			areas: activityAreas.length,
+			nodes: activityNodes.length
+		});
+		logger.debug('Activity map features', { activityAreas, activityNodes });
 
 		// Fill in activity areas
 		for (const area of activityAreas) {
@@ -893,7 +899,7 @@ out skel qt;
 		setCachedData(cacheKey, activityMapTmp);
 		return activityMapTmp;
 	} catch (error) {
-		console.error('Error loading activity map:', error);
+		logger.error('Activity map load failed', error);
 		return [];
 	}
 }
@@ -911,8 +917,8 @@ export function clearOsmCache() {
 		}
 
 		keysToRemove.forEach((key) => localStorage.removeItem(key));
-		console.log(`Cleared ${keysToRemove.length} OSM cache entries`);
+		logger.info('Cache cleared', { entries: keysToRemove.length });
 	} catch (error) {
-		console.error('Error clearing cache:', error);
+		logger.error('Cache clear failed', error);
 	}
 }

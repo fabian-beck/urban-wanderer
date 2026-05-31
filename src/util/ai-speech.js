@@ -1,5 +1,8 @@
 import { openai } from './ai-core.js';
 import { get } from 'svelte/store';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('ai.speech');
 
 let audio = null;
 
@@ -10,7 +13,7 @@ export async function textToSpeech(text, audioState, preferences) {
 		typeof audioState.set !== 'function' ||
 		typeof audioState.subscribe !== 'function'
 	) {
-		console.error('audioState must be a Svelte store with set() and subscribe() methods');
+		logger.error('audioState must be a Svelte store with set() and subscribe() methods');
 		return;
 	}
 
@@ -21,7 +24,8 @@ export async function textToSpeech(text, audioState, preferences) {
 		}
 	}
 	audioState.set('loading');
-	console.log('Text to speech:', text);
+	logger.info('Generating speech', { characters: text.length });
+	logger.debug('Speech input', { text });
 	const instructions = `
 You are ${preferences.guideCharacter} city guide and speak accordingly.
 `;

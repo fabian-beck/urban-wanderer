@@ -1,5 +1,8 @@
 import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('ai.story');
 
 // generate story about the user position
 export async function generateStory(
@@ -125,7 +128,14 @@ Write one to three paragraphs of text.
 Give the text a headline marked in bold font.`
 		});
 	}
-	console.log('Story writing instructions', messages);
+	logger.info('Generating story', {
+		existingStories: storyTexts.length,
+		here: placesHere.length,
+		nearby: placesNearby.length,
+		surrounding: placesSurrounding.length,
+		usesPreviousResponse: Boolean(previousResponseId)
+	});
+	logger.debug('Story prompt', { messages });
 	const requestConfig = {
 		model: getAiModel('advanced', preferences),
 		store: true,
@@ -142,6 +152,10 @@ Give the text a headline marked in bold font.`
 	}
 
 	const response = await openai.responses.create(requestConfig);
+	logger.info('Story generated', {
+		characters: response.output_text.length,
+		responseId: response.id
+	});
 
 	return {
 		text: response.output_text,

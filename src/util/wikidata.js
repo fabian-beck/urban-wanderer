@@ -1,7 +1,9 @@
 import { get } from 'svelte/store';
 import { preferences, coordinates } from '../stores.js';
+import { createLogger } from './logger.js';
 
 const wikidataJsonRequestCache = new Map();
+const logger = createLogger('wikidata');
 
 async function fetchJson(url, context, { cache = false } = {}) {
 	if (cache && wikidataJsonRequestCache.has(url)) {
@@ -12,12 +14,12 @@ async function fetchJson(url, context, { cache = false } = {}) {
 		try {
 			const response = await fetch(url);
 			if (!response.ok) {
-				console.warn(`[wikidata] ${context} failed with HTTP ${response.status}`);
+				logger.warn(`${context} failed with HTTP ${response.status}`);
 				return null;
 			}
 			return await response.json();
 		} catch (error) {
-			console.warn(`[wikidata] ${context} failed: ${error.message}`);
+			logger.warn(`${context} failed`, error);
 			return null;
 		}
 	})();
@@ -217,7 +219,7 @@ export async function fetchWikidataInfo(wikidataId) {
 					}
 				}
 			} catch (error) {
-				console.warn('Could not fetch entity labels:', error);
+				logger.warn('Entity label fetch failed', error);
 			}
 		}
 
@@ -248,10 +250,10 @@ export async function fetchWikidataInfo(wikidataId) {
 			contextString += `${propName}: ${readableValues.join(', ')}\n`;
 		}
 
-		console.log('📊 WikiData context:', contextString);
+		logger.debug('Context loaded', { wikidataId, context: contextString });
 		return contextString;
 	} catch (error) {
-		console.error('Error fetching WikiData:', error);
+		logger.error('Entity fetch failed', error);
 		return null;
 	}
 }
@@ -286,15 +288,17 @@ export async function searchWikidataId(place) {
 					description.includes('town') ||
 					description.includes('village')
 				) {
-					console.log(
-						`🔍 Found WikiData ID via search: ${place.title} → ${result.id} (${result.description})`
-					);
+					logger.info('Wikidata ID found via search', {
+						title: place.title,
+						wikidata: result.id,
+						description: result.description
+					});
 					return result.id;
 				}
 			}
 		}
 	} catch (error) {
-		console.warn('WikiData search failed:', place.title, error);
+		logger.warn('Search failed', { title: place.title, error });
 	}
 
 	return null;
@@ -347,7 +351,7 @@ export async function loadWikidataImages(places, attribute, size) {
 
 			try {
 				const wikidataId = place.wikidata;
-				console.log(`Fetching Wikidata image for ${place.title} (${wikidataId})`);
+				logger.debug('Loading image', { title: place.title, wikidata: wikidataId });
 
 				const data = await fetchJson(
 					`https://www.wikidata.org/wiki/Special:EntityData/${wikidataId}.json`,
@@ -376,10 +380,10 @@ export async function loadWikidataImages(places, attribute, size) {
 						place.imageLicenseUrl = imageData.metadata.licenseUrl;
 						place.imageArtist = imageData.metadata.artist;
 					}
-					console.log(`✓ Loaded Wikidata image for ${place.title}: ${imageFilename}`);
+					logger.info('Image loaded', { title: place.title, imageFilename });
 				}
 			} catch (error) {
-				console.warn(`[wikidata] image for ${place.title} failed: ${error.message}`);
+				logger.warn('Image load failed', { title: place.title, error });
 			}
 		})
 	);
@@ -421,7 +425,7 @@ async function getCommonsImageUrl(filename, size) {
 
 		return null;
 	} catch (error) {
-		console.warn(`[wikidata] Commons image ${filename} failed: ${error.message}`);
+		logger.warn('Commons image load failed', { filename, error });
 		return null;
 	}
 }

@@ -3,10 +3,12 @@
 	import { placesHere, placesSurrounding, coordinates, preferences } from '../stores.js';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { AnnotationOutline } from 'flowbite-svelte-icons';
+	import { createLogger } from '../util/logger.js';
 
 	let comment = '';
 	let loading = false;
 	let error = null;
+	const logger = createLogger('comment');
 
 	// Generate comment when places data is available
 	$: if ($placesHere.length > 0 || $placesSurrounding.length > 0) {
@@ -27,7 +29,7 @@
 				$preferences
 			);
 		} catch (err) {
-			console.error('Failed to generate comment:', err);
+			logger.error('Comment generation failed', err);
 			error = 'Could not generate comment';
 		} finally {
 			loading = false;

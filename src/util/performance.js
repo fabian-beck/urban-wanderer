@@ -1,3 +1,7 @@
+import { createLogger } from './logger.js';
+
+const logger = createLogger('perf');
+
 function now() {
 	if (typeof performance !== 'undefined' && performance.now) {
 		return performance.now();
@@ -11,9 +15,9 @@ function hasDetails(details) {
 
 function log(level, message, details) {
 	if (hasDetails(details)) {
-		console[level](message, details);
+		logger[level](message, details);
 	} else {
-		console[level](message);
+		logger[level](message);
 	}
 }
 
@@ -29,7 +33,7 @@ export function createPerformanceRun(label, details = {}) {
 	let previousAt = startedAt;
 	const steps = [];
 
-	log('info', `[perf] ${label} started`, details);
+	log('info', `${label} started`, details);
 
 	return {
 		checkpoint(step, stepDetails = {}) {
@@ -45,44 +49,40 @@ export function createPerformanceRun(label, details = {}) {
 
 			steps.push(entry);
 			previousAt = checkedAt;
-			log(
-				'info',
-				`[perf] ${label}: ${step} +${entry.duration} (${entry.total} total)`,
-				stepDetails
-			);
+			log('info', `${label}: ${step} +${entry.duration} (${entry.total} total)`, stepDetails);
 		},
 		end(endDetails = {}) {
 			const totalMs = now() - startedAt;
-			log('info', `[perf] ${label} finished in ${formatDuration(totalMs)}`, {
+			log('info', `${label} finished in ${formatDuration(totalMs)}`, {
 				...endDetails,
 				steps
 			});
 		},
 		fail(error) {
 			const totalMs = now() - startedAt;
-			console.warn(`[perf] ${label} failed after ${formatDuration(totalMs)}`, error);
+			logger.warn(`${label} failed after ${formatDuration(totalMs)}`, error);
 		}
 	};
 }
 
 export async function withPerformance(label, callback, details = {}) {
 	const startedAt = now();
-	log('info', `[perf] ${label} started`, details);
+	log('debug', `${label} started`, details);
 
 	try {
 		const result = await callback();
 		const durationMs = now() - startedAt;
-		log('info', `[perf] ${label} finished in ${formatDuration(durationMs)}`, details);
+		log('debug', `${label} finished in ${formatDuration(durationMs)}`, details);
 		return result;
 	} catch (error) {
 		const durationMs = now() - startedAt;
-		console.warn(`[perf] ${label} failed after ${formatDuration(durationMs)}`, error);
+		logger.warn(`${label} failed after ${formatDuration(durationMs)}`, error);
 		throw error;
 	}
 }
 
 export function logPerformance(label, durationMs, details = {}) {
-	log('info', `[perf] ${label} ${formatDuration(durationMs)}`, details);
+	log('debug', `${label} ${formatDuration(durationMs)}`, details);
 }
 
 export function logPerformanceSummary(label, details = {}) {
@@ -100,7 +100,7 @@ export function logPerformanceSummary(label, details = {}) {
 			return `${key}=${value}`;
 		})
 		.join(' ');
-	console.info(`[perf-summary] ${label} ${fields}`);
+	logger.info(`${label} ${fields}`);
 }
 
 export function getPerformanceNow() {

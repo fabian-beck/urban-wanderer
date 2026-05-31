@@ -1,5 +1,8 @@
 import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('ai.history');
 
 // extract and list historic events
 export async function extractHistoricEvents(
@@ -36,7 +39,8 @@ ${coordinates.address}
                 
 If the list of places is empty or the text is too short, leave the list of events empty.
 `;
-	console.log('Historic events instructions', [instructions]);
+	logger.info('Extracting historic events', { places: relevantPlaces.length });
+	logger.debug('Historic events prompt', { prompt: instructions });
 	const response = await openai.responses.create({
 		model: getAiModel('advanced', preferences),
 		reasoning: {
@@ -75,6 +79,8 @@ If the list of places is empty or the text is too short, leave the list of event
 			}
 		}
 	});
-	console.log('Historic events response:', response.output_text);
-	return JSON.parse(response.output_text).events;
+	const events = JSON.parse(response.output_text).events;
+	logger.info('Historic events extracted', { events: events.length });
+	logger.debug('Historic events response', { responseText: response.output_text });
+	return events;
 }

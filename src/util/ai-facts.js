@@ -2,6 +2,9 @@ import { openai, getAiModel } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
 import { INSIGHTS_CACHE_KEY, FACTS_CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('ai.facts');
 
 function loadCache(cacheKey) {
 	if (typeof localStorage === 'undefined') return {};
@@ -21,7 +24,7 @@ function loadCache(cacheKey) {
 			return validCache;
 		}
 	} catch (error) {
-		console.warn(`Failed to load cache ${cacheKey}:`, error);
+		logger.warn('Cache load failed', { cacheKey, error });
 	}
 	return {};
 }
@@ -40,7 +43,7 @@ function saveCache(cacheKey, cache) {
 	try {
 		localStorage.setItem(cacheKey, JSON.stringify(cache));
 	} catch (error) {
-		console.warn(`Failed to save cache ${cacheKey}:`, error);
+		logger.warn('Cache save failed', { cacheKey, error });
 	}
 }
 
@@ -74,7 +77,7 @@ export function clearInsightsCache() {
 	}
 	// Clear in-memory cache
 	insightsCache = {};
-	console.log('Insights cache cleared (both localStorage and memory)');
+	logger.info('Insights cache cleared');
 }
 
 export function clearFactsCache() {
@@ -84,7 +87,7 @@ export function clearFactsCache() {
 	}
 	// Clear in-memory cache
 	factsCache = {};
-	console.log('Facts cache cleared (both localStorage and memory)');
+	logger.info('Facts cache cleared');
 }
 
 // summarize article
@@ -119,11 +122,11 @@ export async function extractPlaceFacts(place, factsProperties, coordinates, pre
 
 	// Check cache first
 	if (factsCache[cacheKey]) {
-		console.log('Facts found in cache for place:', place.title);
+		logger.info('Facts cache hit', { title: place.title });
 		return factsCache[cacheKey].content;
 	}
 
-	console.log('Generating new facts for place:', place.title);
+	logger.info('Generating facts', { title: place.title, cls: place.cls });
 	// Get WikiData context using the new utility
 	const wikidataContext = await getWikidataContext(place);
 
@@ -147,7 +150,7 @@ Keep list short or empty if there are no relevant facts.
 You may use the following sources of information about the place:
 ${place.article || place.description || place.snippet || '[no description available]'}${wikidataContext}
 `;
-	console.log('Extract facts instructions', [initialMessage]);
+	logger.debug('Facts prompt', { title: place.title, prompt: initialMessage });
 	const response = await openai.responses.create({
 		model: getAiModel('advanced', preferences),
 		reasoning: {
@@ -175,13 +178,14 @@ ${place.article || place.description || place.snippet || '[no description availa
 		}
 	});
 	const facts = JSON.parse(response.output_text).facts;
-	console.log('Extract facts response:', facts);
+	logger.debug('Facts response', { title: place.title, facts });
 
 	// Clean up facts - normalize various null representations
 	const cleanedFacts = {};
 	for (const [key, value] of Object.entries(facts)) {
 		// Handle various null representations that AI might return
-		if (value === null ||
+		if (
+			value === null ||
 			value === undefined ||
 			value === '.null' ||
 			value === 'null' ||
@@ -192,7 +196,8 @@ ${place.article || place.description || place.snippet || '[no description availa
 			value === '' ||
 			value === '.' ||
 			value === '/' ||
-			(typeof value === 'string' && value.trim() === '')) {
+			(typeof value === 'string' && value.trim() === '')
+		) {
 			cleanedFacts[key] = null;
 		} else {
 			cleanedFacts[key] = value;
@@ -214,17 +219,17 @@ export async function extractInsightsFromArticle(article, preferences) {
 
 	// Check cache first
 	if (insightsCache[cacheKey]) {
-		console.log('Insights found in cache for article');
+		logger.info('Insights cache hit');
 		return insightsCache[cacheKey].content;
 	}
 
-	console.log('Generating new insights for article');
+	logger.info('Generating insights', { lang: preferences.lang });
 	const instructions = `You are a chat assistant helping a user to extract insights from an article, relevant when visiting the place.
 
 Return a list of bullet points, focusing on the most important insights. 
 Answer in language '${preferences.lang}'.    
 `;
-	console.log('Extract insights instructions', [instructions]);
+	logger.debug('Insights prompt', { prompt: instructions });
 	const response = await openai.responses.create({
 		model: getAiModel('simple', preferences),
 		reasoning: {
@@ -243,7 +248,7 @@ Answer in language '${preferences.lang}'.
 	});
 
 	const insights = response.output_text;
-	console.log('Extract insights response:', [insights]);
+	logger.debug('Insights response', { insights });
 
 	// Cache the result with timestamp
 	insightsCache[cacheKey] = {

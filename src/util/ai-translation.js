@@ -1,6 +1,9 @@
 import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
 import { withPerformance } from './performance.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('ai.translation');
 
 async function translatePlaceName(place, preferences) {
 	const prefs = preferences;
@@ -74,7 +77,7 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 		const isDifferentLanguage = place.lang && place.lang !== preferences.lang;
 		return hasMultipleSourceLanguages || isDifferentLanguage;
 	}).length;
-	console.info('[perf] ai.translation.queue', {
+	logger.info('Translation queue', {
 		total: places.length,
 		needed: translationsNeeded,
 		skipped: places.length - translationsNeeded
@@ -82,7 +85,7 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 	const translations = await Promise.all(
 		places.map((place) => translatePlaceName(place, preferences))
 	);
-	console.log('Translations:', translations);
+	logger.debug('Translations completed', { translations });
 
 	const levenshtein = (a, b) => {
 		const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1));
@@ -152,11 +155,14 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 
 		// Debug output for matches and near-misses
 		if (distance > 0 && (isMatch || distance <= allowedDistance + 2)) {
-			console.log(
-				`Levenshtein: ${distance} (allowed: ${allowedDistance}) ${isMatch ? 'MATCH' : 'NO MATCH'}`,
-				`"${name1}" vs "${name2}"`,
-				isSubstringLike ? '(substring-like)' : '(non-substring)'
-			);
+			logger.debug('Name similarity checked', {
+				distance,
+				allowedDistance,
+				isMatch,
+				name1,
+				name2,
+				matchKind: isSubstringLike ? 'substring-like' : 'non-substring'
+			});
 		}
 
 		return isMatch;
@@ -180,6 +186,12 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 		}
 		newPlaces.push(place);
 	}
-	console.log('Places after grouping:', newPlaces);
+	logger.info('Grouping complete', {
+		before: places.length,
+		after: newPlaces.length,
+		translated: translations.filter((translation) => translation.translation !== translation.title)
+			.length
+	});
+	logger.debug('Places after grouping', { places: newPlaces });
 	return newPlaces;
 }
