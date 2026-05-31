@@ -1,4 +1,5 @@
 import { GRID_ARRAY_SIZE, GRID_CELL_SIZE, OSM_SEARCH_RADIUS } from '../constants/core.js';
+import { getPerformanceNow, logPerformance } from './performance.js';
 
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 const CACHE_PREFIX = 'osm_cache_';
@@ -48,8 +49,10 @@ async function runOverpassRequest(overpassQuery) {
 	const delay = Math.max(0, OVERPASS_MIN_REQUEST_INTERVAL - (now - overpassLastRequestAt));
 	if (delay > 0) {
 		await wait(delay);
+		logPerformance('Overpass throttle wait', delay);
 	}
 
+	const requestStartedAt = getPerformanceNow();
 	const response = await fetch(OVERPASS_ENDPOINT, {
 		method: 'POST',
 		headers: {
@@ -71,9 +74,13 @@ async function runOverpassRequest(overpassQuery) {
 	}
 
 	const text = await response.text();
+	logPerformance('Overpass request and read', getPerformanceNow() - requestStartedAt, {
+		status: response.status,
+		bytes: text.length
+	});
 	try {
 		return JSON.parse(text);
-	} catch (parseError) {
+	} catch {
 		console.error('Failed to parse Overpass API response:', text.substring(0, 200));
 		throw new Error('Invalid JSON response from Overpass API');
 	}
@@ -87,7 +94,14 @@ function loadOverpassJson(overpassQuery) {
 		return inFlight;
 	}
 
-	const request = overpassQueue.then(() => runOverpassRequest(overpassQuery));
+	const queuedAt = getPerformanceNow();
+	const request = overpassQueue.then(() => {
+		const queueWaitMs = getPerformanceNow() - queuedAt;
+		if (queueWaitMs > 10) {
+			logPerformance('Overpass queue wait', queueWaitMs);
+		}
+		return runOverpassRequest(overpassQuery);
+	});
 	overpassQueue = request.catch(() => {});
 	overpassRequestsInFlight.set(requestKey, request);
 	request.then(

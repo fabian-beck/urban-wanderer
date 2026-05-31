@@ -1,5 +1,6 @@
 import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
+import { withPerformance } from './performance.js';
 
 async function translatePlaceName(place, preferences) {
 	const prefs = preferences;
@@ -30,37 +31,54 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then
     translation: "A"
 }
 `;
-	const response = await openai.responses.create({
-		model: getAiModel('simple', preferences),
-		reasoning: {
-			effort: AI_REASONING_EFFORT
-		},
-		input: [
-			{ role: 'system', content: instructions },
-			{ role: 'user', content: place.title }
-		],
-		text: {
-			format: {
-				type: 'json_schema',
-				name: 'translation',
-				schema: {
-					type: 'object',
-					properties: {
-						title: { type: 'string' },
-						translation: { type: 'string' }
-					},
-					required: ['title', 'translation'],
-					additionalProperties: false
+	const model = getAiModel('simple', preferences);
+	const response = await withPerformance(
+		'ai.translation.place',
+		() =>
+			openai.responses.create({
+				model,
+				reasoning: {
+					effort: AI_REASONING_EFFORT
 				},
-				strict: true
-			}
-		}
-	});
+				input: [
+					{ role: 'system', content: instructions },
+					{ role: 'user', content: place.title }
+				],
+				text: {
+					format: {
+						type: 'json_schema',
+						name: 'translation',
+						schema: {
+							type: 'object',
+							properties: {
+								title: { type: 'string' },
+								translation: { type: 'string' }
+							},
+							required: ['title', 'translation'],
+							additionalProperties: false
+						},
+						strict: true
+					}
+				}
+			}),
+		{ title: place.title, model }
+	);
 	const translation = JSON.parse(response.output_text);
 	return translation;
 }
 
 export async function groupDuplicatePlaces(places, coordinates, preferences) {
+	const translationsNeeded = places.filter((place) => {
+		const hasMultipleSourceLanguages =
+			preferences.sourceLanguages && preferences.sourceLanguages.length > 1;
+		const isDifferentLanguage = place.lang && place.lang !== preferences.lang;
+		return hasMultipleSourceLanguages || isDifferentLanguage;
+	}).length;
+	console.info('[perf] ai.translation.queue', {
+		total: places.length,
+		needed: translationsNeeded,
+		skipped: places.length - translationsNeeded
+	});
 	const translations = await Promise.all(
 		places.map((place) => translatePlaceName(place, preferences))
 	);
@@ -116,10 +134,10 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 		}
 		const maxLength = Math.max(name1.length, name2.length);
 		const minLength = Math.min(name1.length, name2.length);
-		
+
 		// Check if one is a substring of the other (or very close to it)
 		const isSubstringLike = name1.includes(name2) || name2.includes(name1);
-		
+
 		let allowedDistance;
 		if (isSubstringLike) {
 			// More generous for substring cases: allow up to the length difference plus some tolerance
@@ -131,7 +149,7 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 		}
 		const distance = levenshtein(name1, name2);
 		const isMatch = name1 === name2 || distance < allowedDistance;
-		
+
 		// Debug output for matches and near-misses
 		if (distance > 0 && (isMatch || distance <= allowedDistance + 2)) {
 			console.log(
@@ -140,7 +158,7 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 				isSubstringLike ? '(substring-like)' : '(non-substring)'
 			);
 		}
-		
+
 		return isMatch;
 	};
 

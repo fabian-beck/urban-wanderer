@@ -3,7 +3,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { nArticles } from './constants/core.js';
 import { CLASSES } from './constants/place-classes.js';
 import { AI_MODELS, LABELS } from './constants/ui-config.js';
-import { analyzePlaces } from './util/ai-analysis.js';
+import { analyzePlaces, getLastAnalysisCacheStats } from './util/ai-analysis.js';
 import { groupDuplicatePlaces } from './util/ai-translation.js';
 import { generateStory } from './util/ai-story.js';
 import { extractInsightsFromArticle } from './util/ai-facts.js';
@@ -24,6 +24,13 @@ import {
 	loadOsmActivityMap
 } from './util/osm.js';
 import { setDebugConsoleEnabled } from './util/debug-console.js';
+import {
+	createPerformanceRun,
+	formatDuration,
+	getPerformanceNow,
+	logPerformanceSummary,
+	withPerformance
+} from './util/performance.js';
 
 let prefsInitialized = false;
 
@@ -73,20 +80,50 @@ function normalizePreferences(prefs) {
 	return normalized;
 }
 
+async function measure(label, callback, details = {}) {
+	const startedAt = getPerformanceNow();
+	const result = await withPerformance(label, callback, details);
+	return {
+		result,
+		durationMs: getPerformanceNow() - startedAt
+	};
+}
+
 // Coordinates stores
 function createCoordinates() {
 	const { subscribe, set } = writable(null);
 	return {
 		subscribe,
 		update: async (coords) => {
+			const perf = createPerformanceRun('coordinates.update', {
+				mode: coords === 'random' ? 'random' : coords ? 'provided' : 'gps'
+			});
 			try {
 				if (coords === 'random') {
-					coords = await getRandomWikipediaPlaceCoordinates(get(preferences).lang);
+					coords = await withPerformance(
+						'coordinates.randomWikipediaPlace',
+						() => getRandomWikipediaPlaceCoordinates(get(preferences).lang),
+						{ lang: get(preferences).lang }
+					);
 				} else if (!coords) {
-					coords = (await Geolocation.getCurrentPosition({ enableHighAccuracy: true })).coords;
+					coords = (
+						await withPerformance(
+							'coordinates.geolocation',
+							() => Geolocation.getCurrentPosition({ enableHighAccuracy: true }),
+							{ enableHighAccuracy: true }
+						)
+					).coords;
 					console.log('Received coordinates:', coords);
 				}
-				const addressData = await loadOsmAddressData(coords, get(preferences).lang);
+				perf.checkpoint('coordinates acquired', {
+					latitude: coords.latitude,
+					longitude: coords.longitude
+				});
+				const addressData = await withPerformance(
+					'coordinates.reverseGeocode',
+					() => loadOsmAddressData(coords, get(preferences).lang),
+					{ lang: get(preferences).lang }
+				);
 				set({
 					latitude: coords.latitude,
 					longitude: coords.longitude,
@@ -96,7 +133,12 @@ function createCoordinates() {
 					suburb: addressData.address.suburb || addressData.address.city_district,
 					road: addressData.address.road
 				});
+				perf.end({
+					town: addressData.address.town || addressData.address.city,
+					road: addressData.address.road
+				});
 			} catch (error) {
+				perf.fail(error);
 				console.error(error);
 				errorMessage.set(error);
 			}
@@ -154,66 +196,120 @@ function createPlaces() {
 			if (!currentCoordinates) {
 				return;
 			}
+			const currentPreferences = get(preferences);
+			const perf = createPerformanceRun('places.update', {
+				latitude: currentCoordinates.latitude,
+				longitude: currentCoordinates.longitude,
+				radius: currentPreferences.radius,
+				sourceLanguages: currentPreferences.sourceLanguages
+			});
+			const placesUpdateStartedAt = getPerformanceNow();
+			const stageDurations = {};
+			const startMapLoad = (label, loader, store) => {
+				const mapPerf = createPerformanceRun(label);
+				loader(currentCoordinates)
+					.then((mapData) => {
+						store.set(mapData || []);
+						mapPerf.end({
+							rows: Array.isArray(mapData) ? mapData.length : 0
+						});
+					})
+					.catch((error) => {
+						mapPerf.fail(error);
+						console.error(`Failed to load ${label}:`, error);
+						store.set([]);
+					});
+			};
 			try {
-				// init timer
-				const startTime = Date.now();
-				let previousTime = startTime;
 				loadingMessage.set('Loading places ...');
-				// Load maps and update stores with error handling
-				loadOsmWaterMap(currentCoordinates)
-					.then((mapData) => waterMap.set(mapData || []))
-					.catch((error) => {
-						console.error('Failed to load water map:', error);
-						waterMap.set([]);
-					});
-				loadOsmGreenMap(currentCoordinates)
-					.then((mapData) => greenMap.set(mapData || []))
-					.catch((error) => {
-						console.error('Failed to load green map:', error);
-						greenMap.set([]);
-					});
-				loadOsmActivityMap(currentCoordinates)
-					.then((mapData) => activityMap.set(mapData || []))
-					.catch((error) => {
-						console.error('Failed to load activity map:', error);
-						activityMap.set([]);
-					});
-				let [placesTmp, placesOsm] = await Promise.allSettled([
-					loadWikipediaPlaces(currentCoordinates, get(preferences), nArticles),
-					loadOsmPlaces(currentCoordinates)
-				]).then((results) => [
-					results[0].status === 'fulfilled' ? results[0].value : [],
-					results[1].status === 'fulfilled' ? results[1].value : []
-				]);
-				set(mergePlaces(placesTmp, placesOsm));
-				console.log('Time to load places (s):', ((Date.now() - startTime) / 1000).toFixed(2));
-				previousTime = Date.now();
-				loadingMessage.set('Grouping places ...');
-				const groupedPlaces = await groupDuplicatePlaces(
-					get(places),
-					currentCoordinates,
-					get(preferences)
+				let { result: sourcePlaces, durationMs: sourceFetchDurationMs } = await measure(
+					'places.sourceFetch',
+					() =>
+						Promise.allSettled([
+							loadWikipediaPlaces(currentCoordinates, currentPreferences, nArticles),
+							loadOsmPlaces(currentCoordinates)
+						]).then((results) => [
+							results[0].status === 'fulfilled' ? results[0].value : [],
+							results[1].status === 'fulfilled' ? results[1].value : []
+						]),
+					{ nArticles }
 				);
+				stageDurations.sourceFetchMs = sourceFetchDurationMs;
+				let [placesTmp, placesOsm] = sourcePlaces;
+				const mergedPlaces = mergePlaces(placesTmp, placesOsm);
+				set(mergedPlaces);
+				perf.checkpoint('source fetch and merge complete', {
+					wikipediaPlaces: placesTmp.length,
+					osmPlaces: placesOsm.length,
+					mergedPlaces: mergedPlaces.length
+				});
+				loadingMessage.set('Grouping places ...');
+				const { result: groupedPlaces, durationMs: groupingDurationMs } = await measure(
+					'places.groupDuplicatePlaces',
+					() => groupDuplicatePlaces(get(places), currentCoordinates, currentPreferences),
+					{ places: get(places)?.length || 0 }
+				);
+				stageDurations.groupingMs = groupingDurationMs;
 				set(groupedPlaces);
-				console.log('Time to group places (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
-				previousTime = Date.now();
+				perf.checkpoint('grouping complete', {
+					groupedPlaces: groupedPlaces.length
+				});
 				loadingMessage.set('Loading article extracts ...');
-				await loadWikipediaExtracts(get(places), get(preferences).lang);
-				console.log('Time to load extracts (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
-				previousTime = Date.now();
+				const { durationMs: extractsDurationMs } = await measure(
+					'places.loadWikipediaExtracts',
+					() => loadWikipediaExtracts(get(places), currentPreferences.lang),
+					{ places: get(places)?.length || 0 }
+				);
+				stageDurations.extractsMs = extractsDurationMs;
+				perf.checkpoint('extracts complete', {
+					placesWithDescriptions: get(places).filter((place) => place.description).length
+				});
 				loadingMessage.set('Analyzing places ...');
-				const analyzedPlaces = await analyzePlaces(get(places), get(preferences));
+				const placeCountBeforeAnalysis = get(places)?.length || 0;
+				const { result: analyzedPlaces, durationMs: analysisDurationMs } = await measure(
+					'places.analyzePlaces',
+					() => analyzePlaces(get(places), currentPreferences),
+					{ places: placeCountBeforeAnalysis }
+				);
+				stageDurations.analysisMs = analysisDurationMs;
 				set(analyzedPlaces);
 				console.log('Places after analysis:', get(places));
-				console.log('Time to analyze places (s):', ((Date.now() - previousTime) / 1000).toFixed(2));
-				console.log(
-					'Total time to preprocess places (s):',
-					((Date.now() - startTime) / 1000).toFixed(2)
-				);
+				perf.checkpoint('analysis complete', {
+					analyzedPlaces: analyzedPlaces.length,
+					filteredPlaces: placeCountBeforeAnalysis - analyzedPlaces.length
+				});
 				rate();
+				perf.checkpoint('rating complete', {
+					visibleCandidates: get(places).filter((place) => place.stars > 1).length
+				});
+				const totalMs = getPerformanceNow() - placesUpdateStartedAt;
+				const analysisCacheStats = getLastAnalysisCacheStats();
+				logPerformanceSummary('places.update.summary', {
+					total: formatDuration(totalMs),
+					sourceFetch: formatDuration(stageDurations.sourceFetchMs),
+					grouping: formatDuration(stageDurations.groupingMs),
+					extracts: formatDuration(stageDurations.extractsMs),
+					analysis: formatDuration(stageDurations.analysisMs),
+					wikipediaPlaces: placesTmp.length,
+					osmPlaces: placesOsm.length,
+					mergedPlaces: mergedPlaces.length,
+					groupedPlaces: groupedPlaces.length,
+					finalPlaces: get(places)?.length || 0,
+					visibleCandidates: get(places).filter((place) => place.stars > 1).length,
+					analysisCached: analysisCacheStats.cached,
+					analysisUncached: analysisCacheStats.uncached
+				});
+				startMapLoad('OSM water map', loadOsmWaterMap, waterMap);
+				startMapLoad('OSM green map', loadOsmGreenMap, greenMap);
+				startMapLoad('OSM activity map', loadOsmActivityMap, activityMap);
+				perf.checkpoint('background map loads started');
 				// Pregenerate first story part in background
 				pregenerateStoryInBackground();
+				perf.end({
+					places: get(places)?.length || 0
+				});
 			} catch (error) {
+				perf.fail(error);
 				console.error(error);
 				errorMessage.set('Could not load places: ' + error);
 			}
@@ -351,44 +447,89 @@ function rate() {
 }
 
 async function loadMetadata() {
+	const perf = createPerformanceRun('metadata.load', {
+		here: get(placesHere).length,
+		nearby: get(placesNearby).length,
+		surrounding: get(placesSurrounding).length
+	});
 	// Load images asynchronously and trigger store updates when complete
 	loadPlaceImages('imageThumb', 100);
 	loadPlaceImages('image', 500);
 
-	await Promise.all([
-		loadWikipediaArticleTexts(get(placesHere), get(preferences).lang),
-		loadWikipediaArticleTexts(get(placesSurrounding), get(preferences).lang),
-		loadWikipediaArticleTexts(get(placesNearby), get(preferences).lang)
-	]);
+	await withPerformance(
+		'metadata.articleTexts',
+		() =>
+			Promise.all([
+				loadWikipediaArticleTexts(get(placesHere), get(preferences).lang),
+				loadWikipediaArticleTexts(get(placesSurrounding), get(preferences).lang),
+				loadWikipediaArticleTexts(get(placesNearby), get(preferences).lang)
+			]),
+		{
+			here: get(placesHere).length,
+			nearby: get(placesNearby).length,
+			surrounding: get(placesSurrounding).length
+		}
+	);
+	perf.checkpoint('article texts loaded', {
+		articles: [...get(placesHere), ...get(placesNearby), ...get(placesSurrounding)].filter(
+			(place) => place.article
+		).length
+	});
 
 	// Extract insights for places that have articles (only for here and surrounding places)
 	const placesWithArticles = [...get(placesHere), ...get(placesSurrounding)].filter(
 		(place) => place.article
 	);
-	await Promise.all(
-		placesWithArticles.map(async (place) => {
-			place.insights = await extractInsightsFromArticle(place.article, get(preferences));
-		})
+	await withPerformance(
+		'metadata.insights',
+		() =>
+			Promise.all(
+				placesWithArticles.map(async (place) => {
+					place.insights = await extractInsightsFromArticle(place.article, get(preferences));
+				})
+			),
+		{ placesWithArticles: placesWithArticles.length }
 	);
+	perf.end({
+		insights: placesWithArticles.filter((place) => place.insights).length
+	});
 }
 
 async function loadPlaceImages(attribute, size) {
+	const perf = createPerformanceRun(`images.${attribute}`, {
+		size,
+		places: get(places)?.length || 0
+	});
 	try {
 		// 1. Try Wikipedia images first
-		await loadWikipediaImageUrls(get(places), attribute, size, get(preferences).lang);
+		await withPerformance(
+			`images.${attribute}.wikipedia`,
+			() => loadWikipediaImageUrls(get(places), attribute, size, get(preferences).lang),
+			{ size, places: get(places)?.length || 0 }
+		);
 	} catch (error) {
 		console.error(`Could not load Wikipedia ${attribute} data:`, error);
 	} finally {
 		places.set(get(places));
+		perf.checkpoint('wikipedia images attempted', {
+			loaded: get(places).filter((place) => place[attribute]).length
+		});
 	}
 
 	try {
 		// 2. Try Wikidata for places without images
-		await loadWikidataImages(get(places), attribute, size);
+		await withPerformance(
+			`images.${attribute}.wikidata`,
+			() => loadWikidataImages(get(places), attribute, size),
+			{ size, missingImages: get(places).filter((place) => !place[attribute]).length }
+		);
 	} catch (error) {
 		console.error(`Could not load Wikidata ${attribute} data:`, error);
 	} finally {
 		places.set(get(places));
+		perf.end({
+			loaded: get(places).filter((place) => place[attribute]).length
+		});
 	}
 }
 
@@ -423,9 +564,11 @@ async function pregenerateStoryInBackground() {
 	if (!currentCoordinates) {
 		return;
 	}
+	const perf = createPerformanceRun('story.pregenerate');
 
 	// Load facts before story generation
-	await loadMetadata();
+	await withPerformance('story.metadataPrerequisites', () => loadMetadata());
+	perf.checkpoint('metadata loaded');
 
 	// Clear previous stories and preloaded content
 	storyTexts.set([]);
@@ -435,20 +578,33 @@ async function pregenerateStoryInBackground() {
 	preloadingStory.set(false);
 
 	try {
-		const firstStoryResult = await generateStory(
-			[],
-			get(placesHere),
-			get(placesNearby),
-			get(placesSurrounding),
-			currentCoordinates,
-			get(preferences)
+		const firstStoryResult = await withPerformance(
+			'story.generateFirstPart',
+			() =>
+				generateStory(
+					[],
+					get(placesHere),
+					get(placesNearby),
+					get(placesSurrounding),
+					currentCoordinates,
+					get(preferences)
+				),
+			{
+				here: get(placesHere).length,
+				nearby: get(placesNearby).length,
+				surrounding: get(placesSurrounding).length
+			}
 		);
 		storyTexts.set([firstStoryResult.text]);
 		storyResponseIds.set([firstStoryResult.responseId]);
 		storyLoading.set(false);
 		// Start preloading the next story part immediately
 		preloadNextStoryPart([firstStoryResult.text]);
+		perf.end({
+			characters: firstStoryResult.text.length
+		});
 	} catch (error) {
+		perf.fail(error);
 		console.error('Background story generation failed:', error);
 		storyLoading.set(false);
 	}
@@ -463,14 +619,19 @@ export async function preloadNextStoryPart(currentStories) {
 		const lastResponseId =
 			currentResponseIds.length > 0 ? currentResponseIds[currentResponseIds.length - 1] : null;
 
-		const nextStoryResult = await generateStory(
-			currentStories,
-			get(placesHere),
-			get(placesNearby),
-			get(placesSurrounding),
-			get(coordinates),
-			get(preferences),
-			lastResponseId
+		const nextStoryResult = await withPerformance(
+			'story.preloadNextPart',
+			() =>
+				generateStory(
+					currentStories,
+					get(placesHere),
+					get(placesNearby),
+					get(placesSurrounding),
+					get(coordinates),
+					get(preferences),
+					lastResponseId
+				),
+			{ previousResponseId: Boolean(lastResponseId), existingStories: currentStories.length }
 		);
 		preloadedStory.set(nextStoryResult);
 	} catch (error) {
@@ -497,6 +658,9 @@ export const activityMap = writable([]);
 
 // Update location function - orchestrates all store updates
 export async function updateLocation(coords) {
+	const perf = createPerformanceRun('updateLocation', {
+		mode: coords === 'random' ? 'random' : coords ? 'provided' : 'gps'
+	});
 	try {
 		loading.set(true);
 		errorMessage.set(null);
@@ -505,12 +669,20 @@ export async function updateLocation(coords) {
 		storyTexts.set([]);
 		events.set([]);
 		loadingMessage.set('Updating location ...');
-		await coordinates.update(coords);
+		await withPerformance('updateLocation.coordinates', () => coordinates.update(coords));
+		perf.checkpoint('coordinates updated');
 		loadingMessage.set('Loading places ...');
-		await places.update();
+		await withPerformance('updateLocation.places', () => places.update());
+		perf.checkpoint('places updated', {
+			places: get(places)?.length || 0
+		});
 		loadingMessage.reset();
 		loading.set(false);
+		perf.end({
+			places: get(places)?.length || 0
+		});
 	} catch (error) {
+		perf.fail(error);
 		loadingMessage.reset();
 		loading.set(false);
 		errorMessage.set('Error updating location: ' + error);
@@ -520,18 +692,29 @@ export async function updateLocation(coords) {
 
 // Search for place by name and update location
 export async function searchForPlace(placeName) {
+	const perf = createPerformanceRun('searchForPlace', { placeName });
 	try {
 		loading.set(true);
 		loadingMessage.set(`Searching for "${placeName}"...`);
-		const placeData = await searchWikipediaPlaceCoordinates(placeName, get(preferences).lang);
+		const placeData = await withPerformance(
+			'searchForPlace.wikipediaCoordinates',
+			() => searchWikipediaPlaceCoordinates(placeName, get(preferences).lang),
+			{ lang: get(preferences).lang }
+		);
 
 		// Reset loading state and call updateLocation (which will handle its own loading state)
 		loading.set(false);
-		await updateLocation({
-			latitude: placeData.latitude,
-			longitude: placeData.longitude
+		await withPerformance('searchForPlace.updateLocation', () =>
+			updateLocation({
+				latitude: placeData.latitude,
+				longitude: placeData.longitude
+			})
+		);
+		perf.end({
+			title: placeData.title
 		});
 	} catch (error) {
+		perf.fail(error);
 		loadingMessage.reset();
 		loading.set(false);
 		errorMessage.set(`Error searching for place: ${error.message}`);

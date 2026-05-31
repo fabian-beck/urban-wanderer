@@ -2,6 +2,7 @@ import { LABELS, AI_REASONING_EFFORT } from '../constants/ui-config.js';
 import { CLASSES } from '../constants/place-classes.js';
 import { openai, getAiModel } from './ai-core.js';
 import { ANALYSIS_CACHE_KEY as CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
+import { withPerformance } from './performance.js';
 
 function loadAnalysisCache() {
 	if (typeof localStorage === 'undefined') return {};
@@ -41,6 +42,7 @@ function createAnalysisCacheKey(place) {
 }
 
 let analysisCache = loadAnalysisCache();
+let lastAnalysisCacheStats = { cached: 0, uncached: 0, total: 0 };
 
 export function clearAnalysisCache() {
 	// Clear localStorage
@@ -52,6 +54,10 @@ export function clearAnalysisCache() {
 	console.log('Analysis cache cleared (both localStorage and memory)');
 }
 
+export function getLastAnalysisCacheStats() {
+	return lastAnalysisCacheStats;
+}
+
 async function analyzeSinglePlace(place, preferences) {
 	const instructions = `You are a chat assistant helping a user analyze places:
 (1) To classify them
@@ -60,8 +66,8 @@ async function analyzeSinglePlace(place, preferences) {
 
 Available CLASSES are:
 ${Object.keys(CLASSES)
-			.map((classLabel) => `- ${classLabel}: ${CLASSES[classLabel].description}`)
-			.join('\n')}
+	.map((classLabel) => `- ${classLabel}: ${CLASSES[classLabel].description}`)
+	.join('\n')}
         
 Available LABELS are:
 ${LABELS.map((label) => `- ${label.value}: ${label.description}`).join('\n')}
@@ -108,27 +114,33 @@ FURTHER INSTRUCTIONS:
 * Geographic places like rivers or lakes, that are not a specific location, should be labeled only as "GEOGRAPHY" and have a very low importance as they can be accessed from many locations.
 `;
 	const dataString = `* ${place.title}  (${place.type || ''}): ${place.snippet || place.description || ''}`;
-	const response = await openai.responses.create({
-		model: getAiModel('simple', preferences),
-		reasoning: {
-			effort: AI_REASONING_EFFORT
-		},
-		input: [
-			{
-				role: 'system',
-				content: instructions
-			},
-			{
-				role: 'user',
-				content: dataString
-			}
-		],
-		text: {
-			format: {
-				type: 'json_object'
-			}
-		}
-	});
+	const model = getAiModel('simple', preferences);
+	const response = await withPerformance(
+		'ai.analysis.place',
+		() =>
+			openai.responses.create({
+				model,
+				reasoning: {
+					effort: AI_REASONING_EFFORT
+				},
+				input: [
+					{
+						role: 'system',
+						content: instructions
+					},
+					{
+						role: 'user',
+						content: dataString
+					}
+				],
+				text: {
+					format: {
+						type: 'json_object'
+					}
+				}
+			}),
+		{ title: place.title, model }
+	);
 	let json;
 	try {
 		// Extract JSON from response, handling potential extra text
@@ -161,6 +173,12 @@ export async function analyzePlaces(places, preferences) {
 		const cacheKey = createAnalysisCacheKey(place);
 		return !analysisCache[cacheKey];
 	});
+	lastAnalysisCacheStats = {
+		cached: places.length - placesWithoutCachedAnalysis.length,
+		uncached: placesWithoutCachedAnalysis.length,
+		total: places.length
+	};
+	console.info('[perf] ai.analysis.cache', lastAnalysisCacheStats);
 
 	if (placesWithoutCachedAnalysis.length > 0) {
 		console.log(`Analyzing ${placesWithoutCachedAnalysis.length} uncached places`);

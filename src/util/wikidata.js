@@ -1,6 +1,34 @@
 import { get } from 'svelte/store';
 import { preferences, coordinates } from '../stores.js';
 
+const wikidataJsonRequestCache = new Map();
+
+async function fetchJson(url, context, { cache = false } = {}) {
+	if (cache && wikidataJsonRequestCache.has(url)) {
+		return wikidataJsonRequestCache.get(url);
+	}
+
+	const request = (async () => {
+		try {
+			const response = await fetch(url);
+			if (!response.ok) {
+				console.warn(`[wikidata] ${context} failed with HTTP ${response.status}`);
+				return null;
+			}
+			return await response.json();
+		} catch (error) {
+			console.warn(`[wikidata] ${context} failed: ${error.message}`);
+			return null;
+		}
+	})();
+
+	if (cache) {
+		wikidataJsonRequestCache.set(url, request);
+	}
+
+	return request;
+}
+
 /**
  * Fetch WikiData entity information and return formatted context string
  * @param {string} wikidataId - The WikiData entity ID (e.g., "Q123")
@@ -321,18 +349,14 @@ export async function loadWikidataImages(places, attribute, size) {
 				const wikidataId = place.wikidata;
 				console.log(`Fetching Wikidata image for ${place.title} (${wikidataId})`);
 
-				const response = await fetch(
-					`https://www.wikidata.org/wiki/Special:EntityData/${wikidataId}.json`
+				const data = await fetchJson(
+					`https://www.wikidata.org/wiki/Special:EntityData/${wikidataId}.json`,
+					`entity image ${wikidataId}`,
+					{ cache: true }
 				);
-
-				if (!response.ok) {
-					console.error(
-						`Failed to fetch Wikidata for ${wikidataId}. HTTP status: ${response.status}`
-					);
+				if (!data) {
 					return;
 				}
-
-				const data = await response.json();
 				const entity = data.entities[wikidataId];
 
 				if (!entity || !entity.claims || !entity.claims.P18) {
@@ -355,7 +379,7 @@ export async function loadWikidataImages(places, attribute, size) {
 					console.log(`✓ Loaded Wikidata image for ${place.title}: ${imageFilename}`);
 				}
 			} catch (error) {
-				console.error(`Error fetching Wikidata image for ${place.title}:`, error);
+				console.warn(`[wikidata] image for ${place.title} failed: ${error.message}`);
 			}
 		})
 	);
@@ -369,11 +393,14 @@ export async function loadWikidataImages(places, attribute, size) {
  */
 async function getCommonsImageUrl(filename, size) {
 	try {
-		const response = await fetch(
-			`https://commons.wikimedia.org/w/api.php?action=query&format=json&titles=File:${encodeURIComponent(filename)}&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=${size}`
+		const data = await fetchJson(
+			`https://commons.wikimedia.org/w/api.php?action=query&format=json&titles=File:${encodeURIComponent(filename)}&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=${size}`,
+			`Commons image ${filename}`,
+			{ cache: true }
 		);
-
-		const data = await response.json();
+		if (!data?.query?.pages) {
+			return null;
+		}
 		const pages = data.query.pages;
 		const page = Object.values(pages)[0];
 
@@ -394,7 +421,7 @@ async function getCommonsImageUrl(filename, size) {
 
 		return null;
 	} catch (error) {
-		console.error(`Error fetching Commons image URL for ${filename}:`, error);
+		console.warn(`[wikidata] Commons image ${filename} failed: ${error.message}`);
 		return null;
 	}
 }
