@@ -1,5 +1,5 @@
 import { openai, getAiModel } from './ai-core.js';
-import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
+import { AI_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
 
 // generate story about the user position
 export async function generateStory(
@@ -22,9 +22,16 @@ export async function generateStory(
 	);
 	const relevantNearbyPlaces =
 		immediateNearbyPlaces.length > 0 ? immediateNearbyPlaces : prioritizedNearbyPlaces.slice(0, 2);
-	const preferenceLabels = preferences.labels?.length
-		? preferences.labels.map((label) => `- ${label}`).join('\n')
+	const selectedLabels = preferences.labels || [];
+	const preferenceLabels = selectedLabels.length
+		? selectedLabels.map((label) => `- ${label}`).join('\n')
 		: '- no specific topics selected';
+	const deselectedLabels = LABELS.map((label) => label.value).filter(
+		(label) => !selectedLabels.includes(label)
+	);
+	const negativePreferenceLabels = deselectedLabels.length
+		? deselectedLabels.map((label) => `- ${label}`).join('\n')
+		: '- none';
 	const initialMessage = {
 		role: 'system',
 		content: `
@@ -81,6 +88,9 @@ ${place.insights || place.article || place.description || place.snippet || place
 
 User's preferences are the following topics:
 ${preferenceLabels}
+
+User did NOT select the following topics (treat them as negative topics and avoid them unless necessary for local context):
+${negativePreferenceLabels}
 
 The story should be up to ${Math.min(Math.round(0.5 + (placesHere.length + placesSurrounding.length) / 3), 4)} paragraphs long and focus on the user's immediate surroundings and the closest places.
 Prioritize in this strict order: (1) current position and places listed as "close to /in", (2) surrounding context, (3) the nearby places list only if needed.
