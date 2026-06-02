@@ -128,13 +128,13 @@ function createCoordinates() {
 					latitude: coords.latitude,
 					longitude: coords.longitude,
 					address: addressData.display_name,
-					town: addressData.address.town || addressData.address.city,
-					village: addressData.address.village || addressData.address.city_district,
-					suburb: addressData.address.suburb || addressData.address.city_district,
+					town: addressData.address.town,
+					village: addressData.address.village,
+					suburb: addressData.address.suburb,
 					road: addressData.address.road
 				});
 				perf.end({
-					town: addressData.address.town || addressData.address.city,
+					town: addressData.address.town,
 					road: addressData.address.road
 				});
 			} catch (error) {
