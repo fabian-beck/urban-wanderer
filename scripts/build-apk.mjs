@@ -1,10 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const rootDir = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const androidDir = path.join(rootDir, 'android');
+const hidriveExportDir = 'C:\\Users\\ba5tm7\\HiDrive\\Temp';
 const isRelease = process.argv.includes('--release');
 const gradleTask = isRelease ? 'assembleRelease' : 'assembleDebug';
 const apkVariantDir = path.join(
@@ -33,7 +34,19 @@ run(process.platform === 'win32' ? 'gradlew.bat' : './gradlew', [gradleTask], an
 const apk = findNewestApk(apkVariantDir);
 
 if (apk) {
+	const timestampedApk = copyTimestampedApk(apk);
+
 	console.log(`\nAPK built: ${path.relative(rootDir, apk)}`);
+	console.log(`Timestamped APK: ${path.relative(rootDir, timestampedApk)}`);
+
+	if (isDirectory(hidriveExportDir)) {
+		const hidriveApk = path.join(hidriveExportDir, path.basename(timestampedApk));
+
+		copyFileSync(timestampedApk, hidriveApk);
+		console.log(`Copied APK to: ${hidriveApk}`);
+	} else {
+		console.log(`HiDrive export skipped; directory not found: ${hidriveExportDir}`);
+	}
 }
 
 function run(command, args, cwd) {
@@ -83,4 +96,36 @@ function findNewestApk(directory) {
 		.filter((file) => file.endsWith('.apk'))
 		.map((file) => path.join(directory, file))
 		.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
+}
+
+function copyTimestampedApk(apk) {
+	const timestamp = formatTimestamp(new Date());
+	const variant = isRelease ? 'release' : 'debug';
+	const timestampedApk = path.join(path.dirname(apk), `urban-wanderer-${variant}-${timestamp}.apk`);
+
+	copyFileSync(apk, timestampedApk);
+
+	return timestampedApk;
+}
+
+function formatTimestamp(date) {
+	const parts = [
+		date.getFullYear(),
+		pad(date.getMonth() + 1),
+		pad(date.getDate()),
+		'-',
+		pad(date.getHours()),
+		pad(date.getMinutes()),
+		pad(date.getSeconds())
+	];
+
+	return parts.join('');
+}
+
+function pad(value) {
+	return String(value).padStart(2, '0');
+}
+
+function isDirectory(directory) {
+	return existsSync(directory) && statSync(directory).isDirectory();
 }
