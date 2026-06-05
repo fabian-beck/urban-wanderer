@@ -3,7 +3,7 @@ import { getPerformanceNow, logPerformance } from './performance.js';
 import { createLogger } from './logger.js';
 
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
-const CACHE_PREFIX = 'osm_cache_';
+const CACHE_PREFIX = 'osm_cache_v2_';
 const MAX_CACHE_ENTRIES = 50;
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OVERPASS_MIN_REQUEST_INTERVAL = 1500;
@@ -254,12 +254,105 @@ out skel qt;
 		const data = await loadOverpassJson(overpassQuery);
 
 		logger.debug('Places response', { elements: data.elements?.length || 0, data });
+		const elementByKey = new Map(
+			data.elements.map((element) => [`${element.type}:${element.id}`, element])
+		);
+		const nodeById = new Map(
+			data.elements
+				.filter((element) => element.type === 'node')
+				.map((element) => [element.id, element])
+		);
+
+		const getWayNodes = (way) =>
+			way.nodes
+				?.map((nodeId) => nodeById.get(nodeId))
+				.filter((node) => Number.isFinite(node?.lat) && Number.isFinite(node?.lon)) || [];
+
+		const getElementLines = (element) => {
+			if (element.type === 'node') {
+				return Number.isFinite(element.lat) && Number.isFinite(element.lon) ? [[element]] : [];
+			}
+			if (element.type === 'way') {
+				return [getWayNodes(element)].filter((nodes) => nodes.length > 0);
+			}
+			if (element.type === 'relation') {
+				return (
+					element.members
+						?.filter((member) => member.type === 'way')
+						.map((member) => {
+							const way = elementByKey.get(`way:${member.ref}`);
+							return way ? getWayNodes(way) : [];
+						})
+						.filter((nodes) => nodes.length > 0) || []
+				);
+			}
+			return [];
+		};
+
+		const getNearestLinePoint = (nodes) => {
+			if (nodes.length === 0) return null;
+			if (nodes.length === 1) {
+				const [node] = nodes;
+				return {
+					lat: node.lat,
+					lon: node.lon,
+					dist: haversineDistance(coordinates.latitude, coordinates.longitude, node.lat, node.lon)
+				};
+			}
+
+			let nearestPoint = null;
+
+			for (let i = 0; i < nodes.length - 1; i++) {
+				const start = nodes[i];
+				const end = nodes[i + 1];
+				const startX = latLonToX(start.lat, start.lon, coordinates.latitude, coordinates.longitude);
+				const startY = latLonToY(start.lat, start.lon, coordinates.latitude, coordinates.longitude);
+				const endX = latLonToX(end.lat, end.lon, coordinates.latitude, coordinates.longitude);
+				const endY = latLonToY(end.lat, end.lon, coordinates.latitude, coordinates.longitude);
+				const segmentX = endX - startX;
+				const segmentY = endY - startY;
+				const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+				const t =
+					segmentLengthSquared === 0
+						? 0
+						: Math.max(
+								0,
+								Math.min(1, -(startX * segmentX + startY * segmentY) / segmentLengthSquared)
+							);
+				const closestX = startX + t * segmentX;
+				const closestY = startY + t * segmentY;
+				const dist = Math.sqrt(closestX * closestX + closestY * closestY);
+
+				if (!nearestPoint || dist < nearestPoint.dist) {
+					nearestPoint = {
+						lat: start.lat + t * (end.lat - start.lat),
+						lon: start.lon + t * (end.lon - start.lon),
+						dist
+					};
+				}
+			}
+
+			return nearestPoint;
+		};
+
+		const getNearestGeometryPoint = (lines) =>
+			lines
+				.map((nodes) => getNearestLinePoint(nodes))
+				.filter(Boolean)
+				.reduce(
+					(nearest, point) => (!nearest || point.dist < nearest.dist ? point : nearest),
+					null
+				);
+
 		const places = data.elements
 			.filter((element) => element.tags?.name)
 			.map((element) => {
 				const tags = element.tags;
-				const lat = element.lat ?? element.center?.lat;
-				const lon = element.lon ?? element.center?.lon;
+				const nearestGeometryPoint = tags.waterway
+					? getNearestGeometryPoint(getElementLines(element))
+					: null;
+				const lat = element.lat ?? nearestGeometryPoint?.lat ?? element.center?.lat;
+				const lon = element.lon ?? nearestGeometryPoint?.lon ?? element.center?.lon;
 				let title = tags.name.replace(/\s*\(.*?\)\s*/g, '');
 				title = title.split(',')[0];
 				return {
@@ -278,9 +371,10 @@ out skel qt;
 					lat,
 					lon,
 					dist:
-						Number.isFinite(lat) && Number.isFinite(lon)
+						nearestGeometryPoint?.dist ??
+						(Number.isFinite(lat) && Number.isFinite(lon)
 							? haversineDistance(coordinates.latitude, coordinates.longitude, lat, lon)
-							: Infinity
+							: Infinity)
 				};
 			});
 
