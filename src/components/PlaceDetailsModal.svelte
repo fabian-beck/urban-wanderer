@@ -32,7 +32,7 @@
 
 	// Reactive place that updates when the store updates (for image metadata, etc.)
 	const reactivePlace = derived(places, ($places) => {
-		return $places.find((p) => p.title === place.title) || place;
+		return $places?.find((p) => p.title === place.title) || place;
 	});
 
 	$: isSurroundingPlace = $placesSurrounding.find((p) => p.title === place.title);
