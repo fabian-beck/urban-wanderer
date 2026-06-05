@@ -95,6 +95,10 @@ npx cap sync          # Sync web code to native projects
 # Use Android Studio to build/run the Android app
 ```
 
+## Codex Environment Notes
+
+- In the Codex sandbox on Windows, `npm run build` may fail with `Error: spawn EPERM` while Vite starts the native `esbuild.exe` service. This is an environment permission issue, not usually a project build failure. Rerun `npm run build` with escalation/approval if this happens.
+
 ## Mobile Deployment
 
 The app is configured for Android deployment through Capacitor:
