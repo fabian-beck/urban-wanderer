@@ -1,8 +1,17 @@
 import {
 	GRID_ARRAY_SIZE,
 	GRID_CELL_SIZE,
+	OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES,
+	OSM_ACTIVITY_FOOD_AMENITY_TYPES,
+	OSM_ACTIVITY_RADIUS,
+	OSM_ACTIVITY_SHOP_TYPES,
+	OSM_GREEN_LANDUSE_TYPES,
+	OSM_GREEN_LEISURE_TYPES,
+	OSM_GREEN_NATURAL_TYPES,
 	OSM_SEARCH_RADIUS,
-	OSM_STALE_CACHE_DURATION
+	OSM_STALE_CACHE_DURATION,
+	OSM_TREE_RADIUS,
+	OSM_WATERWAY_TYPES
 } from '../constants/core.js';
 import { getPerformanceNow, logPerformance } from './performance.js';
 import { createLogger } from './logger.js';
@@ -46,7 +55,125 @@ function parseRetryAfter(header) {
 	return null;
 }
 
-async function runOverpassRequest(overpassQuery) {
+function getUtf8ByteLength(value) {
+	if (typeof TextEncoder !== 'undefined') {
+		return new TextEncoder().encode(value).length;
+	}
+	return encodeURIComponent(value).replace(/%[0-9A-F]{2}/g, 'x').length;
+}
+
+function getOverpassResponseStats(data) {
+	const elements = data.elements || [];
+	return {
+		elements: elements.length,
+		nodes: elements.filter((element) => element.type === 'node').length,
+		ways: elements.filter((element) => element.type === 'way').length,
+		relations: elements.filter((element) => element.type === 'relation').length
+	};
+}
+
+function tagMatches(tags, key, values) {
+	return values.split('|').includes(tags?.[key]);
+}
+
+function isGreenLayerElement(element) {
+	const tags = element.tags;
+	return (
+		tagMatches(tags, 'landuse', OSM_GREEN_LANDUSE_TYPES) ||
+		tagMatches(tags, 'leisure', OSM_GREEN_LEISURE_TYPES) ||
+		tagMatches(tags, 'natural', OSM_GREEN_NATURAL_TYPES) ||
+		tags?.natural === 'tree'
+	);
+}
+
+function isActivityAmenity(tags) {
+	return (
+		tagMatches(tags, 'amenity', OSM_ACTIVITY_FOOD_AMENITY_TYPES) ||
+		tagMatches(tags, 'amenity', OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES)
+	);
+}
+
+function isActivityLayerElement(element) {
+	const tags = element.tags;
+	return (
+		tagMatches(tags, 'shop', OSM_ACTIVITY_SHOP_TYPES) ||
+		isActivityAmenity(tags) ||
+		tags?.landuse === 'commercial' ||
+		tags?.landuse === 'retail'
+	);
+}
+
+function getGeometryNodes(geometry) {
+	return (
+		geometry
+			?.map((node) => ({ lat: node.lat, lon: node.lon }))
+			.filter((node) => Number.isFinite(node.lat) && Number.isFinite(node.lon)) || []
+	);
+}
+
+function getRelationLines(relation) {
+	return (
+		relation.members
+			?.filter((member) => member.type === 'way' && member.geometry)
+			.map((member) => getGeometryNodes(member.geometry))
+			.filter((nodes) => nodes.length > 0) || []
+	);
+}
+
+function getNearestLinePoint(nodes, coordinates) {
+	if (nodes.length === 0) return null;
+	if (nodes.length === 1) {
+		const [node] = nodes;
+		return {
+			lat: node.lat,
+			lon: node.lon,
+			dist: haversineDistance(coordinates.latitude, coordinates.longitude, node.lat, node.lon)
+		};
+	}
+
+	let nearestPoint = null;
+
+	for (let i = 0; i < nodes.length - 1; i++) {
+		const start = nodes[i];
+		const end = nodes[i + 1];
+		const startX = latLonToX(start.lat, start.lon, coordinates.latitude, coordinates.longitude);
+		const startY = latLonToY(start.lat, start.lon, coordinates.latitude, coordinates.longitude);
+		const endX = latLonToX(end.lat, end.lon, coordinates.latitude, coordinates.longitude);
+		const endY = latLonToY(end.lat, end.lon, coordinates.latitude, coordinates.longitude);
+		const segmentX = endX - startX;
+		const segmentY = endY - startY;
+		const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+		const t =
+			segmentLengthSquared === 0
+				? 0
+				: Math.max(0, Math.min(1, -(startX * segmentX + startY * segmentY) / segmentLengthSquared));
+		const closestX = startX + t * segmentX;
+		const closestY = startY + t * segmentY;
+		const dist = Math.sqrt(closestX * closestX + closestY * closestY);
+
+		if (!nearestPoint || dist < nearestPoint.dist) {
+			nearestPoint = {
+				lat: start.lat + t * (end.lat - start.lat),
+				lon: start.lon + t * (end.lon - start.lon),
+				dist
+			};
+		}
+	}
+
+	return nearestPoint;
+}
+
+function getNearestGeometryPoint(element, coordinates) {
+	const lines =
+		element.type === 'relation' ? getRelationLines(element) : [getGeometryNodes(element.geometry)];
+
+	return lines
+		.map((nodes) => getNearestLinePoint(nodes, coordinates))
+		.filter(Boolean)
+		.reduce((nearest, point) => (!nearest || point.dist < nearest.dist ? point : nearest), null);
+}
+
+async function runOverpassRequest(overpassQuery, label = 'unknown') {
 	const now = Date.now();
 	if (now < overpassCooldownUntil) {
 		const secondsRemaining = Math.ceil((overpassCooldownUntil - now) / 1000);
@@ -73,31 +200,53 @@ async function runOverpassRequest(overpassQuery) {
 		const retryAfter = parseRetryAfter(response.headers.get('Retry-After'));
 		const cooldown = retryAfter ?? OVERPASS_DEFAULT_COOLDOWN;
 		overpassCooldownUntil = Date.now() + cooldown;
+		logger.warn('Overpass rate limited', {
+			label,
+			status: response.status,
+			cooldownMs: cooldown
+		});
 		throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
 	}
 
 	if (!response.ok) {
+		logger.warn('Overpass request failed', {
+			label,
+			status: response.status,
+			statusText: response.statusText
+		});
 		throw new Error(`Overpass API error: ${response.status} ${response.statusText}`);
 	}
 
 	const text = await response.text();
+	const responseBytes = getUtf8ByteLength(text);
 	logPerformance('Overpass request and read', getPerformanceNow() - requestStartedAt, {
 		status: response.status,
-		bytes: text.length
+		bytes: responseBytes
 	});
 	try {
-		return JSON.parse(text);
+		const data = JSON.parse(text);
+		logger.info('Overpass response stats', {
+			label,
+			status: response.status,
+			responseBytes,
+			...getOverpassResponseStats(data)
+		});
+		return data;
 	} catch {
-		logger.error('Overpass JSON parse failed', { responsePreview: text.substring(0, 200) });
+		logger.error('Overpass JSON parse failed', {
+			label,
+			responseBytes,
+			responsePreview: text.substring(0, 200)
+		});
 		throw new Error('Invalid JSON response from Overpass API');
 	}
 }
 
-function loadOverpassJson(overpassQuery) {
+function loadOverpassJson(overpassQuery, label) {
 	const requestKey = overpassQuery.replace(/\s+/g, ' ').trim();
 	const inFlight = overpassRequestsInFlight.get(requestKey);
 	if (inFlight) {
-		logger.debug('Reusing in-flight Overpass request');
+		logger.debug('Reusing in-flight Overpass request', { label });
 		return inFlight;
 	}
 
@@ -107,7 +256,7 @@ function loadOverpassJson(overpassQuery) {
 		if (queueWaitMs > 10) {
 			logPerformance('Overpass queue wait', queueWaitMs);
 		}
-		return runOverpassRequest(overpassQuery);
+		return runOverpassRequest(overpassQuery, label);
 	});
 	overpassQueue = request.catch(() => {});
 	overpassRequestsInFlight.set(requestKey, request);
@@ -234,8 +383,6 @@ export async function loadOsmPlaces(coordinates) {
 			return cached;
 		}
 		logger.info('Loading places from Overpass');
-		const waterway =
-			'river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point';
 		const amenities = 'museum|school|college|university|library|place_of_worship';
 		const tourism =
 			'viewpoint|attraction|mall|zoo|theme_park|aquarium|gallery|artwork|memorial|museum|theatre|cinema';
@@ -249,8 +396,12 @@ export async function loadOsmPlaces(coordinates) {
 [out:json];
 (
     // Search for waterways
-    relation[waterway~"${waterway}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[waterway~"${OSM_WATERWAY_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[waterway~"${OSM_WATERWAY_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+);
+out geom;
 
+(
     // Search for amenities
     node[amenity~"${amenities}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
     way[amenity~"${amenities}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
@@ -277,108 +428,17 @@ export async function loadOsmPlaces(coordinates) {
     relation[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 );
 out center;
->;
-out skel qt;
 `;
-		const data = await loadOverpassJson(overpassQuery);
+		const data = await loadOverpassJson(overpassQuery, 'places');
 
 		logger.debug('Places response', { elements: data.elements?.length || 0, data });
-		const elementByKey = new Map(
-			data.elements.map((element) => [`${element.type}:${element.id}`, element])
-		);
-		const nodeById = new Map(
-			data.elements
-				.filter((element) => element.type === 'node')
-				.map((element) => [element.id, element])
-		);
-
-		const getWayNodes = (way) =>
-			way.nodes
-				?.map((nodeId) => nodeById.get(nodeId))
-				.filter((node) => Number.isFinite(node?.lat) && Number.isFinite(node?.lon)) || [];
-
-		const getElementLines = (element) => {
-			if (element.type === 'node') {
-				return Number.isFinite(element.lat) && Number.isFinite(element.lon) ? [[element]] : [];
-			}
-			if (element.type === 'way') {
-				return [getWayNodes(element)].filter((nodes) => nodes.length > 0);
-			}
-			if (element.type === 'relation') {
-				return (
-					element.members
-						?.filter((member) => member.type === 'way')
-						.map((member) => {
-							const way = elementByKey.get(`way:${member.ref}`);
-							return way ? getWayNodes(way) : [];
-						})
-						.filter((nodes) => nodes.length > 0) || []
-				);
-			}
-			return [];
-		};
-
-		const getNearestLinePoint = (nodes) => {
-			if (nodes.length === 0) return null;
-			if (nodes.length === 1) {
-				const [node] = nodes;
-				return {
-					lat: node.lat,
-					lon: node.lon,
-					dist: haversineDistance(coordinates.latitude, coordinates.longitude, node.lat, node.lon)
-				};
-			}
-
-			let nearestPoint = null;
-
-			for (let i = 0; i < nodes.length - 1; i++) {
-				const start = nodes[i];
-				const end = nodes[i + 1];
-				const startX = latLonToX(start.lat, start.lon, coordinates.latitude, coordinates.longitude);
-				const startY = latLonToY(start.lat, start.lon, coordinates.latitude, coordinates.longitude);
-				const endX = latLonToX(end.lat, end.lon, coordinates.latitude, coordinates.longitude);
-				const endY = latLonToY(end.lat, end.lon, coordinates.latitude, coordinates.longitude);
-				const segmentX = endX - startX;
-				const segmentY = endY - startY;
-				const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
-				const t =
-					segmentLengthSquared === 0
-						? 0
-						: Math.max(
-								0,
-								Math.min(1, -(startX * segmentX + startY * segmentY) / segmentLengthSquared)
-							);
-				const closestX = startX + t * segmentX;
-				const closestY = startY + t * segmentY;
-				const dist = Math.sqrt(closestX * closestX + closestY * closestY);
-
-				if (!nearestPoint || dist < nearestPoint.dist) {
-					nearestPoint = {
-						lat: start.lat + t * (end.lat - start.lat),
-						lon: start.lon + t * (end.lon - start.lon),
-						dist
-					};
-				}
-			}
-
-			return nearestPoint;
-		};
-
-		const getNearestGeometryPoint = (lines) =>
-			lines
-				.map((nodes) => getNearestLinePoint(nodes))
-				.filter(Boolean)
-				.reduce(
-					(nearest, point) => (!nearest || point.dist < nearest.dist ? point : nearest),
-					null
-				);
 
 		const places = data.elements
 			.filter((element) => element.tags?.name)
 			.map((element) => {
 				const tags = element.tags;
 				const nearestGeometryPoint = tags.waterway
-					? getNearestGeometryPoint(getElementLines(element))
+					? getNearestGeometryPoint(element, coordinates)
 					: null;
 				const lat = element.lat ?? nearestGeometryPoint?.lat ?? element.center?.lat;
 				const lon = element.lon ?? nearestGeometryPoint?.lon ?? element.center?.lon;
@@ -535,11 +595,13 @@ export function coordsToGridY(lat, lon, centerLat, centerLon) {
 }
 
 // water map
-export async function loadOsmWaterMap(coordinates) {
+export async function loadOsmWaterMap(coordinates, sourceElements = null) {
 	try {
 		const cacheKey = getCacheKey(coordinates, 'watermap', OSM_SEARCH_RADIUS);
-		const cached = getCachedData(cacheKey);
-		if (cached) return cached;
+		if (!sourceElements) {
+			const cached = getCachedData(cacheKey);
+			if (cached) return cached;
+		}
 
 		const increaseWaterLevel = (x, y, value) => {
 			if (value < 0.1) {
@@ -557,19 +619,17 @@ export async function loadOsmWaterMap(coordinates) {
 			}
 		};
 
-		const overpassQuery = `
+		let data = { elements: sourceElements };
+		if (!sourceElements) {
+			const overpassQuery = `
 [out:json];
 (
-    // Search for water bodies
-    relation[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
-    way[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
-    node[waterway~"river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[waterway~"${OSM_WATERWAY_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
 );
-out body;
->;
-out skel qt;
+out geom;
 `;
-		const data = await loadOverpassJson(overpassQuery);
+			data = await loadOverpassJson(overpassQuery, 'water-map');
+		}
 
 		logger.debug('Water map response', { elements: data.elements?.length || 0, data });
 		// Helper function to determine waterway width based on OSM data
@@ -606,21 +666,14 @@ out skel qt;
 			}
 		};
 
+		const getWayNodes = (element) =>
+			element.geometry
+				?.map((node) => ({ lat: node.lat, lon: node.lon }))
+				.filter((node) => Number.isFinite(node.lat) && Number.isFinite(node.lon)) || [];
+
 		const waterPolylines = data.elements
 			.filter((element) => element.type === 'way' && element.tags?.waterway)
 			.map((element) => {
-				const nodes = element.nodes
-					.map((nodeId) => {
-						const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
-						return node
-							? {
-									lat: node.lat,
-									lon: node.lon
-								}
-							: null;
-					})
-					.filter((node) => node !== null);
-
 				const width = getWaterwayWidth(element.tags);
 
 				return {
@@ -628,7 +681,7 @@ out skel qt;
 					name: element.tags?.name || `${element.tags.waterway}`,
 					waterway: element.tags.waterway,
 					width: width,
-					nodes: nodes
+					nodes: getWayNodes(element)
 				};
 			});
 		logger.info('Water map data loaded', { polylines: waterPolylines.length });
@@ -713,11 +766,13 @@ out skel qt;
 }
 
 // green map
-export async function loadOsmGreenMap(coordinates) {
+export async function loadOsmGreenMap(coordinates, sourceElements = null) {
 	try {
 		const cacheKey = getCacheKey(coordinates, 'greenmap', OSM_SEARCH_RADIUS);
-		const cached = getCachedData(cacheKey);
-		if (cached) return cached;
+		if (!sourceElements) {
+			const cached = getCachedData(cacheKey);
+			if (cached) return cached;
+		}
 
 		const increaseGreenLevel = (x, y, value) => {
 			if (value < 0.05) {
@@ -790,27 +845,28 @@ export async function loadOsmGreenMap(coordinates) {
 			}
 		};
 
-		const overpassQuery = `
+		let data = { elements: sourceElements };
+		if (!sourceElements) {
+			const overpassQuery = `
 [out:json];
 (
     // Search for green spaces and natural areas
-    relation[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
-    way[landuse~"forest|meadow|orchard|vineyard|grass|recreation_ground|village_green"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    relation[landuse~"${OSM_GREEN_LANDUSE_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[landuse~"${OSM_GREEN_LANDUSE_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
-    relation[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
-    way[leisure~"park|nature_reserve|garden|common|recreation_ground|pitch|playground"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    relation[leisure~"${OSM_GREEN_LEISURE_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[leisure~"${OSM_GREEN_LEISURE_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
-    relation[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
-    way[natural~"wood|scrub|grassland|heath|moor|wetland|marsh|fell|bare_rock|scree|shingle|sand|beach|coastline|tree_row"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    relation[natural~"${OSM_GREEN_NATURAL_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[natural~"${OSM_GREEN_NATURAL_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
     // Individual trees
-    node[natural="tree"](around:400,${coordinates.latitude},${coordinates.longitude});
+    node[natural="tree"](around:${OSM_TREE_RADIUS},${coordinates.latitude},${coordinates.longitude});
 );
-out body;
->;
-out skel qt;
+out geom;
 `;
-		const data = await loadOverpassJson(overpassQuery);
+			data = await loadOverpassJson(overpassQuery, 'green-map');
+		}
 
 		logger.debug('Green map response', { elements: data.elements?.length || 0, data });
 
@@ -818,27 +874,16 @@ out skel qt;
 			.fill(0)
 			.map(() => new Array(GRID_ARRAY_SIZE).fill(0));
 
-		// Helper function to extract nodes from ways
-		const getNodesFromWay = (way) => {
-			return (
-				way.nodes
-					?.map((nodeId) => {
-						const node = data.elements.find((el) => el.type === 'node' && el.id === nodeId);
-						return node ? { lat: node.lat, lon: node.lon } : null;
-					})
-					.filter((node) => node !== null) || []
-			);
-		};
+		const getGeometryNodes = (geometry) =>
+			geometry
+				?.map((node) => ({ lat: node.lat, lon: node.lon }))
+				.filter((node) => Number.isFinite(node.lat) && Number.isFinite(node.lon)) || [];
 
-		// Helper function to extract nodes from relations
 		const getNodesFromRelation = (relation) => {
 			const allNodes = [];
 			relation.members?.forEach((member) => {
-				if (member.type === 'way' && member.role === 'outer') {
-					const way = data.elements.find((el) => el.type === 'way' && el.id === member.ref);
-					if (way) {
-						allNodes.push(...getNodesFromWay(way));
-					}
+				if (member.type === 'way' && member.role === 'outer' && member.geometry) {
+					allNodes.push(...getGeometryNodes(member.geometry));
 				}
 			});
 			return allNodes;
@@ -848,13 +893,13 @@ out skel qt;
 		const greenAreas = data.elements
 			.filter(
 				(element) =>
-					(element.type === 'way' && element.nodes) ||
+					(element.type === 'way' && element.geometry) ||
 					(element.type === 'relation' && element.members)
 			)
 			.map((element) => {
 				let nodes = [];
 				if (element.type === 'way') {
-					nodes = getNodesFromWay(element);
+					nodes = getGeometryNodes(element.geometry);
 				} else if (element.type === 'relation') {
 					nodes = getNodesFromRelation(element);
 				}
@@ -934,11 +979,13 @@ out skel qt;
 	}
 }
 
-export async function loadOsmActivityMap(coordinates) {
+export async function loadOsmActivityMap(coordinates, sourceElements = null) {
 	try {
-		const cacheKey = getCacheKey(coordinates, 'activitymap', 600);
-		const cached = getCachedData(cacheKey);
-		if (cached) return cached;
+		const cacheKey = getCacheKey(coordinates, 'activitymap', OSM_ACTIVITY_RADIUS);
+		if (!sourceElements) {
+			const cached = getCachedData(cacheKey);
+			if (cached) return cached;
+		}
 
 		const increaseActivityLevel = (x, y, value) => {
 			if (value < 0.05) {
@@ -959,31 +1006,32 @@ export async function loadOsmActivityMap(coordinates) {
 			}
 		};
 
-		const overpassQuery = `
+		let data = { elements: sourceElements };
+		if (!sourceElements) {
+			const overpassQuery = `
 [out:json];
 (
     // Shopping areas
-    way[shop~"mall|supermarket|department_store|bakery|butcher|clothes|convenience|general|gift|jewelry|shoes|sports|toys|electronics|furniture|florist|bookshop|chemist|optician|hairdresser|beauty|bicycle|car|mobile_phone"](around:600,${coordinates.latitude},${coordinates.longitude});
-    node[shop~"mall|supermarket|department_store|bakery|butcher|clothes|convenience|general|gift|jewelry|shoes|sports|toys|electronics|furniture|florist|bookshop|chemist|optician|hairdresser|beauty|bicycle|car|mobile_phone"](around:600,${coordinates.latitude},${coordinates.longitude});
+    way[shop~"${OSM_ACTIVITY_SHOP_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    node[shop~"${OSM_ACTIVITY_SHOP_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
     // Restaurants and food
-    way[amenity~"restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream"](around:600,${coordinates.latitude},${coordinates.longitude});
-    node[amenity~"restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream"](around:600,${coordinates.latitude},${coordinates.longitude});
+    way[amenity~"${OSM_ACTIVITY_FOOD_AMENITY_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    node[amenity~"${OSM_ACTIVITY_FOOD_AMENITY_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
     // Entertainment and nightlife
-    way[amenity~"nightclub|casino|cinema|theatre|arts_centre|community_centre"](around:600,${coordinates.latitude},${coordinates.longitude});
-    node[amenity~"nightclub|casino|cinema|theatre|arts_centre|community_centre"](around:600,${coordinates.latitude},${coordinates.longitude});
+    way[amenity~"${OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    node[amenity~"${OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
     
     // Commercial areas
-    way[landuse="commercial"](around:600,${coordinates.latitude},${coordinates.longitude});
-    way[landuse="retail"](around:600,${coordinates.latitude},${coordinates.longitude});
+    way[landuse="commercial"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[landuse="retail"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
 );
-out body;
->;
-out skel qt;
+out geom;
 `;
 
-		const data = await loadOverpassJson(overpassQuery);
+			data = await loadOverpassJson(overpassQuery, 'activity-map');
+		}
 
 		logger.debug('Activity map response', { elements: data.elements?.length || 0, data });
 
@@ -991,23 +1039,19 @@ out skel qt;
 			.fill(0)
 			.map(() => new Array(GRID_ARRAY_SIZE).fill(0));
 
-		// Helper function to extract nodes from ways
 		const getNodesFromWay = (way) => {
 			return (
-				way.nodes
-					?.map((nodeId) => {
-						const node = data.elements.find((el) => el.id === nodeId && el.type === 'node');
-						return node ? { lat: node.lat, lon: node.lon } : null;
-					})
-					.filter(Boolean) || []
+				way.geometry
+					?.map((node) => ({ lat: node.lat, lon: node.lon }))
+					.filter((node) => Number.isFinite(node.lat) && Number.isFinite(node.lon)) || []
 			);
 		};
 
-		// Process commercial areas and shops
 		const activityAreas = data.elements
 			.filter(
 				(element) =>
-					(element.type === 'way' || element.type === 'relation') &&
+					element.type === 'way' &&
+					element.geometry &&
 					(element.tags?.landuse === 'commercial' ||
 						element.tags?.landuse === 'retail' ||
 						element.tags?.shop ||
@@ -1097,11 +1141,102 @@ out skel qt;
 		return activityMapTmp;
 	} catch (error) {
 		const cached = getCachedDataAfterFailure(
-			getCacheKey(coordinates, 'activitymap', 600),
+			getCacheKey(coordinates, 'activitymap', OSM_ACTIVITY_RADIUS),
 			'Activity map',
 			error
 		);
 		return cached || [];
+	}
+}
+
+export async function loadOsmMapLayers(coordinates) {
+	const cacheKeys = {
+		water: getCacheKey(coordinates, 'watermap', OSM_SEARCH_RADIUS),
+		green: getCacheKey(coordinates, 'greenmap', OSM_SEARCH_RADIUS),
+		activity: getCacheKey(coordinates, 'activitymap', OSM_ACTIVITY_RADIUS)
+	};
+
+	const cachedWaterMap = getCachedData(cacheKeys.water);
+	const cachedGreenMap = getCachedData(cacheKeys.green);
+	const cachedActivityMap = getCachedData(cacheKeys.activity);
+
+	if (cachedWaterMap && cachedGreenMap && cachedActivityMap) {
+		logger.info('Map layers loaded from cache', {
+			waterRows: cachedWaterMap.length,
+			greenRows: cachedGreenMap.length,
+			activityRows: cachedActivityMap.length
+		});
+		return {
+			waterMap: cachedWaterMap,
+			greenMap: cachedGreenMap,
+			activityMap: cachedActivityMap
+		};
+	}
+
+	try {
+		const overpassQuery = `
+[out:json];
+(
+    way[waterway~"${OSM_WATERWAY_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+
+    way[landuse~"${OSM_GREEN_LANDUSE_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[leisure~"${OSM_GREEN_LEISURE_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[natural~"${OSM_GREEN_NATURAL_TYPES}"](around:${OSM_SEARCH_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    node[natural="tree"](around:${OSM_TREE_RADIUS},${coordinates.latitude},${coordinates.longitude});
+
+    way[shop~"${OSM_ACTIVITY_SHOP_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    node[shop~"${OSM_ACTIVITY_SHOP_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[amenity~"${OSM_ACTIVITY_FOOD_AMENITY_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    node[amenity~"${OSM_ACTIVITY_FOOD_AMENITY_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[amenity~"${OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    node[amenity~"${OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES}"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[landuse="commercial"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+    way[landuse="retail"](around:${OSM_ACTIVITY_RADIUS},${coordinates.latitude},${coordinates.longitude});
+);
+out geom;
+`;
+		const data = await loadOverpassJson(overpassQuery, 'map-layers');
+		const elements = data.elements || [];
+		const waterElements = elements.filter((element) => element.tags?.waterway);
+		const greenElements = elements.filter(isGreenLayerElement);
+		const activityElements = elements.filter(isActivityLayerElement);
+
+		logger.info('Map layer response split', {
+			waterElements: waterElements.length,
+			greenElements: greenElements.length,
+			activityElements: activityElements.length
+		});
+
+		const [waterMapData, greenMapData, activityMapData] = await Promise.all([
+			loadOsmWaterMap(coordinates, waterElements),
+			loadOsmGreenMap(coordinates, greenElements),
+			loadOsmActivityMap(coordinates, activityElements)
+		]);
+
+		return {
+			waterMap: waterMapData,
+			greenMap: greenMapData,
+			activityMap: activityMapData
+		};
+	} catch (error) {
+		logger.error('Map layer load failed', error);
+		return {
+			waterMap:
+				getCachedData(cacheKeys.water, {
+					allowStale: true,
+					maxAge: OSM_STALE_CACHE_DURATION
+				}) || [],
+			greenMap:
+				getCachedData(cacheKeys.green, {
+					allowStale: true,
+					maxAge: OSM_STALE_CACHE_DURATION
+				}) || [],
+			activityMap:
+				getCachedData(cacheKeys.activity, {
+					allowStale: true,
+					maxAge: OSM_STALE_CACHE_DURATION
+				}) || []
+		};
 	}
 }
 

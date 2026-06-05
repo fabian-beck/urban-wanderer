@@ -22,13 +22,7 @@ import {
 	searchWikipediaPlaceCoordinates
 } from './util/wikipedia.js';
 import { loadWikidataImages } from './util/wikidata.js';
-import {
-	loadOsmPlaces,
-	loadOsmAddressData,
-	loadOsmWaterMap,
-	loadOsmGreenMap,
-	loadOsmActivityMap
-} from './util/osm.js';
+import { loadOsmPlaces, loadOsmAddressData, loadOsmMapLayers } from './util/osm.js';
 import { setDebugConsoleEnabled } from './util/debug-console.js';
 import { createLogger, setDebugLoggingEnabled } from './util/logger.js';
 import {
@@ -220,19 +214,25 @@ function createPlaces() {
 			});
 			const placesUpdateStartedAt = getPerformanceNow();
 			const stageDurations = {};
-			const startMapLoad = (label, loader, store) => {
-				const mapPerf = createPerformanceRun(label);
-				loader(currentCoordinates)
+			const startMapLayerLoad = () => {
+				const mapPerf = createPerformanceRun('OSM map layers');
+				loadOsmMapLayers(currentCoordinates)
 					.then((mapData) => {
-						store.set(mapData || []);
+						waterMap.set(mapData.waterMap || []);
+						greenMap.set(mapData.greenMap || []);
+						activityMap.set(mapData.activityMap || []);
 						mapPerf.end({
-							rows: Array.isArray(mapData) ? mapData.length : 0
+							waterRows: Array.isArray(mapData.waterMap) ? mapData.waterMap.length : 0,
+							greenRows: Array.isArray(mapData.greenMap) ? mapData.greenMap.length : 0,
+							activityRows: Array.isArray(mapData.activityMap) ? mapData.activityMap.length : 0
 						});
 					})
 					.catch((error) => {
 						mapPerf.fail(error);
-						placesLogger.error(`Map load failed: ${label}`, error);
-						store.set([]);
+						placesLogger.error('Map load failed: OSM map layers', error);
+						waterMap.set([]);
+						greenMap.set([]);
+						activityMap.set([]);
 					});
 			};
 			try {
@@ -317,9 +317,7 @@ function createPlaces() {
 					analysisCached: analysisCacheStats.cached,
 					analysisUncached: analysisCacheStats.uncached
 				});
-				startMapLoad('OSM water map', loadOsmWaterMap, waterMap);
-				startMapLoad('OSM green map', loadOsmGreenMap, greenMap);
-				startMapLoad('OSM activity map', loadOsmActivityMap, activityMap);
+				startMapLayerLoad();
 				perf.checkpoint('background map loads started');
 				// Pregenerate first story part in background
 				pregenerateStoryInBackground();
