@@ -396,7 +396,6 @@
 								return;
 							}
 
-							const propDefinition = PROPERTIES[key];
 							const label = formatLabel(key);
 							const displayValue = value;
 							allFacts.push({ key, label, value: displayValue, type: 'property' });

@@ -9,20 +9,23 @@
 		if (val === null || val === undefined) {
 			return '';
 		}
-		
+
 		// Handle arrays - format as bullet list
 		if (Array.isArray(val)) {
 			if (val.length === 0) return '';
 			if (val.length === 1) return val[0].toString();
 			// For multiple items, create a bullet-separated list
-			return val.map(item => item.toString().trim()).filter(item => item).join(' • ');
+			return val
+				.map((item) => item.toString().trim())
+				.filter((item) => item)
+				.join(' • ');
 		}
-		
+
 		// Handle numbers
 		if (typeof val === 'number') {
 			return val.toString();
 		}
-		
+
 		// Handle everything else as string
 		return val.toString();
 	}

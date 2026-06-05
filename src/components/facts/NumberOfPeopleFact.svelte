@@ -145,12 +145,16 @@
 	function getPeopleIcon(index) {
 		// Randomize diverse standing person icons using seeded random based on place, property, and position
 		const icons = ['🧍', '🧍‍♀️', '🧍‍♂️', '🧍🏻', '🧍🏻‍♀️', '🧍🏻‍♂️', '🧍🏽', '🧍🏽‍♀️', '🧍🏽‍♂️', '🧍🏿', '🧍🏿‍♀️', '🧍🏿‍♂️'];
-		
+
 		// Create a unique seed based on place title, property key, and icon index
-		const titleHash = placeTitle ? placeTitle.split('').reduce((a, b) => a + b.charCodeAt(0), 0) : 0;
-		const propertyHash = propertyKey ? propertyKey.split('').reduce((a, b) => a + b.charCodeAt(0), 0) : 0;
+		const titleHash = placeTitle
+			? placeTitle.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
+			: 0;
+		const propertyHash = propertyKey
+			? propertyKey.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
+			: 0;
 		const combinedSeed = titleHash * 1000 + propertyHash * 100 + index;
-		
+
 		const random = seededRandom(combinedSeed);
 		return icons[Math.floor(random * icons.length)];
 	}
@@ -160,6 +164,7 @@
 	$: widthSpan = getWidthSpan(widthClass);
 	$: showIcons = shouldShowIcons(containerWidth, widthSpan);
 	$: formattedNumber = count ? formatNumber(count) : value;
+	$: iconIndices = [...Array(isotype.icons).keys()];
 
 	function getValueLength() {
 		return formattedNumber ? formattedNumber.toString().length : 0;
@@ -174,7 +179,7 @@
 			>{getLabel(propertyKey)}</span
 		>
 		<div class="flex flex-col items-center">
-			<div 
+			<div
 				class="mb-1 font-semibold leading-tight text-gray-900"
 				class:text-xl={getValueLength() <= 8}
 				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
@@ -186,11 +191,12 @@
 			</div>
 			{#if showIcons && isotype.icons > 0}
 				<div class="flex max-w-full flex-wrap justify-center">
-					{#each Array(isotype.icons) as _, i}
-						<span 
-							class={getIconSize(isotype.scale)} 
+					{#each iconIndices as i}
+						<span
+							class={getIconSize(isotype.scale)}
 							style="margin-left: {i > 0 ? (i % 5 === 0 ? '-0.6em' : '-0.9em') : '0'};"
-						>{getPeopleIcon(i)}</span>
+							>{getPeopleIcon(i)}</span
+						>
 					{/each}
 				</div>
 			{/if}

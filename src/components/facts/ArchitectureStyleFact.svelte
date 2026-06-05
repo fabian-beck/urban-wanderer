@@ -354,7 +354,7 @@
 		return style.description; // fallback to English
 	}
 
-	function getStyleName(style) {
+	function getStyleName() {
 		// Always return the original value, don't use the matched style's name
 		return value;
 	}
@@ -388,7 +388,7 @@
 	$: showBackgroundImage = shouldShowBackgroundImage(containerWidth, widthSpan);
 	$: backgroundImage =
 		matchedStyle && showBackgroundImage ? `/architecture-styles/${matchedStyle.image}` : null;
-	$: styleName = getStyleName(matchedStyle);
+	$: styleName = getStyleName();
 </script>
 
 <div
@@ -402,7 +402,7 @@
 			>{getArchitectureStyleLabel()}</span
 		>
 		<div class="text-center">
-			<div 
+			<div
 				class="rounded bg-white/80 px-1 font-semibold leading-tight text-gray-900"
 				class:text-xl={getValueLength() <= 8}
 				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}

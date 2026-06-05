@@ -38,19 +38,19 @@
 		// Filter events based on user preferences and place labels
 		const $preferences = get(preferences);
 		const userInterests = $preferences.interests || [];
-		
+
 		// Get place labels from place class
 		const placeLabels = place?.cls ? getPlaceLabels(place.cls) : [];
-		
-		const relevantEvents = HISTORICAL_EVENTS.filter(event => {
+
+		const relevantEvents = HISTORICAL_EVENTS.filter((event) => {
 			// If no interests are set, show all events
 			if (userInterests.length === 0) return true;
-			
+
 			// If event has no labels, consider it generic (always relevant)
 			if (!event.labels || event.labels.length === 0) return true;
-			
+
 			// Show event if any of its labels match user interests
-			return event.labels.some(label => userInterests.includes(label));
+			return event.labels.some((label) => userInterests.includes(label));
 		});
 
 		// Find events that are contemporaneous or close to the year
@@ -66,24 +66,21 @@
 				if (year >= event.start && year <= event.end) {
 					// Year falls within event period - check if this matches place labels
 					const eventLabels = event.labels || [];
-					const matchesPlace = eventLabels.some(label => placeLabels.includes(label));
-					
+					const matchesPlace = eventLabels.some((label) => placeLabels.includes(label));
+
 					if (matchesPlace) {
 						// Perfect match: within event period AND matches place type
 						const eventName = getEventName(event);
 						const $language = get(preferences).lang;
 						const duringText = $language === 'de' ? 'während' : 'during';
 						return {
-							text: `${duringText}<br>${eventName}`,
+							text: `${duringText}\n${eventName}`,
 							distance: 0
 						};
 					}
-					
+
 					// Store as potential match if no place-specific match found
 					if (bestScore < 2) {
-						const eventName = getEventName(event);
-						const $language = get(preferences).lang;
-						const duringText = $language === 'de' ? 'während' : 'during';
 						bestMatch = event;
 						bestScore = 2;
 						minDistance = 0;
@@ -102,8 +99,8 @@
 			// Calculate score based on distance and place label matching
 			let score = 0;
 			const eventLabels = event.labels || [];
-			const matchesPlace = eventLabels.some(label => placeLabels.includes(label));
-			
+			const matchesPlace = eventLabels.some((label) => placeLabels.includes(label));
+
 			if (matchesPlace) {
 				score = 3; // Highest priority for place-matching events
 			} else {
@@ -127,10 +124,10 @@
 				// Check if this is a duration event and year falls within it
 				if (bestMatch.end && year >= bestMatch.start && year <= bestMatch.end) {
 					const duringText = $language === 'de' ? 'während' : 'during';
-					return { text: `${duringText}<br>${eventName}`, distance: minDistance };
+					return { text: `${duringText}\n${eventName}`, distance: minDistance };
 				} else {
 					const sameYearText = $language === 'de' ? 'gleiches Jahr wie' : 'same year as';
-					return { text: `${sameYearText}<br>${eventName}`, distance: minDistance };
+					return { text: `${sameYearText}\n${eventName}`, distance: minDistance };
 				}
 			} else if (year < (bestMatch.end || bestMatch.start)) {
 				const years =
@@ -143,7 +140,7 @@
 							: 'years';
 				const beforeText = $language === 'de' ? 'vor' : 'before';
 				return {
-					text: `${minDistance} ${years} ${beforeText}<br>${eventName}`,
+					text: `${minDistance} ${years} ${beforeText}\n${eventName}`,
 					distance: minDistance
 				};
 			} else {
@@ -157,7 +154,7 @@
 							: 'years';
 				const afterText = $language === 'de' ? 'nach' : 'after';
 				return {
-					text: `${minDistance} ${years} ${afterText}<br>${eventName}`,
+					text: `${minDistance} ${years} ${afterText}\n${eventName}`,
 					distance: minDistance
 				};
 			}
@@ -204,7 +201,7 @@
 			{label}
 		</span>
 		<div class="text-center">
-			<div 
+			<div
 				class="font-semibold leading-tight text-gray-900"
 				class:text-xl={getValueLength() <= 8}
 				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
@@ -215,8 +212,8 @@
 				{value}
 			</div>
 			{#if historicalContext && showHistoricalContext}
-				<div class="mt-1 text-xs leading-tight text-gray-600">
-					{@html historicalContext.text}
+				<div class="mt-1 whitespace-pre-line text-xs leading-tight text-gray-600">
+					{historicalContext.text}
 				</div>
 			{/if}
 		</div>

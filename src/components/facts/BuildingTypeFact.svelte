@@ -795,7 +795,7 @@
 		return $language === 'de' ? 'Gebäudetyp' : 'Building Type';
 	}
 
-	function getTypeName(type) {
+	function getTypeName() {
 		// Always return the original value, don't use the matched type's name
 		return value;
 	}
@@ -822,7 +822,7 @@
 	$: showBackgroundImage = shouldShowBackgroundImage(containerWidth, widthSpan);
 	$: backgroundImage =
 		matchedType && showBackgroundImage ? `/building-types/${matchedType.image}` : null;
-	$: typeName = getTypeName(matchedType);
+	$: typeName = getTypeName();
 </script>
 
 <div
@@ -832,13 +832,12 @@
 		: 'background-color: rgb(249 250 251);'}
 >
 	<div class="relative z-10 flex flex-col items-center">
-		<span
-			class="mb-0.5 text-xs font-medium leading-tight text-gray-600 bg-white/80 px-1 rounded"
+		<span class="mb-0.5 rounded bg-white/80 px-1 text-xs font-medium leading-tight text-gray-600"
 			>{getBuildingTypeLabel()}</span
 		>
 		<div class="text-center">
 			<div
-				class="font-semibold leading-tight text-gray-900 bg-white/80 px-1 rounded"
+				class="rounded bg-white/80 px-1 font-semibold leading-tight text-gray-900"
 				class:text-xl={getValueLength() <= 8}
 				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
 				class:text-base={getValueLength() > 15 && getValueLength() <= 25}

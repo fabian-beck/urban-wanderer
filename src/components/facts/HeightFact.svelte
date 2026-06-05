@@ -214,7 +214,7 @@
 					<span class="mb-0.5 text-xs font-medium leading-none text-gray-600"
 						>{getHeightLabel()}</span
 					>
-					<div 
+					<div
 						class="font-semibold leading-tight text-gray-900"
 						class:text-xl={getValueLength() <= 8}
 						class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
@@ -248,7 +248,7 @@
 			<div class="flex flex-col items-center">
 				<span class="mb-0.5 text-xs font-medium leading-none text-gray-600">{getHeightLabel()}</span
 				>
-				<div 
+				<div
 					class="font-semibold leading-tight text-gray-900"
 					class:text-xl={getValueLength() <= 8}
 					class:text-lg={getValueLength() > 8 && getValueLength() <= 15}

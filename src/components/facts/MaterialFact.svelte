@@ -95,8 +95,21 @@
 			granite: ['granite', 'granit', 'granite stone', 'granitstein'],
 			limestone: ['limestone', 'kalkstein', 'lime stone', 'kalk'],
 			sandstone: ['sandstone', 'sandstein', 'sand stone'],
-			timber: ['timber', 'bauholz', 'structural timber', 'construction timber', 'wood frame', 'holzbau'],
-			'reinforced-concrete': ['reinforced concrete', 'stahlbeton', 'reinforced-concrete', 'rc', 'ferro concrete'],
+			timber: [
+				'timber',
+				'bauholz',
+				'structural timber',
+				'construction timber',
+				'wood frame',
+				'holzbau'
+			],
+			'reinforced-concrete': [
+				'reinforced concrete',
+				'stahlbeton',
+				'reinforced-concrete',
+				'rc',
+				'ferro concrete'
+			],
 			masonry: ['masonry', 'mauerwerk', 'stonework', 'brickwork', 'stone masonry', 'brick masonry'],
 			'cast-iron': ['cast iron', 'gusseisen', 'cast-iron', 'wrought iron', 'schmiedeeisen']
 		};
@@ -160,13 +173,16 @@
 		if (!materials || !Array.isArray(materials) || materials.length === 0) {
 			return '';
 		}
-		
+
 		if (materials.length === 1) {
 			return materials[0].toString();
 		}
-		
+
 		// Join with bullet separator
-		return materials.map(item => item.toString().trim()).filter(item => item).join(' • ');
+		return materials
+			.map((item) => item.toString().trim())
+			.filter((item) => item)
+			.join(' • ');
 	}
 
 	function getValueLength() {
@@ -192,7 +208,7 @@
 		if (!materials || !Array.isArray(materials) || materials.length === 0) {
 			return [];
 		}
-		return materials.map(material => parseMaterial(material)).filter(m => m !== null);
+		return materials.map((material) => parseMaterial(material)).filter((m) => m !== null);
 	}
 
 	$: parsedMaterials = parseAllMaterials(value);
@@ -204,7 +220,9 @@
 
 <div
 	class="relative flex flex-col items-center justify-center overflow-hidden rounded-lg border border-gray-200 px-2 py-1.5 text-center shadow-sm {widthClass}"
-	style={!showBackgroundImage || parsedMaterials.length === 0 ? 'background-color: rgb(249 250 251);' : ''}
+	style={!showBackgroundImage || parsedMaterials.length === 0
+		? 'background-color: rgb(249 250 251);'
+		: ''}
 >
 	<!-- Background layers for multiple materials -->
 	{#if showBackgroundImage && hasMultipleMaterials}
@@ -236,13 +254,12 @@
 
 	<!-- Content overlay -->
 	<div class="relative z-10 flex flex-col items-center">
-		<span
-			class="mb-0.5 text-xs font-medium leading-tight text-gray-600 bg-white/80 px-1 rounded"
+		<span class="mb-0.5 rounded bg-white/80 px-1 text-xs font-medium leading-tight text-gray-600"
 			>{getMaterialLabel()}</span
 		>
 		<div class="text-center">
 			<div
-				class="font-semibold leading-tight text-gray-900 bg-white/80 px-1 rounded"
+				class="rounded bg-white/80 px-1 font-semibold leading-tight text-gray-900"
 				class:text-xl={getValueLength() <= 8}
 				class:text-lg={getValueLength() > 8 && getValueLength() <= 15}
 				class:text-base={getValueLength() > 15 && getValueLength() <= 25}
