@@ -82,19 +82,19 @@ Available IMPORTANCE values are:
 4: high
 5: very high
 
-Aspects that contribute to HIGER IMPORTANCE are:
+Aspects that contribute to HIGHER IMPORTANCE are:
 * the place is a landmark or a famous building
 * the place is unique in the area
 * the place is of historical or cultural significance
 * the place is related to a well - known person or event
 * the place is characteristic for the area
 * the place dominates the perceived environment (e.g., a skyscraper, a castle, a park)
+* the place is a named, substantial geographic feature that shapes the local environment (e.g., a river, a lake, a mountain)
 
 Aspects that contribute to LOWER IMPORTANCE are:
 * the place is a generic business or a shop
 * the place is a detail of a larger place
-* the place is a larger area (e.g., a city, a district, a region)
-* the place is a larger geographic feature (e.g., a river, a lake, a mountain)
+* the place is a larger administrative area not directly perceived at the user's location (e.g., a city, a district, a region)
 * the place is a generic entity (e.g., a concept, a non-physical object)
 * the place is maybe just an office of a business or intitution
 * the place has vanished or is not accessible anymore
@@ -114,9 +114,12 @@ For a place "A" and its description output a JSON object like this:
 }
     
 FURTHER INSTRUCTIONS:
-* Geographic places like rivers or lakes, that are not a specific location, should be labeled only as "GEOGRAPHY" and have a very low importance as they can be accessed from many locations.
+* Do not rate named rivers, lakes, mountains, or similar physical geography as low importance merely because they extend across multiple locations or can be accessed elsewhere.
+* A considerable named river near the user should usually be classified as "WATERBODY", labeled with "GEOGRAPHY", and rated high importance because it shapes landscape, settlement pattern, movement, views, ecology, or local identity.
+* Broad administrative or abstract geographic areas should still have low importance unless they physically define what the user can perceive or experience at the current location.
 `;
-	const dataString = `* ${place.title}  (${place.type || ''}): ${place.snippet || place.description || ''}`;
+	const distanceText = Number.isFinite(place.dist) ? `, distance: ${Math.round(place.dist)}m` : '';
+	const dataString = `* ${place.title} (${place.type || 'unknown'}${distanceText}): ${place.snippet || place.description || ''}`;
 	const model = getAiModel('simple', preferences);
 	const response = await withPerformance(
 		'ai.analysis.place',

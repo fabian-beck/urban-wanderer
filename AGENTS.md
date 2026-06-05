@@ -230,5 +230,8 @@ This application demonstrates modern web-to-mobile development patterns, AI inte
 
 - Avoid comments that comment on removed parts or old versions
 
+- Don't create new cache keys to invalidate existing localStorage data unless explicitly requested.
+- When a change affects cached behavior, tell the user when to manually empty the relevant cache before testing.
+
 - After bigger changes, check AGENTS.md if it requires updates.
 - when some request required considerable code search, consider updating AGENTS.md to easier get the right context.
