@@ -20,7 +20,10 @@
 		GREEN_STIPPLE_SIZE,
 		WATER_STIPPLE_SIZE,
 		ACTIVITY_STIPPLE_SIZE,
-		PLACE_MIN_DISTANCE
+		PLACE_MIN_DISTANCE,
+		PLACE_HIGH_RATED_MIN_STARS,
+		PLACE_TWO_STAR_HIGH_RATED_LIMIT,
+		PLACE_VISIBLE_MIN_STARS
 	} from '../constants/core.js';
 
 	// Derived constants
@@ -56,12 +59,18 @@
 				return 0; // No sorting needed if both stars and distance are equal
 			});
 
-			// Count places with 3+ stars to determine if we need 2-star places
-			const highStarPlaces = sortedPlaces.filter((place) => place.stars >= 3);
-			const allowTwoStars = highStarPlaces.length < 5;
+			const highStarPlaces = sortedPlaces.filter(
+				(place) => place.stars >= PLACE_HIGH_RATED_MIN_STARS
+			);
+			const allowTwoStars = highStarPlaces.length < PLACE_TWO_STAR_HIGH_RATED_LIMIT;
 
 			sortedPlaces.forEach((place) => {
-				if (place.lon && place.lat && place.stars > 1 && (place.stars >= 3 || allowTwoStars)) {
+				if (
+					place.lon &&
+					place.lat &&
+					(place.stars >= PLACE_HIGH_RATED_MIN_STARS ||
+						(place.stars >= PLACE_VISIBLE_MIN_STARS && allowTwoStars))
+				) {
 					const isTooClose = highlighted.some((highlightedPlace) => {
 						const distance = haversineDistance(
 							place.lat,

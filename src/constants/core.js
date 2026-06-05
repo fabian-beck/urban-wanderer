@@ -16,6 +16,9 @@ export const ACTIVITY_STIPPLE_SIZE = 0.6;
 
 // Place highlighting constants
 export const PLACE_MIN_DISTANCE = 70;
+export const PLACE_VISIBLE_MIN_STARS = 2;
+export const PLACE_HIGH_RATED_MIN_STARS = 3;
+export const PLACE_TWO_STAR_HIGH_RATED_LIMIT = 5;
 
 // OSM search radius for Overpass API queries
 export const OSM_SEARCH_RADIUS = 500;

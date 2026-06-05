@@ -1,6 +1,11 @@
 import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
-import { nArticles } from './constants/core.js';
+import {
+	nArticles,
+	PLACE_HIGH_RATED_MIN_STARS,
+	PLACE_TWO_STAR_HIGH_RATED_LIMIT,
+	PLACE_VISIBLE_MIN_STARS
+} from './constants/core.js';
 import { CLASSES } from './constants/place-classes.js';
 import { AI_MODELS, LABELS } from './constants/ui-config.js';
 import { analyzePlaces, getLastAnalysisCacheStats } from './util/ai-analysis.js';
@@ -351,16 +356,22 @@ export const placesHere = derived(
 	[coordinates, places, placesSurrounding],
 	([$coordinates, $places, $placesSurrounding]) => {
 		if (!$coordinates || !$places || !$placesSurrounding) return [];
-		return $places
-			.filter((place) => {
-				if (
-					(!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) &&
-					place.stars > 2 &&
-					!$placesSurrounding.includes(place)
-				) {
-					return true;
-				}
-			})
+		const hereCandidates = $places.filter(
+			(place) =>
+				(!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) &&
+				!$placesSurrounding.includes(place)
+		);
+		const highRatedHere = hereCandidates.filter(
+			(place) => place.stars >= PLACE_HIGH_RATED_MIN_STARS
+		);
+		const allowTwoStarPlaces = highRatedHere.length < PLACE_TWO_STAR_HIGH_RATED_LIMIT;
+
+		return hereCandidates
+			.filter(
+				(place) =>
+					place.stars >= PLACE_HIGH_RATED_MIN_STARS ||
+					(place.stars >= PLACE_VISIBLE_MIN_STARS && allowTwoStarPlaces)
+			)
 			.sort((a, b) => {
 				// Sort by stars descending, then by dist ascending
 				const starDiff = (b.stars || 0) - (a.stars || 0);
