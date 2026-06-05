@@ -1,4 +1,9 @@
-import { GRID_ARRAY_SIZE, GRID_CELL_SIZE, OSM_SEARCH_RADIUS } from '../constants/core.js';
+import {
+	GRID_ARRAY_SIZE,
+	GRID_CELL_SIZE,
+	OSM_SEARCH_RADIUS,
+	OSM_STALE_CACHE_DURATION
+} from '../constants/core.js';
 import { getPerformanceNow, logPerformance } from './performance.js';
 import { createLogger } from './logger.js';
 
@@ -113,7 +118,7 @@ function loadOverpassJson(overpassQuery) {
 	return request;
 }
 
-function getCachedData(key) {
+function getCachedData(key, { allowStale = false, maxAge = CACHE_DURATION } = {}) {
 	try {
 		if (typeof localStorage === 'undefined') {
 			logger.debug('Cache unavailable');
@@ -130,9 +135,15 @@ function getCachedData(key) {
 				const dataLength = Array.isArray(parsed.data) ? parsed.data.length : 'N/A';
 				logger.debug('Cache hit', { key, ageMinutes, items: dataLength });
 				return JSON.parse(JSON.stringify(parsed.data));
+			} else if (allowStale && age < maxAge) {
+				const dataLength = Array.isArray(parsed.data) ? parsed.data.length : 'N/A';
+				logger.warn('Using stale cache', { key, ageMinutes, items: dataLength });
+				return JSON.parse(JSON.stringify(parsed.data));
+			} else if (age >= maxAge) {
+				logger.debug('Cache too old', { key, ageMinutes });
+				localStorage.removeItem(key);
 			} else {
 				logger.debug('Cache expired', { key, ageMinutes });
-				localStorage.removeItem(key);
 			}
 		} else {
 			logger.debug('Cache miss', { key });
@@ -140,6 +151,24 @@ function getCachedData(key) {
 	} catch (error) {
 		logger.warn('Cache read failed', error);
 	}
+	return null;
+}
+
+function getCachedDataAfterFailure(key, label, error) {
+	const cached = getCachedData(key, {
+		allowStale: true,
+		maxAge: OSM_STALE_CACHE_DURATION
+	});
+	if (cached) {
+		const dataLength = Array.isArray(cached) ? cached.length : 'N/A';
+		logger.warn(`${label} load failed; using stale cache`, {
+			error: error?.message || String(error),
+			items: dataLength
+		});
+		return cached;
+	}
+
+	logger.error(`${label} load failed`, error);
 	return null;
 }
 
@@ -383,8 +412,12 @@ out skel qt;
 		setCachedData(cacheKey, places);
 		return places;
 	} catch (error) {
-		logger.error('Places load failed', error);
-		return []; // Return empty array on error
+		const cached = getCachedDataAfterFailure(
+			getCacheKey(coordinates, 'places', OSM_SEARCH_RADIUS),
+			'Places',
+			error
+		);
+		return cached || [];
 	}
 }
 
@@ -670,8 +703,12 @@ out skel qt;
 		setCachedData(cacheKey, waterMapTmp);
 		return waterMapTmp;
 	} catch (error) {
-		logger.error('Water map load failed', error);
-		return [];
+		const cached = getCachedDataAfterFailure(
+			getCacheKey(coordinates, 'watermap', OSM_SEARCH_RADIUS),
+			'Water map',
+			error
+		);
+		return cached || [];
 	}
 }
 
@@ -888,8 +925,12 @@ out skel qt;
 		setCachedData(cacheKey, greenMapTmp);
 		return greenMapTmp;
 	} catch (error) {
-		logger.error('Green map load failed', error);
-		return [];
+		const cached = getCachedDataAfterFailure(
+			getCacheKey(coordinates, 'greenmap', OSM_SEARCH_RADIUS),
+			'Green map',
+			error
+		);
+		return cached || [];
 	}
 }
 
@@ -1055,8 +1096,12 @@ out skel qt;
 		setCachedData(cacheKey, activityMapTmp);
 		return activityMapTmp;
 	} catch (error) {
-		logger.error('Activity map load failed', error);
-		return [];
+		const cached = getCachedDataAfterFailure(
+			getCacheKey(coordinates, 'activitymap', 600),
+			'Activity map',
+			error
+		);
+		return cached || [];
 	}
 }
 

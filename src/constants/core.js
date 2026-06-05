@@ -23,3 +23,4 @@ export const PLACE_HERE_DEFAULT_RADIUS = 150;
 
 // OSM search radius for Overpass API queries
 export const OSM_SEARCH_RADIUS = 500;
+export const OSM_STALE_CACHE_DURATION = 24 * 60 * 60 * 1000;
