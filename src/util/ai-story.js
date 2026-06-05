@@ -1,5 +1,5 @@
 import { openai, getAiModel } from './ai-core.js';
-import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
+import { AI_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
 import { createLogger } from './logger.js';
 
 const logger = createLogger('ai.story');
@@ -17,6 +17,24 @@ export async function generateStory(
 	if (!storyTexts) {
 		storyTexts = [];
 	}
+	const prioritizedNearbyPlaces = [...placesNearby]
+		.sort((a, b) => (a.dist || Infinity) - (b.dist || Infinity))
+		.slice(0, 5);
+	const immediateNearbyPlaces = prioritizedNearbyPlaces.filter(
+		(place) => (place.dist || Infinity) <= 500
+	);
+	const relevantNearbyPlaces =
+		immediateNearbyPlaces.length > 0 ? immediateNearbyPlaces : prioritizedNearbyPlaces.slice(0, 2);
+	const selectedLabels = preferences.labels || [];
+	const preferenceLabels = selectedLabels.length
+		? selectedLabels.map((label) => `- ${label}`).join('\n')
+		: '- no specific topics selected';
+	const deselectedLabels = LABELS.map((label) => label.value).filter(
+		(label) => !selectedLabels.includes(label)
+	);
+	const negativePreferenceLabels = deselectedLabels.length
+		? deselectedLabels.map((label) => `- ${label}`).join('\n')
+		: '- none';
 	const initialMessage = {
 		role: 'system',
 		content: `
@@ -43,7 +61,7 @@ ${place.insights || place.article || place.description || place.snippet || place
 
 # Nearby places are:
 
-${placesNearby
+${relevantNearbyPlaces
 	.map(
 		(place) =>
 			`
@@ -72,16 +90,25 @@ ${place.insights || place.article || place.description || place.snippet || place
 # IMPORTANT INSTUCTIONS:
 
 User's preferences are the following topics:
-${preferences.labels?.map((label) => `- ${label}`).join('\n')}
+${preferenceLabels}
 
-The story should be up to ${Math.min(Math.round(0.5 + (placesHere.length + placesSurrounding.length) / 3), 4)} paragraphs long and focus on the position of the user and the most closest places.
+User did NOT select the following topics (treat them as negative topics and avoid them unless necessary for local context):
+${negativePreferenceLabels}
+
+The story should be up to ${Math.min(Math.round(0.5 + (placesHere.length + placesSurrounding.length) / 3), 4)} paragraphs long and focus on the user's immediate surroundings and the closest places.
+Prioritize in this strict order: (1) current position and places listed as "close to /in", (2) surrounding context, (3) the nearby places list only if needed.
+Nearby places are optional context only. Mention at most one nearby place in detail, and only if it is among the closest provided options.
+Personalization is mandatory: focus on details that match the listed user preferences.
+Do not focus on topics that are not listed in the user's preferences (for example, do not go deep into religious aspects unless religion is explicitly listed).
+If no matching preference detail is available, prioritize neutral local facts about the immediate area.
 Avoid giving directions or distances.
 
 Keep the language as concise as possible and factual. 
 You may use an informal tone, but use a moderate language.
 Try to realisticially describe the relevance of places, but do not exaggerate; not all places are "famous" or "important".
 Avoid generic claims like "this is a famous place" or "the place has a rich history".
-Do not conclude paragraphs with a generic statements.
+Do not end paragraphs with generic conclusion statements.
+End each paragraph with a concrete, place-specific detail.
 
 Just give summary of the most important information, but do not reply to the user's questions. 
 Do not welcome the user or ask for feedback.
@@ -111,6 +138,7 @@ The position is close to /in:
 ${placesHere.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`).join('\n')}
 
 Strictly stick to the initially provided instructions and facts about the places.
+Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write one to three paragraphs of text. 
 Give the text a headline marked in bold font.`
 		});
@@ -124,6 +152,7 @@ Give the text a headline marked in bold font.`
 			role: 'user',
 			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself.
 
+Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write one to three paragraphs of text. 
 Give the text a headline marked in bold font.`
 		});

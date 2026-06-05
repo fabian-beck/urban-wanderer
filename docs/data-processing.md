@@ -35,11 +35,11 @@ updateLocation(coords?)
 
 `coordinates.update()` accepts three input modes:
 
-| Input | Behavior |
-|-------|----------|
-| `null` | GPS via `Geolocation.getCurrentPosition({ enableHighAccuracy: true })` |
-| `'random'` | Calls `getRandomWikipediaPlaceCoordinates()` — polls `/api/rest_v1/page/random/summary` until a page with `coordinates` is returned |
-| `{latitude, longitude}` | Uses provided coordinates directly (e.g., from place name search) |
+| Input                   | Behavior                                                                                                                            |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `null`                  | GPS via `Geolocation.getCurrentPosition({ enableHighAccuracy: true })`                                                              |
+| `'random'`              | Calls `getRandomWikipediaPlaceCoordinates()` — polls `/api/rest_v1/page/random/summary` until a page with `coordinates` is returned |
+| `{latitude, longitude}` | Uses provided coordinates directly (e.g., from place name search)                                                                   |
 
 After coordinates are determined, **OSM Nominatim** reverse-geocodes them:
 
@@ -48,12 +48,15 @@ GET https://nominatim.openstreetmap.org/reverse
     ?format=json&lat=…&lon=…&zoom=18&addressdetails=1&accept-language={lang}
 ```
 
-The response is decomposed into:
-- `address` — full display name string
-- `town` — `address.town` or `address.city`
-- `village` — `address.village` or `address.city_district`
-- `suburb` — `address.suburb` or `address.city_district`
-- `road` — `address.road`
+The response is decomposed into a rule-based, reliability-focused subset:
+
+- `address` — simplified display string built from stable components (`road`, `suburb`, `town|village`, `county`, `state`, `country`)
+- `town` — first available from `town`, `city`, `municipality`
+- `village` — first available from `village`, `hamlet`, `isolated_dwelling`
+- `suburb` — first available from `suburb`, `neighbourhood`, `quarter`
+- `road` — first available from `road`, `pedestrian`, `footway`, `path`, `residential`, `square`
+
+District-level fields like `city_district` are intentionally excluded from this subset to reduce noisy or misleading locality hints in downstream AI prompts.
 
 These address components are used downstream both for Wikipedia name searches and for the `placesSurrounding` derived store.
 
@@ -94,6 +97,7 @@ GET https://{lang}.wikipedia.org/w/api.php
 ```
 
 For each search result, coordinates are fetched via `prop=coordinates&pageids={pageid}`. A result is accepted only if:
+
 - It has coordinates
 - The coordinates are within 10 km of the current location
 - The result title and the searched name share a substring relationship (case-insensitive)
@@ -108,33 +112,35 @@ Accepted results undergo the same title cleanup (strip parentheses, split on com
 
 The Overpass query targets six OSM tag categories:
 
-| Category | Selected values |
-|----------|----------------|
-| `waterway` | river, stream, canal, drain, ditch, weir, dam, waterfall, lock, dock, boatyard, sluice_gate, water_point |
-| `amenity` | museum, school, college, university, library, place_of_worship |
-| `tourism` | viewpoint, attraction, mall, zoo, theme_park, aquarium, gallery, artwork, memorial, museum, theatre, cinema |
-| `historic` | monument, memorial, ruins, castle, church, tomb, battlefield, fort, city_gate, citywalls, gate, archaeological_site |
+| Category   | Selected values                                                                                                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `waterway` | river, stream, canal, drain, ditch, weir, dam, waterfall, lock, dock, boatyard, sluice_gate, water_point                                                                               |
+| `amenity`  | museum, school, college, university, library, place_of_worship                                                                                                                         |
+| `tourism`  | viewpoint, attraction, mall, zoo, theme_park, aquarium, gallery, artwork, memorial, museum, theatre, cinema                                                                            |
+| `historic` | monument, memorial, ruins, castle, church, tomb, battlefield, fort, city_gate, citywalls, gate, archaeological_site                                                                    |
 | `man_made` | statue, sculpture, obelisk, stone, cross, wayside_cross, wayside_shrine, shelter, tower, water_tower, chimney, bridge, tunnel, mine, adit, bunker, silo, tank, reservoir, and variants |
-| `leisure` | park, nature_reserve, sports_centre, stadium |
+| `leisure`  | park, nature_reserve, sports_centre, stadium                                                                                                                                           |
 
 For each element type (node, way, relation) × each category, the query uses `around:{radius},{lat},{lon}`. Only elements with a `name` tag are kept. The result set is mapped to place objects:
 
 ```js
 {
-  title,       // name tag, stripped of parentheses and comma-separated text
-  description, // tags.description
-  type,        // first matching tag value (waterway|amenity|tourism|…)
-  url,         // tags['contact:website'] || tags.website
-  wikipedia,   // tags.wikipedia (e.g. "de:Bamberger Dom")
-  wikidata,    // tags.wikidata (e.g. "Q123456")
-  lat, lon,    // element coordinates
-  dist         // Euclidean distance in meters (degrees × 111139)
+	(title, // name tag, stripped of parentheses and comma-separated text
+		description, // tags.description
+		type, // first matching tag value (waterway|amenity|tourism|…)
+		url, // tags['contact:website'] || tags.website
+		wikipedia, // tags.wikipedia (e.g. "de:Bamberger Dom")
+		wikidata, // tags.wikidata (e.g. "Q123456")
+		lat,
+		lon, // element coordinates
+		dist); // Euclidean distance in meters (degrees × 111139)
 }
 ```
 
 Successful OSM responses are cached even when the result set is empty, so sparse locations do not repeatedly hit Overpass. On `QuotaExceededError`, the cleanup routine removes the oldest entries until the total drops to 50.
 
 All Overpass requests go through `loadOverpassJson()`:
+
 - Requests are serialized through a shared queue with at least 1.5 s between request completions and the next start.
 - Identical in-flight Overpass queries reuse the same promise instead of starting duplicate HTTP requests.
 - HTTP 429 responses set a global cooldown, using `Retry-After` when provided and falling back to 60 s.
@@ -146,6 +152,7 @@ All Overpass requests go through `loadOverpassJson()`:
 **Source:** [src/stores.js](../src/stores.js) `mergePlaces()`
 
 Wikipedia places are enriched with OSM data when titles match exactly:
+
 - `type` is set from the OSM record
 - `url` is set from the OSM record
 - `wikipedia` is set from the OSM record (if OSM has a `wikipedia` tag)
@@ -165,6 +172,7 @@ This stage runs in two sub-steps.
 ### 4a. AI Translation
 
 For each place, `translatePlaceName()` is called concurrently via `Promise.all()`. Translation is skipped if:
+
 - Only one source language is configured (`!hasMultipleSourceLanguages`), AND
 - The place's language already matches the target language
 
@@ -183,6 +191,7 @@ If the translation differs from the original title, the place title is rewritten
 Places are iterated sequentially. For each place, all previously accepted places are checked for name similarity using `placesNameIsSimilar()`:
 
 **Pre-processing steps:**
+
 1. Extract all digit sequences; if either name has digits, compare digit content — different digits → not similar
 2. Lowercase both names
 3. Strip content in parentheses (`/ *\([^)]*\) */g`)
@@ -190,13 +199,15 @@ Places are iterated sequentially. For each place, all previously accepted places
 5. Remove the town name from both strings if the string is more than 5 characters longer than the town name
 
 **Distance thresholds:**
+
 - If one cleaned name is a substring of the other (**substring-like**): `allowedDistance = max(3, lengthDiff + floor(minLength × 0.1))`
 - Otherwise (**non-substring**): `allowedDistance = max(2, floor(minLength × 0.15))`
 
 Levenshtein distance is computed via standard DP. A match occurs when `name1 === name2 || distance < allowedDistance`.
 
 When a duplicate is found:
-- If the *previous* (already-accepted) place has `lang === preferences.lang`, the new place is skipped
+
+- If the _previous_ (already-accepted) place has `lang === preferences.lang`, the new place is skipped
 - Otherwise, the previous place is replaced by the new one
 
 ---
@@ -214,6 +225,7 @@ GET https://{place.lang || lang}.wikipedia.org/w/api.php
 ```
 
 For places with a `wikipedia` tag (OSM-only places, no `pageid`):
+
 - The tag format is `{lang}:{title}` (e.g., `de:Bamberger Dom`)
 - Wikipedia references containing `#` (section anchors) are skipped entirely — the extract would not relate specifically to the place
 - Otherwise the lang and title are split and the API called with `titles={title}`
@@ -232,6 +244,7 @@ The extracted text is stored as `place.description`.
 Each place is analyzed independently and concurrently. Cache is loaded once at module initialization; expired entries are filtered on load. Uncached places are sent to the AI simultaneously via `Promise.all()`.
 
 The system prompt presents:
+
 - All available `CLASSES` with descriptions
 - All available `LABELS` with descriptions
 - The `IMPORTANCE` scale (1–5) with qualitative descriptors for what drives values up (landmark, uniqueness, historical significance, dominance of perceived environment) and down (generic business, administrative district, large geographic feature, demolished/inaccessible)
@@ -239,6 +252,7 @@ The system prompt presents:
 The user message is: `"* {title} ({type}): {snippet || description}"`
 
 Expected JSON output (via `json_object` format):
+
 ```json
 { "cls": "CLASSNAME", "labels": ["LABEL1", "LABEL2"], "importance": 3 }
 ```
@@ -249,18 +263,18 @@ On parse failure, the fallback is `{ cls: 'other', labels: [], importance: 0 }`.
 
 Available labels (10 total):
 
-| Value | Covers |
-|-------|--------|
-| ACTIVITIES | Shopping, food, entertainment, leisure |
-| ARCHITECTURE | Buildings, monuments, landmarks |
-| CULTURE | Museums, galleries, cultural centers |
-| EDUCATION | Schools, universities, libraries |
-| GEOGRAPHY | Natural formations, landscapes |
-| HISTORY | Historical sites, memorials |
-| NATURE | Parks, gardens, natural areas |
-| RELIGION | Churches, temples, places of worship |
-| SPORTS | Sports facilities, stadiums |
-| TRANSPORTATION | Stations, airports, infrastructure |
+| Value          | Covers                                 |
+| -------------- | -------------------------------------- |
+| ACTIVITIES     | Shopping, food, entertainment, leisure |
+| ARCHITECTURE   | Buildings, monuments, landmarks        |
+| CULTURE        | Museums, galleries, cultural centers   |
+| EDUCATION      | Schools, universities, libraries       |
+| GEOGRAPHY      | Natural formations, landscapes         |
+| HISTORY        | Historical sites, memorials            |
+| NATURE         | Parks, gardens, natural areas          |
+| RELIGION       | Churches, temples, places of worship   |
+| SPORTS         | Sports facilities, stadiums            |
+| TRANSPORTATION | Stations, airports, infrastructure     |
 
 ---
 
@@ -270,13 +284,13 @@ Available labels (10 total):
 
 Each place receives a `stars` score (0–5) and a `starDescriptions` array explaining each contribution:
 
-| Condition | Stars | Description |
-|-----------|-------|-------------|
-| `place.wikipedia` or `place.pageid` exists | +1 | "has a Wikipedia article" |
-| `place.importance === 4` | +1 | "is important for the location" |
-| `place.importance === 5` | +2 | "is very important for the location" |
-| 1 label matches user's selected interests | +1 | "matches one of your interests" |
-| 2+ labels match user's selected interests | +2 | "matches multiple of your interests" |
+| Condition                                  | Stars | Description                          |
+| ------------------------------------------ | ----- | ------------------------------------ |
+| `place.wikipedia` or `place.pageid` exists | +1    | "has a Wikipedia article"            |
+| `place.importance === 4`                   | +1    | "is important for the location"      |
+| `place.importance === 5`                   | +2    | "is very important for the location" |
+| 1 label matches user's selected interests  | +1    | "matches one of your interests"      |
+| 2+ labels match user's selected interests  | +2    | "matches multiple of your interests" |
 
 The label matching is capped at 2 stars regardless of how many labels match.
 
@@ -285,16 +299,19 @@ The label matching is capped at 2 stars regardless of how many labels match.
 Three derived Svelte stores filter and sort the rated place list:
 
 **`placesSurrounding`** — places that are part of the user's broader area context:
+
 - Title appears in `address.split(', ').slice(1).join(', ')` (the address remainder after the first component), OR
 - The place's `cls` has `isSurrounding: true` in the class definition
 
 **`placesHere`** — places immediately at the user's position:
+
 - Not in `placesSurrounding`
 - `dist < (CLASSES[cls]?.radius || 100)` meters
 - `stars > 2`
 - Sorted: stars descending, then dist ascending
 
 **`placesNearby`** — other notable places within the search radius:
+
 - Not in `placesSurrounding` and not in `placesHere`
 - `stars > 2`
 - Sorted: dist ascending
@@ -319,25 +336,27 @@ After each chain completes, `places.set(get(places))` triggers a store update to
 #### Wikipedia Image Strategy
 
 **Primary path:** If a Wikipedia page has a `pageimage` (its designated thumbnail):
+
 - Fetched via `prop=pageimages&pithumbsize={size}`
 - Image metadata (license, licenseShortName, artist, descriptionUrl) is fetched separately via `prop=imageinfo&iiprop=url|extmetadata`
 - Stored in `place.imageSource`, `place.imageLicense`, `place.imageLicenseUrl`, `place.imageArtist`
 
 **Fallback path:** If no `pageimage` exists:
+
 - All page images are retrieved via `prop=images&imlimit=10`
 - The first 5 images are scored after filtering out:
   - Filenames starting with `File:Pictogram`, `File:Icon`, `File:Logo`, `File:Disambig`
   - Extensions: `.svg`, `.djvu`, `.pdf`, `.ogv`, `.webm`
 - Scoring per image (via `selectBestImageForPlace()`):
 
-  | Condition | Score |
-  |-----------|-------|
-  | Filename contains place title (case-insensitive) | +10 |
-  | ObjectName/ImageDescription/Categories contain place title | +8 |
-  | Per word of place title (>3 chars) found in combined metadata | +2 |
-  | ObjectName contains "interior" | −3 |
-  | ObjectName contains "detail" | −2 |
-  | Combined text contains "map" or "diagram" | −5 |
+  | Condition                                                     | Score |
+  | ------------------------------------------------------------- | ----- |
+  | Filename contains place title (case-insensitive)              | +10   |
+  | ObjectName/ImageDescription/Categories contain place title    | +8    |
+  | Per word of place title (>3 chars) found in combined metadata | +2    |
+  | ObjectName contains "interior"                                | −3    |
+  | ObjectName contains "detail"                                  | −2    |
+  | Combined text contains "map" or "diagram"                     | −5    |
 
   Images with score ≤ 0 are discarded. The highest-scoring image is selected.
 
@@ -346,6 +365,7 @@ After each chain completes, `places.set(get(places))` triggers a store update to
 **Source:** [src/util/wikidata.js](../src/util/wikidata.js) `loadWikidataImages()`
 
 For places without an image that have a `wikidata` ID:
+
 - Fetches `Special:EntityData/{wikidataId}.json`
 - Reads the P18 (image) claim to get a Commons filename
 - Resolves the filename to a URL via `getCommonsImageUrl()` against the Wikimedia Commons API
@@ -364,6 +384,7 @@ GET https://{lang}.wikipedia.org/w/api.php
 ```
 
 Post-processing removes:
+
 - Wiki tables (`/\{\|[\s\S]*?\|\}/g`)
 - Templates (`/\{\{[\s\S]*?\}\}/g`)
 - External links (`/\[http[^\]]*\]/g`)
@@ -396,6 +417,7 @@ Story generation runs after `loadMetadata()` completes. It uses the OpenAI Respo
 ### System Prompt Context
 
 The system prompt includes:
+
 - **Guide character** from preferences (e.g., "friendly and helpful", "funny and witty")
 - **Target language** from preferences
 - **Current address** from coordinates
@@ -410,14 +432,17 @@ Behavioral constraints in the prompt: no directions, no distances, no welcome/fa
 ### First vs. Continuation Requests
 
 **First story part** (`storyTexts.length === 0`):
+
 - Single user message: `"Tell me something interesting about this location."`
 - Full context in system prompt
 
 **Continuation without `previousResponseId`** (replay mode):
+
 - Prior story texts and user messages reconstructed in the `messages` array
 - Final user message: explicitly requests something different, reminds of position and places, limits to 1–3 paragraphs with a bold headline, and enforces factual constraints
 
 **Continuation with `previousResponseId`** (server-chain mode):
+
 - `requestConfig.previous_response_id` is set
 - Only the last user message is sent — the API reconstructs prior context from its stored response
 - Enables efficient token use for long story sequences
@@ -441,6 +466,7 @@ These functions are called from UI components when the user opens place detail v
 Facts are extracted using a dynamic JSON schema derived from the place's class definition in `place-classes.js`. The schema is built from `factsProperties` (a dict of property name → JSON schema fragment).
 
 **Wikidata context enrichment** (`getWikidataContext()`):
+
 1. If `place.wikidata` is set, `fetchWikidataInfo()` is called directly
 2. Otherwise `searchWikidataId()` searches Wikidata by `"{place.title} {town}"`, filtering results by description keywords (railway station, church, building, monument, museum, city, town, village)
 3. If a Wikidata ID is found, `fetchWikidataInfo()` fetches the entity JSON and extracts 45+ properties (P31, P84, P140, P793, P2048, etc.)
@@ -448,6 +474,7 @@ Facts are extracted using a dynamic JSON schema derived from the place's class d
 5. Quantitative values include their unit; temporal events include qualifier-derived year ranges
 
 The final AI prompt provides:
+
 - Place title, class, and address context
 - Full article text or description
 - Wikidata structured data block (if available)
@@ -502,17 +529,17 @@ Fetches waterways via Overpass (river, stream, canal, drain, ditch, weir, dam, w
 
 Each waterway way is converted to a sequence of grid-space line segments. Width is determined per waterway:
 
-| Type | Width |
-|------|-------|
-| River (navigable: `boat=yes`, `motorboat=yes`, `ship=yes`) | 2.4 |
-| River | 1.8 |
-| Canal (navigable) | 2.0 |
-| Canal | 1.2 |
-| Weir, dam | 1.4 |
-| Stream | 0.8 |
-| Ditch, drain | 0.6 |
-| Explicit `width` tag | `min(max(width/10, 0.3), 3.0)` |
-| Default | 1.0 |
+| Type                                                       | Width                          |
+| ---------------------------------------------------------- | ------------------------------ |
+| River (navigable: `boat=yes`, `motorboat=yes`, `ship=yes`) | 2.4                            |
+| River                                                      | 1.8                            |
+| Canal (navigable)                                          | 2.0                            |
+| Canal                                                      | 1.2                            |
+| Weir, dam                                                  | 1.4                            |
+| Stream                                                     | 0.8                            |
+| Ditch, drain                                               | 0.6                            |
+| Explicit `width` tag                                       | `min(max(width/10, 0.3), 3.0)` |
+| Default                                                    | 1.0                            |
 
 Segments are drawn as thick lines via **Bresenham's line algorithm** for the center path, then a filled circle of radius `width/2` around each center point. Intensity = `min(1.0, width/1.5)`, faded linearly from center: `fadeIntensity = intensity × (1 − dist/(radius + 0.5))`.
 
@@ -527,13 +554,14 @@ Fetches green land use, leisure, and natural areas (ways and relations), plus in
 
 **Rendering by element type:**
 
-| Type | Condition | Method | Intensity |
-|------|-----------|--------|-----------|
-| Large area | forest, park, nature_reserve, wood, meadow | Scanline polygon fill | 0.8 |
-| Smaller area | other landuse/leisure/natural | Perimeter points with propagation | 0.7 |
-| Individual tree | `natural=tree` node | Single point | 0.6 |
+| Type            | Condition                                  | Method                            | Intensity |
+| --------------- | ------------------------------------------ | --------------------------------- | --------- |
+| Large area      | forest, park, nature_reserve, wood, meadow | Scanline polygon fill             | 0.8       |
+| Smaller area    | other landuse/leisure/natural              | Perimeter points with propagation | 0.7       |
+| Individual tree | `natural=tree` node                        | Single point                      | 0.6       |
 
 The **scanline polygon fill** algorithm:
+
 1. Projects OSM polygon nodes to grid coordinates; discards out-of-bounds
 2. Determines bounding box (minY, maxY)
 3. For each scan line y, computes intersections with all edges using the even-odd rule
@@ -552,11 +580,11 @@ Fetches shops, food and drink venues, entertainment amenities, and commercial la
 
 **Rendering by element type:**
 
-| Type | Condition | Intensity |
-|------|-----------|-----------|
-| Individual node (shop, amenity) | `element.type === 'node'` | 0.8 |
-| Large area | `nodes.length > 10` or `landuse=commercial/retail` | 0.4 (perimeter) |
-| Smaller area | other ways/relations | 0.6 (perimeter) |
+| Type                            | Condition                                          | Intensity       |
+| ------------------------------- | -------------------------------------------------- | --------------- |
+| Individual node (shop, amenity) | `element.type === 'node'`                          | 0.8             |
+| Large area                      | `nodes.length > 10` or `landuse=commercial/retail` | 0.4 (perimeter) |
+| Smaller area                    | other ways/relations                               | 0.6 (perimeter) |
 
 `increaseActivityLevel()` propagates to 4 neighbors at value/5 only when `value > 0.3`; terminates below 0.05.
 
@@ -564,16 +592,16 @@ Fetches shops, food and drink venues, entertainment amenities, and commercial la
 
 ## Caching Summary
 
-| Cache | Storage | TTL | Key format | Max entries |
-|-------|---------|-----|------------|-------------|
-| OSM places | localStorage | 15 min | `osm_cache_places_{lat3dp}_{lon3dp}_150` | 50 total OSM entries |
-| OSM water map | localStorage | 15 min | `osm_cache_watermap_{lat3dp}_{lon3dp}_500` | (shared 50 limit) |
-| OSM green map | localStorage | 15 min | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500` | (shared 50 limit) |
-| OSM activity map | localStorage | 15 min | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600` | (shared 50 limit) |
-| Place analysis | localStorage | 7 days | `place.title` (within `urban-wanderer-analysis-cache`) | unbounded |
-| Insights | localStorage | 7 days | `{article[0:100]}|{lang}` (within `urban-wanderer-insights-cache`) | unbounded |
-| Facts | localStorage | 7 days | `{title}|{sortedPropertyNames}|{lang}` (within `urban-wanderer-facts-cache`) | unbounded |
-| Article summaries | in-memory only | session | full article text | unbounded |
+| Cache             | Storage        | TTL     | Key format                                             | Max entries                                    |
+| ----------------- | -------------- | ------- | ------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------- | --------- |
+| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_150`               | 50 total OSM entries                           |
+| OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
+| OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
+| OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`          | (shared 50 limit)                              |
+| Place analysis    | localStorage   | 7 days  | `place.title` (within `urban-wanderer-analysis-cache`) | unbounded                                      |
+| Insights          | localStorage   | 7 days  | `{article[0:100]}                                      | {lang}`(within`urban-wanderer-insights-cache`) | unbounded                                   |
+| Facts             | localStorage   | 7 days  | `{title}                                               | {sortedPropertyNames}                          | {lang}`(within`urban-wanderer-facts-cache`) | unbounded |
+| Article summaries | in-memory only | session | full article text                                      | unbounded                                      |
 
 OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first). Analysis/insights/facts caches filter expired entries on module load. Summaries are lost on page refresh.
 
@@ -585,10 +613,10 @@ OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first
 
 **Model tiers** (user-configurable, defaults shown):
 
-| Tier | Default | Options |
-|------|---------|---------|
-| Simple | `gpt-5.4-mini` | gpt-5.4-nano, gpt-5.4-mini, gpt-5.4, gpt-5.5 |
-| Advanced | `gpt-5.4` | gpt-5.4-mini, gpt-5.4, gpt-5.5 |
+| Tier     | Default        | Options                                      |
+| -------- | -------------- | -------------------------------------------- |
+| Simple   | `gpt-5.4-mini` | gpt-5.4-nano, gpt-5.4-mini, gpt-5.4, gpt-5.5 |
+| Advanced | `gpt-5.4`      | gpt-5.4-mini, gpt-5.4, gpt-5.5               |
 
 **Reasoning effort:** `'low'` for all calls (constant `AI_REASONING_EFFORT`).
 
@@ -596,15 +624,15 @@ OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first
 
 **Output format by call:**
 
-| Function | Format |
-|----------|--------|
-| `analyzeSinglePlace` | `json_object` |
-| `translatePlaceName` | `json_schema` (strict) |
-| `extractPlaceFacts` | `json_schema` (dynamic, from class properties) |
-| `extractInsightsFromArticle` | free text |
-| `summarizeArticle` | free text |
-| `generateStory` | free text, `store: true` |
-| History, comment | free text / JSON array |
+| Function                     | Format                                         |
+| ---------------------------- | ---------------------------------------------- |
+| `analyzeSinglePlace`         | `json_object`                                  |
+| `translatePlaceName`         | `json_schema` (strict)                         |
+| `extractPlaceFacts`          | `json_schema` (dynamic, from class properties) |
+| `extractInsightsFromArticle` | free text                                      |
+| `summarizeArticle`           | free text                                      |
+| `generateStory`              | free text, `store: true`                       |
+| History, comment             | free text / JSON array                         |
 
 ---
 
@@ -612,29 +640,29 @@ OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first
 
 After full pipeline processing, a place object carries:
 
-| Field | Source |
-|-------|--------|
-| `title` | Wikipedia geosearch / OSM name tag, cleaned |
-| `lang` | Wikipedia source language |
-| `pageid` | Wikipedia page ID |
-| `lat`, `lon` | Coordinates from Wikipedia or OSM |
-| `dist` | Distance in meters from user (0 if < 100 m) |
-| `snippet` | Wikipedia geosearch snippet |
-| `type` | OSM tag value (waterway, amenity, tourism, etc.) |
-| `url` | OSM contact:website or website tag |
-| `wikipedia` | OSM wikipedia tag (e.g. `de:Bamberger Dom`) |
-| `wikidata` | OSM wikidata tag or extracted from Wikipedia pageprops |
-| `description` | Wikipedia intro extract |
-| `cls` | AI-assigned class (from CLASSES) |
-| `labels` | AI-assigned labels (from LABELS, up to 3) |
-| `importance` | AI-assigned importance score (1–5) |
-| `stars` | Computed rating (0–5) |
-| `starDescriptions` | Array of `{number, text}` explaining each star |
-| `imageThumb` | 100 px image URL (Wikipedia or Wikidata) |
-| `image` | 500 px image URL (Wikipedia or Wikidata) |
-| `imageSource` | Image description URL |
-| `imageLicense` | Image license short name |
-| `imageLicenseUrl` | Image license URL |
-| `imageArtist` | Image artist/credit |
-| `article` | Full cleaned Wikipedia wikitext (max 30,000 chars) |
-| `insights` | AI bullet-point insights from article |
+| Field              | Source                                                 |
+| ------------------ | ------------------------------------------------------ |
+| `title`            | Wikipedia geosearch / OSM name tag, cleaned            |
+| `lang`             | Wikipedia source language                              |
+| `pageid`           | Wikipedia page ID                                      |
+| `lat`, `lon`       | Coordinates from Wikipedia or OSM                      |
+| `dist`             | Distance in meters from user (0 if < 100 m)            |
+| `snippet`          | Wikipedia geosearch snippet                            |
+| `type`             | OSM tag value (waterway, amenity, tourism, etc.)       |
+| `url`              | OSM contact:website or website tag                     |
+| `wikipedia`        | OSM wikipedia tag (e.g. `de:Bamberger Dom`)            |
+| `wikidata`         | OSM wikidata tag or extracted from Wikipedia pageprops |
+| `description`      | Wikipedia intro extract                                |
+| `cls`              | AI-assigned class (from CLASSES)                       |
+| `labels`           | AI-assigned labels (from LABELS, up to 3)              |
+| `importance`       | AI-assigned importance score (1–5)                     |
+| `stars`            | Computed rating (0–5)                                  |
+| `starDescriptions` | Array of `{number, text}` explaining each star         |
+| `imageThumb`       | 100 px image URL (Wikipedia or Wikidata)               |
+| `image`            | 500 px image URL (Wikipedia or Wikidata)               |
+| `imageSource`      | Image description URL                                  |
+| `imageLicense`     | Image license short name                               |
+| `imageLicenseUrl`  | Image license URL                                      |
+| `imageArtist`      | Image artist/credit                                    |
+| `article`          | Full cleaned Wikipedia wikitext (max 30,000 chars)     |
+| `insights`         | AI bullet-point insights from article                  |
