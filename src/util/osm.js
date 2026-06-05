@@ -296,7 +296,68 @@ export async function loadOsmAddressData(coords, lang) {
 		`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1&accept-language=${lang}`
 	);
 	const data = await response.json();
-	return data;
+	return simplifyOsmAddressData(data);
+}
+
+function normalizeAddressPart(value) {
+	if (!value || typeof value !== 'string') {
+		return null;
+	}
+	const normalized = value.trim();
+	return normalized || null;
+}
+
+function pickAddressPart(address, keys) {
+	for (const key of keys) {
+		const value = normalizeAddressPart(address?.[key]);
+		if (value) {
+			return value;
+		}
+	}
+	return null;
+}
+
+export function simplifyOsmAddressData(data) {
+	const originalAddress = data?.address || {};
+	const town = pickAddressPart(originalAddress, ['town', 'city', 'municipality']);
+	const village = pickAddressPart(originalAddress, ['village', 'hamlet', 'isolated_dwelling']);
+	const suburb = pickAddressPart(originalAddress, ['suburb', 'neighbourhood', 'quarter']);
+	const road = pickAddressPart(originalAddress, [
+		'road',
+		'pedestrian',
+		'footway',
+		'path',
+		'residential',
+		'square'
+	]);
+	const county = pickAddressPart(originalAddress, ['county']);
+	const state = pickAddressPart(originalAddress, ['state', 'state_district', 'region']);
+	const country = pickAddressPart(originalAddress, ['country']);
+
+	const displayParts = [];
+	[road, suburb, town || village, county, state, country].forEach((part) => {
+		if (!part) {
+			return;
+		}
+		if (!displayParts.some((existing) => existing.toLowerCase() === part.toLowerCase())) {
+			displayParts.push(part);
+		}
+	});
+
+	return {
+		...data,
+		display_name: displayParts.join(', ') || data?.display_name || '',
+		address: {
+			...originalAddress,
+			town,
+			village,
+			suburb,
+			road,
+			county,
+			state,
+			country
+		}
+	};
 }
 
 // Calculate the distance between two geographical points using the Haversine formula
