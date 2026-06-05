@@ -78,7 +78,8 @@ Keep the language as concise as possible and factual.
 You may use an informal tone, but use a moderate language.
 Try to realisticially describe the relevance of places, but do not exaggerate; not all places are "famous" or "important".
 Avoid generic claims like "this is a famous place" or "the place has a rich history".
-Do not conclude paragraphs with a generic statements.
+Do not end paragraphs with generic conclusion statements.
+End each paragraph with a concrete, place-specific detail.
 
 Just give summary of the most important information, but do not reply to the user's questions. 
 Do not welcome the user or ask for feedback.
@@ -108,6 +109,7 @@ The position is close to /in:
 ${placesHere.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`).join('\n')}
 
 Strictly stick to the initially provided instructions and facts about the places.
+Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write one to three paragraphs of text. 
 Give the text a headline marked in bold font.`
 		});
@@ -121,6 +123,7 @@ Give the text a headline marked in bold font.`
 			role: 'user',
 			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself.
 
+Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write one to three paragraphs of text. 
 Give the text a headline marked in bold font.`
 		});
