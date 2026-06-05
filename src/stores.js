@@ -5,7 +5,8 @@ import {
 	PLACE_HIGH_RATED_MIN_STARS,
 	PLACE_HERE_DEFAULT_RADIUS,
 	PLACE_TWO_STAR_HIGH_RATED_LIMIT,
-	PLACE_VISIBLE_MIN_STARS
+	PLACE_VISIBLE_MIN_STARS,
+	SURROUNDING_ADDRESS_PART_KEYS
 } from './constants/core.js';
 import { CLASSES } from './constants/place-classes.js';
 import { AI_MODELS, LABELS } from './constants/ui-config.js';
@@ -139,7 +140,10 @@ function createCoordinates() {
 					town: addressData.address.town,
 					village: addressData.address.village,
 					suburb: addressData.address.suburb,
-					road: addressData.address.road
+					road: addressData.address.road,
+					county: addressData.address.county,
+					state: addressData.address.state,
+					country: addressData.address.country
 				});
 				perf.end({
 					town: addressData.address.town,
@@ -335,18 +339,43 @@ function createPlaces() {
 }
 export const places = createPlaces();
 
-// surrounding places store (derived from places)
+function normalizePlaceMatchText(value) {
+	return String(value || '')
+		.normalize('NFKC')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.toLowerCase();
+}
+
+function getAddressPlaceParts(coordinates) {
+	return new Set(
+		SURROUNDING_ADDRESS_PART_KEYS.map((key) => normalizePlaceMatchText(coordinates[key])).filter(
+			Boolean
+		)
+	);
+}
+
+function getPlaceTitleVariants(title) {
+	const normalizedTitle = normalizePlaceMatchText(title);
+	const withoutParenthetical = normalizePlaceMatchText(
+		normalizedTitle.replace(/\s*\([^)]*\)\s*$/, '')
+	);
+	return new Set([normalizedTitle, withoutParenthetical].filter(Boolean));
+}
+
+function placeMatchesAddressPart(place, addressPlaceParts) {
+	return [...getPlaceTitleVariants(place.title)].some((title) => addressPlaceParts.has(title));
+}
+
 export const placesSurrounding = derived([coordinates, places], ([$coordinates, $places]) => {
 	if (!$coordinates || !$places) return [];
-	const addressRemainder = $coordinates.address.split(', ').slice(1).join(', ');
+	const addressPlaceParts = getAddressPlaceParts($coordinates);
 	return $places.filter((place) => {
-		if (addressRemainder.includes(place.title)) {
+		if (placeMatchesAddressPart(place, addressPlaceParts)) {
 			place.type = 'address';
 			return true;
 		}
-		if (CLASSES[place.cls]?.isSurrounding) {
-			return true;
-		}
+		return false;
 	});
 });
 

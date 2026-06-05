@@ -20,6 +20,15 @@ export const PLACE_VISIBLE_MIN_STARS = 2;
 export const PLACE_HIGH_RATED_MIN_STARS = 3;
 export const PLACE_TWO_STAR_HIGH_RATED_LIMIT = 5;
 export const PLACE_HERE_DEFAULT_RADIUS = 150;
+export const SURROUNDING_ADDRESS_PART_KEYS = [
+	'road',
+	'suburb',
+	'town',
+	'village',
+	'county',
+	'state',
+	'country'
+];
 
 // OSM search radius for Overpass API queries
 export const OSM_SEARCH_RADIUS = 500;
