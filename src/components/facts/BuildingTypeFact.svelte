@@ -82,7 +82,7 @@
 		},
 		gymnasium: {
 			name: { en: 'Gymnasium', de: 'Turnhalle' },
-			image: 'gymnasium.jpg'
+			image: 'stadium.jpg'
 		},
 		tower: {
 			name: { en: 'Tower', de: 'Turm' },
@@ -94,7 +94,7 @@
 		},
 		apartment: {
 			name: { en: 'Apartment Building', de: 'Wohnhaus' },
-			image: 'apartment.jpg'
+			image: 'residential.jpg'
 		},
 		villa: {
 			name: { en: 'Villa', de: 'Villa' },
@@ -102,7 +102,7 @@
 		},
 		cottage: {
 			name: { en: 'Cottage', de: 'Landhaus' },
-			image: 'cottage.jpg'
+			image: 'villa.jpg'
 		},
 		palace: {
 			name: { en: 'Palace', de: 'Palast' },
@@ -114,15 +114,15 @@
 		},
 		fortress: {
 			name: { en: 'Fortress', de: 'Festung' },
-			image: 'fortress.jpg'
+			image: 'castle.jpg'
 		},
 		barn: {
 			name: { en: 'Barn', de: 'Scheune' },
-			image: 'barn.jpg'
+			image: 'warehouse.jpg'
 		},
 		factory: {
 			name: { en: 'Factory', de: 'Fabrik' },
-			image: 'factory.jpg'
+			image: 'industrial.jpg'
 		},
 		station: {
 			name: { en: 'Station', de: 'Bahnhof' },
@@ -130,15 +130,15 @@
 		},
 		airport: {
 			name: { en: 'Airport Terminal', de: 'Flughafenterminal' },
-			image: 'airport.jpg'
+			image: 'station.jpg'
 		},
 		garage: {
 			name: { en: 'Garage', de: 'Garage' },
-			image: 'garage.jpg'
+			image: 'warehouse.jpg'
 		},
 		shed: {
 			name: { en: 'Shed', de: 'Schuppen' },
-			image: 'shed.jpg'
+			image: 'warehouse.jpg'
 		},
 		'city-hall': {
 			name: { en: 'City Hall', de: 'Rathaus' },
