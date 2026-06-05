@@ -23,7 +23,9 @@
 		PLACE_MIN_DISTANCE,
 		PLACE_HIGH_RATED_MIN_STARS,
 		PLACE_TWO_STAR_HIGH_RATED_LIMIT,
-		PLACE_VISIBLE_MIN_STARS
+		PLACE_VISIBLE_MIN_STARS,
+		MAP_LOCATION_EXCLUDED_PLACE_CLASSES,
+		MAP_LOCATION_EXCLUDED_PLACE_TYPES
 	} from '../constants/core.js';
 
 	// Derived constants
@@ -32,6 +34,9 @@
 	const GRID_OFFSET_X = SVG_CENTER;
 	const GRID_OFFSET_Y = SVG_CENTER;
 	const GRID_HEX_OFFSET = GRID_CELL_SIZE / 2;
+	const isMapLocationPlace = (place) =>
+		!MAP_LOCATION_EXCLUDED_PLACE_CLASSES.includes(place.cls) &&
+		!MAP_LOCATION_EXCLUDED_PLACE_TYPES.includes(place.type);
 
 	const placesToHighlight = derived(
 		[places, placesSurrounding],
@@ -46,6 +51,7 @@
 					place.lon &&
 					place.lat &&
 					place.stars > 0 &&
+					isMapLocationPlace(place) &&
 					!$placesSurrounding.find((p) => p.title === place.title)
 			);
 
@@ -389,7 +395,7 @@
 			<g clip-path="url(#circleClip)">
 				<!-- background: all places as blurred circles -->
 				<g class="places-bg">
-					{#each ($places || []).filter((place) => place.lon && place.lat && place.stars > 1) as place}
+					{#each ($places || []).filter((place) => place.lon && place.lat && place.stars > 1 && isMapLocationPlace(place)) as place}
 						<circle
 							cx={latLonToX(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
 							cy={latLonToY(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}

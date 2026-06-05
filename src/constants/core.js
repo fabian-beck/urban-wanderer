@@ -28,6 +28,8 @@ export const OSM_TREE_RADIUS = 400;
 export const OSM_STALE_CACHE_DURATION = 24 * 60 * 60 * 1000;
 export const OSM_WATERWAY_TYPES =
 	'river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point';
+export const MAP_LOCATION_EXCLUDED_PLACE_CLASSES = ['WATERBODY'];
+export const MAP_LOCATION_EXCLUDED_PLACE_TYPES = ['river', 'stream', 'canal', 'drain', 'ditch'];
 export const OSM_GREEN_LANDUSE_TYPES =
 	'forest|meadow|orchard|vineyard|grass|recreation_ground|village_green';
 export const OSM_GREEN_LEISURE_TYPES =
