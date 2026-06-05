@@ -2,6 +2,7 @@
 	import { StarSolid } from 'flowbite-svelte-icons';
 	export let item;
 	export let detail = false;
+	export let dense = false;
 
 	const getStarColor = (starIndex) => {
 		switch (starIndex) {
@@ -19,7 +20,7 @@
 	};
 </script>
 
-<div class="mt-1 flex text-left text-xs {detail ? 'flex-col' : 'h-5'}">
+<div class="mt-1 flex text-left text-xs {detail ? 'flex-col' : dense ? 'h-4' : 'h-5'}">
 	{#if item.starDescriptions?.length > 0}
 		{#each item.starDescriptions as starDescription, groupIndex}
 			{@const starOffset = item.starDescriptions

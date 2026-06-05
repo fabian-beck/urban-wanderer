@@ -18,9 +18,9 @@
 		placeDetailsVisible,
 		updateLocation
 	} from '../stores.js';
-	import { LABELS } from '../constants/ui-config.js';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
+	import PlaceLabels from './PlaceLabels.svelte';
 	import { derived } from 'svelte/store';
 	import FactList from './facts/FactList.svelte';
 
@@ -47,12 +47,6 @@
 		if (imageElement) {
 			isPortrait = imageElement.naturalHeight > imageElement.naturalWidth;
 		}
-	};
-
-	// Helper function to get label name by value, returns null for invalid labels
-	const getLabelName = (labelValue) => {
-		const label = LABELS.find((l) => l.value === labelValue);
-		return label ? label.name : null;
 	};
 
 	// Get platform name from source URL
@@ -184,25 +178,7 @@
 			{#if !isSurroundingPlace}
 				{#if place.labels}
 					<hr class="my-4" />
-					<div class="flex flex-wrap">
-						{#each place.labels
-							.filter((label) => getLabelName(label) !== null)
-							.sort((a, b) => {
-								const aMatches = $preferences.labels?.includes(a);
-								const bMatches = $preferences.labels?.includes(b);
-								if (aMatches && !bMatches) return -1;
-								if (!aMatches && bMatches) return 1;
-								return 0;
-							}) as label}
-							<div
-								class={$preferences.labels?.includes(label)
-									? 'mb-1 mr-2 rounded-full bg-primary-100 px-2 text-sm text-primary-800'
-									: 'mb-1 mr-2 rounded-full bg-gray-100 px-2 text-sm text-gray-600'}
-							>
-								{getLabelName(label)}
-							</div>
-						{/each}
-					</div>
+					<PlaceLabels labels={place.labels} />
 				{/if}
 			{/if}
 			<hr class="my-4" />
