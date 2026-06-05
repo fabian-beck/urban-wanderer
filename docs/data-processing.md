@@ -107,8 +107,8 @@ Accepted results undergo the same title cleanup (strip parentheses, split on com
 ### 2b. OSM Places via Overpass API
 
 **Source:** [src/util/osm.js](../src/util/osm.js) `loadOsmPlaces()`  
-**Search radius:** 150 m (hardcoded)  
-**Cache:** 15-minute TTL, key format `osm_cache_places_{lat3dp}_{lon3dp}_150`
+**Search radius:** `OSM_SEARCH_RADIUS` from [src/constants/core.js](../src/constants/core.js)  
+**Cache:** 15-minute TTL, key format `osm_cache_places_{lat3dp}_{lon3dp}_{radius}`
 
 The Overpass query targets six OSM tag categories:
 
@@ -132,8 +132,8 @@ For each element type (node, way, relation) × each category, the query uses `ar
 		wikipedia, // tags.wikipedia (e.g. "de:Bamberger Dom")
 		wikidata, // tags.wikidata (e.g. "Q123456")
 		lat,
-		lon, // element coordinates
-		dist); // Euclidean distance in meters (degrees × 111139)
+		lon, // element coordinates or Overpass center for ways/relations
+		dist); // Haversine distance in meters, or Infinity when no usable point exists
 }
 ```
 
@@ -594,7 +594,7 @@ Fetches shops, food and drink venues, entertainment amenities, and commercial la
 
 | Cache             | Storage        | TTL     | Key format                                             | Max entries                                    |
 | ----------------- | -------------- | ------- | ------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------- | --------- |
-| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_150`               | 50 total OSM entries                           |
+| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_{radius}`          | 50 total OSM entries                           |
 | OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
 | OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
 | OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`          | (shared 50 limit)                              |

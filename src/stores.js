@@ -3,6 +3,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import {
 	nArticles,
 	PLACE_HIGH_RATED_MIN_STARS,
+	PLACE_HERE_DEFAULT_RADIUS,
 	PLACE_TWO_STAR_HIGH_RATED_LIMIT,
 	PLACE_VISIBLE_MIN_STARS
 } from './constants/core.js';
@@ -356,10 +357,12 @@ export const placesHere = derived(
 	[coordinates, places, placesSurrounding],
 	([$coordinates, $places, $placesSurrounding]) => {
 		if (!$coordinates || !$places || !$placesSurrounding) return [];
+		const isHere = (place) => {
+			const radius = CLASSES[place.cls]?.radius || PLACE_HERE_DEFAULT_RADIUS;
+			return Number.isFinite(place.dist) && place.dist < radius;
+		};
 		const hereCandidates = $places.filter(
-			(place) =>
-				(!place.dist || place.dist < (CLASSES[place.cls]?.radius || 100)) &&
-				!$placesSurrounding.includes(place)
+			(place) => isHere(place) && !$placesSurrounding.includes(place)
 		);
 		const highRatedHere = hereCandidates.filter(
 			(place) => place.stars >= PLACE_HIGH_RATED_MIN_STARS

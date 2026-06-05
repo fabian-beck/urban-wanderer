@@ -197,7 +197,7 @@ function cleanupOldCacheEntries() {
 
 export async function loadOsmPlaces(coordinates) {
 	try {
-		const radius = 150;
+		const radius = OSM_SEARCH_RADIUS;
 		const cacheKey = getCacheKey(coordinates, 'places', radius);
 		const cached = getCachedData(cacheKey);
 		if (cached) {
@@ -247,7 +247,7 @@ export async function loadOsmPlaces(coordinates) {
     way[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
     relation[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 );
-out body;
+out center;
 >;
 out skel qt;
 `;
@@ -258,6 +258,8 @@ out skel qt;
 			.filter((element) => element.tags?.name)
 			.map((element) => {
 				const tags = element.tags;
+				const lat = element.lat ?? element.center?.lat;
+				const lon = element.lon ?? element.center?.lon;
 				let title = tags.name.replace(/\s*\(.*?\)\s*/g, '');
 				title = title.split(',')[0];
 				return {
@@ -273,13 +275,12 @@ out skel qt;
 					url: tags['contact:website'] || tags.website,
 					wikipedia: tags.wikipedia,
 					wikidata: tags.wikidata,
-					lat: element.lat,
-					lon: element.lon,
+					lat,
+					lon,
 					dist:
-						Math.sqrt(
-							Math.pow(element.lat - coordinates.latitude, 2) +
-								Math.pow(element.lon - coordinates.longitude, 2)
-						) * 111139 // convert degrees to meters
+						Number.isFinite(lat) && Number.isFinite(lon)
+							? haversineDistance(coordinates.latitude, coordinates.longitude, lat, lon)
+							: Infinity
 				};
 			});
 
