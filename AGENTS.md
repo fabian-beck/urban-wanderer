@@ -89,6 +89,7 @@ npm run preview       # Preview production build
 # Code Quality
 npm run lint          # Run ESLint
 npm run format        # Format code with Prettier
+npm run optimize:fact-images # Regenerate packaged fact-card background images
 
 # Mobile Development
 npx cap sync          # Sync web code to native projects
@@ -173,7 +174,14 @@ src/
 android/               # Android native project
 build/                # Production build output
 static/               # Static assets
+assets/originals/     # Source images kept out of packaged web assets
 ```
+
+### Asset Optimization
+
+- Fact-card background originals live in `assets/originals/fact-backgrounds/`.
+- Packaged fact-card backgrounds in `static/architecture-styles`, `static/building-types`, and `static/materials` are generated with `npm run optimize:fact-images`.
+- Keep large source images out of `static/`, because Capacitor packages everything from the SvelteKit `build/` output into the APK.
 
 ## Data Processing Pipeline
 

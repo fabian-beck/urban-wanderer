@@ -6,151 +6,151 @@
 	const BUILDING_TYPES = {
 		residential: {
 			name: { en: 'Residential', de: 'Wohngebäude' },
-			image: 'residential.png'
+			image: 'residential.jpg'
 		},
 		bank: {
 			name: { en: 'Bank', de: 'Bank' },
-			image: 'bank.png'
+			image: 'bank.jpg'
 		},
 		commercial: {
 			name: { en: 'Commercial', de: 'Geschäftsgebäude' },
-			image: 'commercial.png'
+			image: 'commercial.jpg'
 		},
 		office: {
 			name: { en: 'Office', de: 'Bürogebäude' },
-			image: 'office.png'
+			image: 'office.jpg'
 		},
 		industrial: {
 			name: { en: 'Industrial', de: 'Industriegebäude' },
-			image: 'industrial.png'
+			image: 'industrial.jpg'
 		},
 		warehouse: {
 			name: { en: 'Warehouse', de: 'Lagergebäude' },
-			image: 'warehouse.png'
+			image: 'warehouse.jpg'
 		},
 		hospital: {
 			name: { en: 'Hospital', de: 'Krankenhaus' },
-			image: 'hospital.png'
+			image: 'hospital.jpg'
 		},
 		school: {
 			name: { en: 'School', de: 'Schule' },
-			image: 'school.png'
+			image: 'school.jpg'
 		},
 		university: {
 			name: { en: 'University', de: 'Universität' },
-			image: 'university.png'
+			image: 'university.jpg'
 		},
 		church: {
 			name: { en: 'Church', de: 'Kirche' },
-			image: 'church.png'
+			image: 'church.jpg'
 		},
 		temple: {
 			name: { en: 'Temple', de: 'Tempel' },
-			image: 'temple.png'
+			image: 'temple.jpg'
 		},
 		mosque: {
 			name: { en: 'Mosque', de: 'Moschee' },
-			image: 'mosque.png'
+			image: 'mosque.jpg'
 		},
 		synagogue: {
 			name: { en: 'Synagogue', de: 'Synagoge' },
-			image: 'synagogue.png'
+			image: 'synagogue.jpg'
 		},
 		hotel: {
 			name: { en: 'Hotel', de: 'Hotel' },
-			image: 'hotel.png'
+			image: 'hotel.jpg'
 		},
 		restaurant: {
 			name: { en: 'Restaurant', de: 'Restaurant' },
-			image: 'restaurant.png'
+			image: 'restaurant.jpg'
 		},
 		museum: {
 			name: { en: 'Museum', de: 'Museum' },
-			image: 'museum.png'
+			image: 'museum.jpg'
 		},
 		library: {
 			name: { en: 'Library', de: 'Bibliothek' },
-			image: 'library.png'
+			image: 'library.jpg'
 		},
 		theater: {
 			name: { en: 'Theater', de: 'Theater' },
-			image: 'theater.png'
+			image: 'theater.jpg'
 		},
 		stadium: {
 			name: { en: 'Stadium', de: 'Stadion' },
-			image: 'stadium.png'
+			image: 'stadium.jpg'
 		},
 		gymnasium: {
 			name: { en: 'Gymnasium', de: 'Turnhalle' },
-			image: 'gymnasium.png'
+			image: 'gymnasium.jpg'
 		},
 		tower: {
 			name: { en: 'Tower', de: 'Turm' },
-			image: 'tower.png'
+			image: 'tower.jpg'
 		},
 		skyscraper: {
 			name: { en: 'Skyscraper', de: 'Wolkenkratzer' },
-			image: 'skyscraper.png'
+			image: 'skyscraper.jpg'
 		},
 		apartment: {
 			name: { en: 'Apartment Building', de: 'Wohnhaus' },
-			image: 'apartment.png'
+			image: 'apartment.jpg'
 		},
 		villa: {
 			name: { en: 'Villa', de: 'Villa' },
-			image: 'villa.png'
+			image: 'villa.jpg'
 		},
 		cottage: {
 			name: { en: 'Cottage', de: 'Landhaus' },
-			image: 'cottage.png'
+			image: 'cottage.jpg'
 		},
 		palace: {
 			name: { en: 'Palace', de: 'Palast' },
-			image: 'palace.png'
+			image: 'palace.jpg'
 		},
 		castle: {
 			name: { en: 'Castle', de: 'Burg' },
-			image: 'castle.png'
+			image: 'castle.jpg'
 		},
 		fortress: {
 			name: { en: 'Fortress', de: 'Festung' },
-			image: 'fortress.png'
+			image: 'fortress.jpg'
 		},
 		barn: {
 			name: { en: 'Barn', de: 'Scheune' },
-			image: 'barn.png'
+			image: 'barn.jpg'
 		},
 		factory: {
 			name: { en: 'Factory', de: 'Fabrik' },
-			image: 'factory.png'
+			image: 'factory.jpg'
 		},
 		station: {
 			name: { en: 'Station', de: 'Bahnhof' },
-			image: 'station.png'
+			image: 'station.jpg'
 		},
 		airport: {
 			name: { en: 'Airport Terminal', de: 'Flughafenterminal' },
-			image: 'airport.png'
+			image: 'airport.jpg'
 		},
 		garage: {
 			name: { en: 'Garage', de: 'Garage' },
-			image: 'garage.png'
+			image: 'garage.jpg'
 		},
 		shed: {
 			name: { en: 'Shed', de: 'Schuppen' },
-			image: 'shed.png'
+			image: 'shed.jpg'
 		},
 		'city-hall': {
 			name: { en: 'City Hall', de: 'Rathaus' },
-			image: 'city-hall.png'
+			image: 'city-hall.jpg'
 		},
 		courthouse: {
 			name: { en: 'Courthouse', de: 'Gerichtsgebäude' },
-			image: 'courthouse.png'
+			image: 'courthouse.jpg'
 		},
 		'control-center': {
 			name: { en: 'Control Center', de: 'Verkehrszentrale' },
-			image: 'office.png'
+			image: 'office.jpg'
 		}
 	};
 

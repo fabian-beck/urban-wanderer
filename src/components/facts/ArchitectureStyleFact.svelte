@@ -6,7 +6,7 @@
 	const ARCHITECTURE_STYLES = {
 		classical: {
 			name: { en: 'Classical', de: 'Klassisch' },
-			image: 'classical.png',
+			image: 'classical.jpg',
 			description: {
 				en: 'Inspired by ancient Greek and Roman architecture',
 				de: 'Inspiriert von der antiken griechischen und römischen Architektur'
@@ -14,7 +14,7 @@
 		},
 		gothic: {
 			name: { en: 'Gothic', de: 'Gotisch' },
-			image: 'gothic.png',
+			image: 'gothic.jpg',
 			description: {
 				en: 'Pointed arches, ribbed vaults, flying buttresses, verticality',
 				de: 'Spitzbogen, Rippengewölbe, Strebebögen, Vertikalität'
@@ -22,7 +22,7 @@
 		},
 		romanesque: {
 			name: { en: 'Romanesque', de: 'Romanisch' },
-			image: 'romanesque.png',
+			image: 'romanesque.jpg',
 			description: {
 				en: 'Round arches, thick walls, sturdy construction',
 				de: 'Rundbogen, dicke Mauern, robuste Bauweise'
@@ -30,7 +30,7 @@
 		},
 		renaissance: {
 			name: { en: 'Renaissance', de: 'Renaissance' },
-			image: 'renaissance.png',
+			image: 'renaissance.jpg',
 			description: {
 				en: 'Classical proportions, symmetry, columns',
 				de: 'Klassische Proportionen, Symmetrie, Säulen'
@@ -38,7 +38,7 @@
 		},
 		baroque: {
 			name: { en: 'Baroque', de: 'Barock' },
-			image: 'baroque.png',
+			image: 'baroque.jpg',
 			description: {
 				en: 'Ornate decoration, dramatic lighting, curves',
 				de: 'Prunkvolle Dekoration, dramatische Beleuchtung, geschwungene Formen'
@@ -46,7 +46,7 @@
 		},
 		'art nouveau': {
 			name: { en: 'Art Nouveau', de: 'Jugendstil' },
-			image: 'art_nouveau.png',
+			image: 'art_nouveau.jpg',
 			description: {
 				en: 'Organic forms, flowing lines, natural motifs',
 				de: 'Organische Formen, fließende Linien, Naturmotive'
@@ -54,7 +54,7 @@
 		},
 		'art deco': {
 			name: { en: 'Art Deco', de: 'Art Déco' },
-			image: 'art_deco.png',
+			image: 'art_deco.jpg',
 			description: {
 				en: 'Geometric patterns, bold lines, luxury materials',
 				de: 'Geometrische Muster, kühne Linien, Luxusmaterialien'
@@ -62,7 +62,7 @@
 		},
 		modernist: {
 			name: { en: 'Modernist', de: 'Modernistisch' },
-			image: 'modernist.png',
+			image: 'modernist.jpg',
 			description: {
 				en: 'Form follows function, glass and steel, minimal ornamentation',
 				de: 'Form folgt Funktion, Glas und Stahl, minimale Verzierung'
@@ -70,7 +70,7 @@
 		},
 		bauhaus: {
 			name: { en: 'Bauhaus', de: 'Bauhaus' },
-			image: 'bauhaus.png',
+			image: 'bauhaus.jpg',
 			description: {
 				en: 'Form follows function, industrial materials',
 				de: 'Form folgt Funktion, industrielle Materialien'
@@ -78,7 +78,7 @@
 		},
 		postmodern: {
 			name: { en: 'Postmodern', de: 'Postmodern' },
-			image: 'postmodern.png',
+			image: 'postmodern.jpg',
 			description: {
 				en: 'Reaction to modernism, decorative, ironic historical mixing',
 				de: 'Gegenbewegung zur Moderne, dekorativ, ironische historische Vermischung'
@@ -86,7 +86,7 @@
 		},
 		contemporary: {
 			name: { en: 'Contemporary', de: 'Zeitgenössisch' },
-			image: 'contemporary.png',
+			image: 'contemporary.jpg',
 			description: {
 				en: 'Current trends, innovative materials, sustainability',
 				de: 'Aktuelle Trends, innovative Materialien, Nachhaltigkeit'
@@ -94,7 +94,7 @@
 		},
 		brutalist: {
 			name: { en: 'Brutalist', de: 'Brutalistisch' },
-			image: 'brutalist.png',
+			image: 'brutalist.jpg',
 			description: {
 				en: 'Raw concrete, bold geometric forms, monolithic',
 				de: 'Rohbeton, kühne geometrische Formen, monolithisch'
@@ -102,7 +102,7 @@
 		},
 		deconstructivist: {
 			name: { en: 'Deconstructivist', de: 'Dekonstruktivistisch' },
-			image: 'deconstructivist.png',
+			image: 'deconstructivist.jpg',
 			description: {
 				en: 'Fragmented geometry, non-rectilinear shapes',
 				de: 'Fragmentierte Geometrie, nicht-rechtwinklige Formen'
@@ -110,7 +110,7 @@
 		},
 		byzantine: {
 			name: { en: 'Byzantine', de: 'Byzantinisch' },
-			image: 'byzantine.png',
+			image: 'byzantine.jpg',
 			description: {
 				en: 'Domes, mosaics, religious symbolism',
 				de: 'Kuppeln, Mosaike, religiöse Symbolik'
@@ -118,7 +118,7 @@
 		},
 		victorian: {
 			name: { en: 'Victorian', de: 'Viktorianisch' },
-			image: 'victorian.png',
+			image: 'victorian.jpg',
 			description: {
 				en: 'Ornate details, bay windows, asymmetrical facades',
 				de: 'Verzierte Details, Erker, asymmetrische Fassaden'
@@ -126,7 +126,7 @@
 		},
 		'beaux-arts': {
 			name: { en: 'Beaux-Arts', de: 'Beaux-Arts' },
-			image: 'beaux_arts.png',
+			image: 'beaux_arts.jpg',
 			description: {
 				en: 'Academic classicism, grand scale, ornate decoration',
 				de: 'Akademischer Klassizismus, groß angelegt, prunkvolle Dekoration'
@@ -135,7 +135,7 @@
 		// Neo variants - reuse base style images
 		neoclassical: {
 			name: { en: 'Neoclassical', de: 'Neoklassisch' },
-			image: 'classical.png',
+			image: 'classical.jpg',
 			description: {
 				en: 'Classical revival style',
 				de: 'Wiederbelebungsstil der griechischen und römischen Klassik'
@@ -143,7 +143,7 @@
 		},
 		neogothic: {
 			name: { en: 'Neo-Gothic', de: 'Neogotisch' },
-			image: 'gothic.png',
+			image: 'gothic.jpg',
 			description: {
 				en: 'Gothic revival style with modern interpretations',
 				de: 'Gotik-Wiederbelebungsstil mit modernen Interpretationen'
@@ -151,17 +151,17 @@
 		},
 		neoromanesque: {
 			name: { en: 'Neo-Romanesque', de: 'Neoromanisch' },
-			image: 'romanesque.png',
+			image: 'romanesque.jpg',
 			description: { en: 'Romanesque revival style', de: 'Romanik-Wiederbelebungsstil' }
 		},
 		neorenaissance: {
 			name: { en: 'Neo-Renaissance', de: 'Neorenaissance' },
-			image: 'renaissance.png',
+			image: 'renaissance.jpg',
 			description: { en: 'Renaissance revival style', de: 'Renaissance-Wiederbelebungsstil' }
 		},
 		neobaroque: {
 			name: { en: 'Neo-Baroque', de: 'Neobarock' },
-			image: 'baroque.png',
+			image: 'baroque.jpg',
 			description: {
 				en: 'Baroque revival style with contemporary elements',
 				de: 'Barock-Wiederbelebungsstil mit zeitgenössischen Elementen'
@@ -169,12 +169,12 @@
 		},
 		neobyzantine: {
 			name: { en: 'Neo-Byzantine', de: 'Neobyzantinisch' },
-			image: 'byzantine.png',
+			image: 'byzantine.jpg',
 			description: { en: 'Byzantine revival style', de: 'Byzantinischer Wiederbelebungsstil' }
 		},
 		neovictorian: {
 			name: { en: 'Neo-Victorian', de: 'Neoviktorianisch' },
-			image: 'victorian.png',
+			image: 'victorian.jpg',
 			description: { en: 'Victorian revival style', de: 'Viktorianischer Wiederbelebungsstil' }
 		}
 	};

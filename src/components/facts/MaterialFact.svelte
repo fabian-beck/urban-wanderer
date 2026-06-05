@@ -6,59 +6,59 @@
 	const MATERIALS = {
 		brick: {
 			name: { en: 'Brick', de: 'Ziegel' },
-			image: 'brick.png'
+			image: 'brick.jpg'
 		},
 		stone: {
 			name: { en: 'Stone', de: 'Stein' },
-			image: 'stone.png'
+			image: 'stone.jpg'
 		},
 		wood: {
 			name: { en: 'Wood', de: 'Holz' },
-			image: 'wood.png'
+			image: 'wood.jpg'
 		},
 		concrete: {
 			name: { en: 'Concrete', de: 'Beton' },
-			image: 'concrete.png'
+			image: 'concrete.jpg'
 		},
 		steel: {
 			name: { en: 'Steel', de: 'Stahl' },
-			image: 'steel.png'
+			image: 'steel.jpg'
 		},
 		glass: {
 			name: { en: 'Glass', de: 'Glas' },
-			image: 'glass.png'
+			image: 'glass.jpg'
 		},
 		marble: {
 			name: { en: 'Marble', de: 'Marmor' },
-			image: 'marble.png'
+			image: 'marble.jpg'
 		},
 		granite: {
 			name: { en: 'Granite', de: 'Granit' },
-			image: 'granite.png'
+			image: 'granite.jpg'
 		},
 		limestone: {
 			name: { en: 'Limestone', de: 'Kalkstein' },
-			image: 'limestone.png'
+			image: 'limestone.jpg'
 		},
 		sandstone: {
 			name: { en: 'Sandstone', de: 'Sandstein' },
-			image: 'sandstone.png'
+			image: 'sandstone.jpg'
 		},
 		timber: {
 			name: { en: 'Timber', de: 'Bauholz' },
-			image: 'timber.png'
+			image: 'timber.jpg'
 		},
 		'reinforced-concrete': {
 			name: { en: 'Reinforced Concrete', de: 'Stahlbeton' },
-			image: 'reinforced_concrete.png'
+			image: 'reinforced_concrete.jpg'
 		},
 		masonry: {
 			name: { en: 'Masonry', de: 'Mauerwerk' },
-			image: 'masonry.png'
+			image: 'masonry.jpg'
 		},
 		'cast-iron': {
 			name: { en: 'Cast Iron', de: 'Gusseisen' },
-			image: 'cast_iron.png'
+			image: 'cast_iron.jpg'
 		}
 	};
 

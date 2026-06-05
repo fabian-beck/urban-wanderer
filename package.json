@@ -6,6 +6,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"build:apk": "node scripts/build-apk.mjs",
+		"optimize:fact-images": "powershell -ExecutionPolicy Bypass -File scripts/optimize-fact-images.ps1",
 		"preview": "vite preview",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write ."
