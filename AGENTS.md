@@ -47,7 +47,7 @@ Comprehensive classification system with 25+ place types:
 
 - **ai-core.js**: OpenAI client configuration
 - **ai-analysis.js**: Place classification, labeling, and importance rating
-- **ai-translation.js**: Multi-language place name translation and deduplication
+- **ai-translation.js**: Identity-first deduplication with multi-language place name translation fallback
 - **ai-story.js**: AI-powered location storytelling
 - **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment
 - **ai-history.js**: Historical content generation
@@ -117,6 +117,7 @@ The app is configured for Android deployment through Capacitor:
 - Article extracts and full content
 - Image URLs and metadata
 - Multi-language support
+- Early Wikidata ID enrichment for cross-language place deduplication
 
 ### OpenStreetMap (Nominatim & Overpass)
 
@@ -189,8 +190,8 @@ The application processes location data through 9 distinct stages:
 
 1. **Location Acquisition**: GPS, random location, or search-based coordinates
 2. **Parallel Data Fetching**: Concurrent Wikipedia, OSM, and map overlay requests
-3. **Data Merging**: Combines Wikipedia and OSM data by matching place titles
-4. **Deduplication & Translation**: AI-powered grouping using Levenshtein distance
+3. **Data Merging**: Combines Wikipedia and OSM data, preserving stable identifiers
+4. **Deduplication & Translation**: Identity-first grouping using Wikidata/Wikipedia references, with AI translation and Levenshtein fallback
 5. **Content Enrichment**: Wikipedia extracts for all places
 6. **AI Analysis**: Classification, labeling, and importance rating
 7. **Rating & Categorization**: Star-based rating and filtering into here/nearby/surrounding

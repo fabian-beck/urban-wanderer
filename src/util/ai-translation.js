@@ -70,20 +70,176 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then
 	return translation;
 }
 
+function normalizeTitleForIdentity(title) {
+	let decodedTitle = String(title || '');
+	try {
+		decodedTitle = decodeURIComponent(decodedTitle);
+	} catch {
+		// Keep the original title if it contains an incomplete escape sequence.
+	}
+	return decodedTitle.replace(/_/g, ' ').trim().toLowerCase();
+}
+
+function normalizeWikipediaReference(reference) {
+	if (!reference || typeof reference !== 'string' || reference.includes('#')) {
+		return null;
+	}
+
+	const separatorIndex = reference.indexOf(':');
+	if (separatorIndex === -1) {
+		return null;
+	}
+
+	const lang = reference.slice(0, separatorIndex).trim().toLowerCase();
+	const title = normalizeTitleForIdentity(reference.slice(separatorIndex + 1));
+	if (!lang || !title) {
+		return null;
+	}
+
+	return `${lang}:${title}`;
+}
+
+function getIdentityKeys(place) {
+	const keys = new Set();
+	const wikidata = String(place.wikidata || '')
+		.trim()
+		.toUpperCase();
+
+	if (wikidata) {
+		keys.add(`wikidata:${wikidata}`);
+	}
+
+	const wikipediaReference = normalizeWikipediaReference(place.wikipedia);
+	if (wikipediaReference) {
+		keys.add(`wikipedia-title:${wikipediaReference}`);
+	}
+
+	if (place.pageid && place.lang) {
+		keys.add(`wikipedia-page:${place.lang}:${place.pageid}`);
+		keys.add(`wikipedia-title:${place.lang}:${normalizeTitleForIdentity(place.title)}`);
+	}
+
+	return keys;
+}
+
+function placesShareIdentity(place1, place2) {
+	const keys1 = getIdentityKeys(place1);
+	const keys2 = getIdentityKeys(place2);
+
+	if (keys1.size === 0 || keys2.size === 0) {
+		return false;
+	}
+
+	return [...keys1].some((key) => keys2.has(key));
+}
+
+function hasValue(value) {
+	return value !== undefined && value !== null && value !== '';
+}
+
+function placeHasPreferredLanguage(place, preferences) {
+	return place.lang && place.lang === preferences.lang;
+}
+
+function shouldPreferPlace(candidate, current, preferences) {
+	const candidatePreferred = placeHasPreferredLanguage(candidate, preferences);
+	const currentPreferred = placeHasPreferredLanguage(current, preferences);
+
+	if (candidatePreferred !== currentPreferred) {
+		return candidatePreferred;
+	}
+
+	const candidateHasArticle = Boolean(candidate.pageid || candidate.wikipedia);
+	const currentHasArticle = Boolean(current.pageid || current.wikipedia);
+	if (candidateHasArticle !== currentHasArticle) {
+		return candidateHasArticle;
+	}
+
+	const candidateDistance = Number.isFinite(candidate.dist) ? candidate.dist : Infinity;
+	const currentDistance = Number.isFinite(current.dist) ? current.dist : Infinity;
+	return candidateDistance < currentDistance;
+}
+
+function collectAlternateTitles(...places) {
+	const titles = [];
+	for (const place of places) {
+		[...(place.alternateTitles || []), place.title].forEach((title) => {
+			if (title && !titles.includes(title)) {
+				titles.push(title);
+			}
+		});
+	}
+	return titles;
+}
+
+function mergeDuplicatePlace(current, candidate, preferences) {
+	const primary = shouldPreferPlace(candidate, current, preferences) ? candidate : current;
+	const secondary = primary === candidate ? current : candidate;
+	const merged = { ...secondary, ...primary };
+
+	for (const [key, value] of Object.entries(secondary)) {
+		if (!hasValue(merged[key]) && hasValue(value)) {
+			merged[key] = value;
+		}
+	}
+
+	const currentDistance = Number.isFinite(current.dist) ? current.dist : Infinity;
+	const candidateDistance = Number.isFinite(candidate.dist) ? candidate.dist : Infinity;
+	const nearestPlace = candidateDistance < currentDistance ? candidate : current;
+	const nearestDistance = Math.min(currentDistance, candidateDistance);
+
+	if (Number.isFinite(nearestDistance)) {
+		merged.dist = nearestDistance;
+	}
+	if (hasValue(nearestPlace.lat)) {
+		merged.lat = nearestPlace.lat;
+	}
+	if (hasValue(nearestPlace.lon)) {
+		merged.lon = nearestPlace.lon;
+	}
+
+	merged.alternateTitles = collectAlternateTitles(current, candidate);
+	return merged;
+}
+
+function groupPlacesByIdentity(places, preferences) {
+	const groupedPlaces = [];
+
+	for (const place of places) {
+		const previousPlace = groupedPlaces.find((existingPlace) =>
+			placesShareIdentity(existingPlace, place)
+		);
+		if (previousPlace) {
+			const previousIndex = groupedPlaces.indexOf(previousPlace);
+			groupedPlaces[previousIndex] = mergeDuplicatePlace(previousPlace, place, preferences);
+			continue;
+		}
+		groupedPlaces.push({ ...place });
+	}
+
+	return groupedPlaces;
+}
+
 export async function groupDuplicatePlaces(places, coordinates, preferences) {
-	const translationsNeeded = places.filter((place) => {
+	const identityGroupedPlaces = groupPlacesByIdentity(places, preferences);
+	logger.info('Identity grouping complete', {
+		before: places.length,
+		after: identityGroupedPlaces.length
+	});
+
+	const translationsNeeded = identityGroupedPlaces.filter((place) => {
 		const hasMultipleSourceLanguages =
 			preferences.sourceLanguages && preferences.sourceLanguages.length > 1;
 		const isDifferentLanguage = place.lang && place.lang !== preferences.lang;
 		return hasMultipleSourceLanguages || isDifferentLanguage;
 	}).length;
 	logger.info('Translation queue', {
-		total: places.length,
+		total: identityGroupedPlaces.length,
 		needed: translationsNeeded,
-		skipped: places.length - translationsNeeded
+		skipped: identityGroupedPlaces.length - translationsNeeded
 	});
 	const translations = await Promise.all(
-		places.map((place) => translatePlaceName(place, preferences))
+		identityGroupedPlaces.map((place) => translatePlaceName(place, preferences))
 	);
 	logger.debug('Translations completed', { translations });
 
@@ -169,26 +325,36 @@ export async function groupDuplicatePlaces(places, coordinates, preferences) {
 	};
 
 	const newPlaces = [];
-	for (const place of places) {
+	for (const place of identityGroupedPlaces) {
 		const translation = translations.find((translation) =>
 			placesNameIsSimilar(place.title, translation.title)
 		);
+		let candidatePlace = place;
 		if (translation && translation.translation !== place.title) {
-			place.title = `${translation.translation} (${place.title})`;
+			candidatePlace = {
+				...place,
+				title: `${translation.translation} (${place.title})`,
+				alternateTitles: collectAlternateTitles(place, {
+					...place,
+					title: translation.translation
+				})
+			};
 		}
-		const previousPlace = newPlaces.find((p) => placesNameIsSimilar(p.title, place.title));
+		const previousPlace = newPlaces.find(
+			(p) =>
+				placesShareIdentity(p, candidatePlace) || placesNameIsSimilar(p.title, candidatePlace.title)
+		);
 		if (previousPlace) {
-			if (previousPlace.lang === preferences.lang) {
-				// replace previous place with the new one
-				newPlaces[newPlaces.indexOf(previousPlace)] = place;
-			}
+			const previousIndex = newPlaces.indexOf(previousPlace);
+			newPlaces[previousIndex] = mergeDuplicatePlace(previousPlace, candidatePlace, preferences);
 			continue;
 		}
-		newPlaces.push(place);
+		newPlaces.push(candidatePlace);
 	}
 	logger.info('Grouping complete', {
 		before: places.length,
 		after: newPlaces.length,
+		identityGrouped: identityGroupedPlaces.length,
 		translated: translations.filter((translation) => translation.translation !== translation.title)
 			.length
 	});

@@ -112,12 +112,54 @@ export async function loadWikipediaPlaces(coordinates, preferences, nArticles) {
 	);
 	searchPlaces.forEach((result) => {
 		if (result?.place && !places.find((place) => place?.title === result.title)) {
+			result.place.lang ||= preferences.lang;
 			places.push(result.place);
 		}
 	});
+	await withPerformance(
+		'wikipedia.wikidataIds',
+		() => loadWikipediaPlaceWikidataIds(places, preferences.lang),
+		{ places: places.length }
+	);
 	logger.info('Places loaded', { places: places.length });
 	logger.debug('Places loaded details', { places });
 	return places;
+}
+
+async function loadWikipediaPlaceWikidataIds(places, fallbackLang) {
+	const pageidGroups = new Map();
+
+	for (const place of places) {
+		if (!place.pageid || place.wikidata) {
+			continue;
+		}
+		const placeLang = place.lang || fallbackLang;
+		if (!pageidGroups.has(placeLang)) {
+			pageidGroups.set(placeLang, []);
+		}
+		pageidGroups.get(placeLang).push({ place, pageid: String(place.pageid) });
+	}
+
+	const requests = Array.from(pageidGroups.entries()).flatMap(([placeLang, entries]) =>
+		chunkArray(entries, 50).map(async (chunk) => {
+			const pageids = chunk.map((entry) => entry.pageid).join('|');
+			const data = await fetchWikiJson(
+				`https://${placeLang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${pageids}&origin=*&prop=pageprops&ppprop=wikibase_item`,
+				`wikidata ids ${placeLang}`
+			);
+			if (!data?.query?.pages) {
+				return;
+			}
+			for (const entry of chunk) {
+				const page = data.query.pages[entry.pageid];
+				if (page?.pageprops?.wikibase_item) {
+					entry.place.wikidata = page.pageprops.wikibase_item;
+				}
+			}
+		})
+	);
+
+	await Promise.all(requests);
 }
 
 export async function loadWikipediaArticleTexts(places, lang) {
