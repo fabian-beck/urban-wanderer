@@ -1,28 +1,33 @@
 <script>
 	import Alert from 'flowbite-svelte/Alert.svelte';
+	import Button from 'flowbite-svelte/Button.svelte';
 	import Modal from 'flowbite-svelte/Modal.svelte';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { marked } from 'marked';
-	import { extractHistoricEvents } from '../util/ai-history.js';
 	import {
 		placesHere,
+		placesNearby,
 		placesSurrounding,
 		coordinates,
 		preferences,
 		places,
-		placeDetailsVisible
+		placeDetailsVisible,
+		errorMessage,
+		events,
+		eventsLoadedKey,
+		eventsLoading,
+		eventsStatus,
+		loadHistoricEvents
 	} from '../stores.js';
 	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
-	import { createLogger } from '../util/logger.js';
 	import { CLASSES } from '../constants/place-classes.js';
-	import { errorMessage, events } from '../stores.js';
+	import { getHistoricEventKey } from '../util/ai-history.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';
 
 	export let visible = false;
 
-	let loading = false;
-	const logger = createLogger('history.modal');
+	let currentHistoryKey = '';
 
 	// Function to make place names clickable with icons
 	const makeClickablePlaces = (htmlContent) => {
@@ -66,52 +71,21 @@
 		}
 	};
 
-	const updateHistory = async () => {
-		loading = true;
-		try {
-			let eventsTmp = await extractHistoricEvents(
-				get(placesHere),
-				get(placesSurrounding),
-				get(coordinates),
-				get(preferences)
-			);
-			// sort events by year
-			eventsTmp = eventsTmp.sort((a, b) => {
-				if (a.year && b.year) {
-					return a.year - b.year;
-				}
-				return 0;
-			});
-			// compute year differences to next event -> events.yearDiff
-			eventsTmp = eventsTmp.map((event, index) => {
-				if (event.year) {
-					let yearDiff = 0;
-					if (index < eventsTmp.length - 1) {
-						yearDiff = eventsTmp[index + 1].year - event.year;
-					} else {
-						yearDiff = new Date().getFullYear() - event.year;
-						if (yearDiff <= 0) {
-							yearDiff = 0;
-						}
-					}
-					if (yearDiff < 0) {
-						return event;
-					}
-					return { ...event, yearDiff };
-				}
-				return event;
-			});
-			// set events
-			events.set(eventsTmp);
-		} catch (error) {
-			logger.error('History extraction failed', error);
-			errorMessage.set('Error extracting history: ' + error);
-		}
-		loading = false;
-	};
+	$: currentHistoryKey = getHistoricEventKey(
+		$coordinates,
+		$preferences,
+		$placesHere,
+		$placesNearby,
+		$placesSurrounding
+	);
 
-	$: if (visible && $events.length === 0) {
-		updateHistory();
+	$: if (
+		visible &&
+		currentHistoryKey &&
+		!$eventsLoading &&
+		$eventsLoadedKey !== currentHistoryKey
+	) {
+		loadHistoricEvents();
 	}
 </script>
 
@@ -128,7 +102,7 @@
 			</div>
 			<div class="ml-1 flex-auto text-xl">History</div>
 			<div class="ml-4 flex-none text-sm">
-				{#if loading}
+				{#if $eventsLoading}
 					<Alert type="info" class="flex p-2 text-xs">
 						<svelte:fragment slot="icon">
 							<Spinner size="4" />
@@ -141,9 +115,28 @@
 	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
 		<div class="p-4">
-			{#if !loading}
-				{#if $events.length === 0}
-					<Alert color="primary"><i>No historic events found.</i></Alert>
+			{#if !$eventsLoading}
+				{#if $eventsStatus === 'empty'}
+					<Alert color="primary">
+						<i>No specific historic events found for this location yet.</i>
+						<span class="mt-1 block text-sm">
+							Try increasing the search radius or moving to a place with richer article coverage.
+						</span>
+					</Alert>
+				{:else if $eventsStatus === 'error'}
+					<Alert color="red">
+						<i>History could not be loaded.</i>
+						<div class="mt-2">
+							<Button
+								size="xs"
+								outline
+								on:click={() => {
+									errorMessage.set(null);
+									loadHistoricEvents();
+								}}>Retry</Button
+							>
+						</div>
+					</Alert>
 				{/if}
 				<div class="timeline">
 					<ul>

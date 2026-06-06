@@ -17,6 +17,11 @@ import { AI_MODELS, LABELS } from './constants/ui-config.js';
 import { analyzePlaces, getLastAnalysisCacheStats } from './util/ai-analysis.js';
 import { groupDuplicatePlaces } from './util/ai-translation.js';
 import { generateStory } from './util/ai-story.js';
+import {
+	extractHistoricEvents,
+	getHistoricEventKey,
+	prepareHistoricEvents
+} from './util/ai-history.js';
 import { extractInsightsFromArticle } from './util/ai-facts.js';
 import {
 	loadWikipediaPlaces,
@@ -43,8 +48,10 @@ const logger = createLogger('stores');
 const placesLogger = createLogger('places');
 const metadataLogger = createLogger('metadata');
 const storyLogger = createLogger('story');
+const historyLogger = createLogger('history');
 let mapLayerLoadSequence = 0;
 let metadataLoadSequence = 0;
+let historyLoadSequence = 0;
 const placeImageRequests = new Map();
 
 const DEFAULT_PREFERENCES = {
@@ -343,8 +350,7 @@ function createPlaces() {
 				});
 				startMapLayerLoad();
 				perf.checkpoint('background map loads started');
-				// Pregenerate first story part in background
-				pregenerateStoryInBackground();
+				pregenerateLocationContentInBackground();
 				perf.end({
 					places: get(places)?.length || 0
 				});
@@ -459,6 +465,9 @@ export const preloadingStory = writable(false);
 
 // events
 export const events = writable([]);
+export const eventsLoading = writable(false);
+export const eventsLoadedKey = writable('');
+export const eventsStatus = writable('idle');
 
 // error store
 export const errorMessage = writable(null);
@@ -716,16 +725,36 @@ function mergePlaces(placesTmp, placesOsm) {
 	return placesTmp;
 }
 
-async function pregenerateStoryInBackground() {
+async function pregenerateLocationContentInBackground() {
 	const currentCoordinates = get(coordinates);
 	if (!currentCoordinates) {
 		return;
 	}
-	const perf = createPerformanceRun('story.pregenerate');
+	const perf = createPerformanceRun('locationContent.pregenerate');
 
-	// Load facts before story generation
-	await withPerformance('story.metadataPrerequisites', () => loadMetadata());
-	perf.checkpoint('metadata loaded');
+	try {
+		await withPerformance('locationContent.metadataPrerequisites', () => loadMetadata());
+		perf.checkpoint('metadata loaded');
+
+		const results = await Promise.allSettled([
+			pregenerateStoryInBackground(currentCoordinates),
+			loadHistoricEvents()
+		]);
+		perf.end({
+			story: results[0].status,
+			history: results[1].status
+		});
+	} catch (error) {
+		perf.fail(error);
+		metadataLogger.error('Background content pregeneration failed', error);
+	}
+}
+
+async function pregenerateStoryInBackground(currentCoordinates = get(coordinates)) {
+	if (!currentCoordinates) {
+		return;
+	}
+	const perf = createPerformanceRun('story.pregenerate');
 
 	// Clear previous stories and preloaded content
 	storyTexts.set([]);
@@ -764,6 +793,85 @@ async function pregenerateStoryInBackground() {
 		perf.fail(error);
 		storyLogger.error('Background story generation failed', error);
 		storyLoading.set(false);
+	}
+}
+
+export async function loadHistoricEvents() {
+	const currentCoordinates = get(coordinates);
+	const currentPreferences = get(preferences);
+	const requestKey = getHistoricEventKey(
+		currentCoordinates,
+		currentPreferences,
+		get(placesHere),
+		get(placesNearby),
+		get(placesSurrounding)
+	);
+
+	if (!requestKey || get(eventsLoading)) {
+		return;
+	}
+	if (get(eventsLoadedKey) === requestKey && get(eventsStatus) !== 'error') {
+		return;
+	}
+
+	const loadSequence = ++historyLoadSequence;
+	const perf = createPerformanceRun('history.pregenerate', {
+		here: get(placesHere).length,
+		nearby: get(placesNearby).length,
+		surrounding: get(placesSurrounding).length
+	});
+	eventsLoading.set(true);
+	eventsStatus.set('loading');
+
+	try {
+		const rawEvents = await withPerformance(
+			'history.extractEvents',
+			() =>
+				extractHistoricEvents(
+					get(placesHere),
+					get(placesNearby),
+					get(placesSurrounding),
+					currentCoordinates,
+					currentPreferences
+				),
+			{
+				here: get(placesHere).length,
+				nearby: get(placesNearby).length,
+				surrounding: get(placesSurrounding).length
+			}
+		);
+		const latestRequestKey = getHistoricEventKey(
+			get(coordinates),
+			get(preferences),
+			get(placesHere),
+			get(placesNearby),
+			get(placesSurrounding)
+		);
+		if (loadSequence !== historyLoadSequence || requestKey !== latestRequestKey) {
+			perf.end({
+				stale: true
+			});
+			return;
+		}
+
+		const preparedEvents = prepareHistoricEvents(rawEvents);
+		events.set(preparedEvents);
+		eventsLoadedKey.set(requestKey);
+		eventsStatus.set(preparedEvents.length > 0 ? 'ready' : 'empty');
+		perf.end({
+			events: preparedEvents.length
+		});
+	} catch (error) {
+		if (loadSequence === historyLoadSequence) {
+			perf.fail(error);
+			historyLogger.error('Background history extraction failed', error);
+			eventsLoadedKey.set(requestKey);
+			eventsStatus.set('error');
+		}
+	} finally {
+		if (loadSequence === historyLoadSequence) {
+			eventsLoading.set(false);
+		}
 	}
 }
 
@@ -825,6 +933,7 @@ export async function updateLocation(coords) {
 		errorMessage.set(null);
 		mapLayerLoadSequence += 1;
 		metadataLoadSequence += 1;
+		historyLoadSequence += 1;
 		mapLayersLoading.set(false);
 		waterMap.set([]);
 		greenMap.set([]);
@@ -833,6 +942,9 @@ export async function updateLocation(coords) {
 		coordinates.reset();
 		storyTexts.set([]);
 		events.set([]);
+		eventsLoading.set(false);
+		eventsLoadedKey.set('');
+		eventsStatus.set('idle');
 		loadingMessage.set('Updating location ...');
 		await withPerformance('updateLocation.coordinates', () => coordinates.update(coords));
 		perf.checkpoint('coordinates updated');
