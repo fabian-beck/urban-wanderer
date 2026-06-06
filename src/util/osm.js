@@ -13,6 +13,11 @@ import {
 	OSM_TREE_RADIUS,
 	OSM_WATERWAY_TYPES
 } from '../constants/core.js';
+import {
+	REVERSE_GEOCODE_CACHE_KEY,
+	REVERSE_GEOCODE_CACHE_PRECISION,
+	REVERSE_GEOCODE_CACHE_TTL
+} from '../constants/cache-config.js';
 import { getPerformanceNow, logPerformance } from './performance.js';
 import { createLogger } from './logger.js';
 
@@ -33,6 +38,68 @@ function getCacheKey(coordinates, queryType, radius) {
 	const lat = coordinates.latitude.toFixed(3);
 	const lon = coordinates.longitude.toFixed(3);
 	return `${CACHE_PREFIX}${queryType}_${lat}_${lon}_${radius}`;
+}
+
+function getReverseGeocodeCacheKey(coords, lang) {
+	const lat = coords.latitude.toFixed(REVERSE_GEOCODE_CACHE_PRECISION);
+	const lon = coords.longitude.toFixed(REVERSE_GEOCODE_CACHE_PRECISION);
+	return `${lang || 'default'}_${lat}_${lon}`;
+}
+
+function loadReverseGeocodeCache() {
+	if (typeof localStorage === 'undefined') return {};
+
+	try {
+		const stored = localStorage.getItem(REVERSE_GEOCODE_CACHE_KEY);
+		if (!stored) return {};
+
+		const cache = JSON.parse(stored);
+		const now = Date.now();
+		const validCache = {};
+		for (const [key, value] of Object.entries(cache)) {
+			if (value.timestamp && now - value.timestamp < REVERSE_GEOCODE_CACHE_TTL) {
+				validCache[key] = value;
+			}
+		}
+		return validCache;
+	} catch (error) {
+		logger.warn('Reverse geocode cache load failed', error);
+		return {};
+	}
+}
+
+function saveReverseGeocodeCache(cache) {
+	if (typeof localStorage === 'undefined') return;
+
+	try {
+		localStorage.setItem(REVERSE_GEOCODE_CACHE_KEY, JSON.stringify(cache));
+	} catch (error) {
+		logger.warn('Reverse geocode cache save failed', error);
+	}
+}
+
+function getCachedReverseGeocodeData(coords, lang) {
+	const cache = loadReverseGeocodeCache();
+	const key = getReverseGeocodeCacheKey(coords, lang);
+	const cached = cache[key];
+	if (!cached) {
+		logger.debug('Reverse geocode cache miss', { key });
+		return null;
+	}
+
+	logger.info('Reverse geocode loaded from cache', { key });
+	return JSON.parse(JSON.stringify(cached.data));
+}
+
+function setCachedReverseGeocodeData(coords, lang, data) {
+	const cache = loadReverseGeocodeCache();
+	const key = getReverseGeocodeCacheKey(coords, lang);
+	cache[key] = {
+		data,
+		timestamp: Date.now()
+	};
+	saveReverseGeocodeCache(cache);
+	logger.debug('Reverse geocode cache stored', { key });
 }
 
 function wait(ms) {
@@ -482,11 +549,18 @@ out center;
 }
 
 export async function loadOsmAddressData(coords, lang) {
+	const cached = getCachedReverseGeocodeData(coords, lang);
+	if (cached) {
+		return cached;
+	}
+
 	const response = await fetch(
 		`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1&accept-language=${lang}`
 	);
 	const data = await response.json();
-	return simplifyOsmAddressData(data);
+	const addressData = simplifyOsmAddressData(data);
+	setCachedReverseGeocodeData(coords, lang, addressData);
+	return addressData;
 }
 
 function normalizeAddressPart(value) {
