@@ -1,5 +1,6 @@
 <script>
 	import { GlobeOutline } from 'flowbite-svelte-icons';
+	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import {
 		coordinates,
 		places,
@@ -9,6 +10,7 @@
 		waterMap,
 		greenMap,
 		activityMap,
+		mapLayersLoading,
 		preferences
 	} from '../stores.js';
 
@@ -371,7 +373,12 @@
 
 <div class="mb-2 flex items-center text-primary-800">
 	<GlobeOutline />
-	<h2 class="ml-2 flex-auto text-xl">Map</h2>
+	<h2 class="ml-2 text-xl">Map</h2>
+	{#if $mapLayersLoading}
+		<span class="ml-2 inline-flex items-center text-primary-600" aria-label="Loading map layers">
+			<Spinner size="4" />
+		</span>
+	{/if}
 </div>
 <div>
 	<svg
@@ -407,7 +414,7 @@
 					{/each}</g
 				>
 				<!-- green map -->
-				{#if $preferences.labels?.includes('NATURE')}
+				{#if !$mapLayersLoading && $preferences.labels?.includes('NATURE')}
 					<g class="green-map">
 						{#each $greenMap || [] as row, rowIndex}
 							{#each row || [] as cell, colIndex}
@@ -429,31 +436,33 @@
 					</g>
 				{/if}
 				<!-- water map -->
-				<g class="water-map">
-					{#each $waterMap || [] as row, rowIndex}
-						{#each row || [] as cell, colIndex}
-							{#if cell && cell > 0.1}
-								{@const x =
-									rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
-								{@const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
-								{@const shouldAnimate = $animatedWaterStipples.has(`${rowIndex}-${colIndex}`)}
-								<circle
-									cx={x}
-									cy={y}
-									r={((WATER_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
-									class="water-circle fill-current text-blue-300 {shouldAnimate ? 'animate' : ''}"
-									style="--animation-duration: {3 +
-										((rowIndex + colIndex) % 4)}s; --animation-delay: {((rowIndex * colIndex) %
-										100) /
-										20}s;"
-									opacity={shouldAnimate ? undefined : 0.6}
-								/>
-							{/if}
+				{#if !$mapLayersLoading}
+					<g class="water-map">
+						{#each $waterMap || [] as row, rowIndex}
+							{#each row || [] as cell, colIndex}
+								{#if cell && cell > 0.1}
+									{@const x =
+										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
+									{@const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y}
+									{@const shouldAnimate = $animatedWaterStipples.has(`${rowIndex}-${colIndex}`)}
+									<circle
+										cx={x}
+										cy={y}
+										r={((WATER_STIPPLE_SIZE * GRID_CELL_SIZE) / 2) * Math.min(1, cell)}
+										class="water-circle fill-current text-blue-300 {shouldAnimate ? 'animate' : ''}"
+										style="--animation-duration: {3 +
+											((rowIndex + colIndex) % 4)}s; --animation-delay: {((rowIndex * colIndex) %
+											100) /
+											20}s;"
+										opacity={shouldAnimate ? undefined : 0.6}
+									/>
+								{/if}
+							{/each}
 						{/each}
-					{/each}
-				</g>
+					</g>
+				{/if}
 				<!-- activity map -->
-				{#if $preferences.labels?.includes('ACTIVITIES')}
+				{#if !$mapLayersLoading && $preferences.labels?.includes('ACTIVITIES')}
 					<g class="activity-map">
 						{#each $activityMap || [] as row, rowIndex}
 							{#each row || [] as cell, colIndex}

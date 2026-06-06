@@ -39,6 +39,7 @@ const logger = createLogger('stores');
 const placesLogger = createLogger('places');
 const metadataLogger = createLogger('metadata');
 const storyLogger = createLogger('story');
+let mapLayerLoadSequence = 0;
 
 const DEFAULT_PREFERENCES = {
 	radius: 500,
@@ -219,12 +220,21 @@ function createPlaces() {
 			const placesUpdateStartedAt = getPerformanceNow();
 			const stageDurations = {};
 			const startMapLayerLoad = () => {
+				const loadSequence = ++mapLayerLoadSequence;
 				const mapPerf = createPerformanceRun('OSM map layers');
+				mapLayersLoading.set(true);
+				waterMap.set([]);
+				greenMap.set([]);
+				activityMap.set([]);
 				loadOsmMapLayers(currentCoordinates)
 					.then((mapData) => {
+						if (loadSequence !== mapLayerLoadSequence) {
+							return;
+						}
 						waterMap.set(mapData.waterMap || []);
 						greenMap.set(mapData.greenMap || []);
 						activityMap.set(mapData.activityMap || []);
+						mapLayersLoading.set(false);
 						mapPerf.end({
 							waterRows: Array.isArray(mapData.waterMap) ? mapData.waterMap.length : 0,
 							greenRows: Array.isArray(mapData.greenMap) ? mapData.greenMap.length : 0,
@@ -232,11 +242,15 @@ function createPlaces() {
 						});
 					})
 					.catch((error) => {
+						if (loadSequence !== mapLayerLoadSequence) {
+							return;
+						}
 						mapPerf.fail(error);
 						placesLogger.error('Map load failed: OSM map layers', error);
 						waterMap.set([]);
 						greenMap.set([]);
 						activityMap.set([]);
+						mapLayersLoading.set(false);
 					});
 			};
 			try {
@@ -709,6 +723,8 @@ export const greenMap = writable([]);
 // activity map
 export const activityMap = writable([]);
 
+export const mapLayersLoading = writable(false);
+
 // Update location function - orchestrates all store updates
 export async function updateLocation(coords) {
 	const perf = createPerformanceRun('updateLocation', {
@@ -717,6 +733,11 @@ export async function updateLocation(coords) {
 	try {
 		loading.set(true);
 		errorMessage.set(null);
+		mapLayerLoadSequence += 1;
+		mapLayersLoading.set(false);
+		waterMap.set([]);
+		greenMap.set([]);
+		activityMap.set([]);
 		places.reset();
 		coordinates.reset();
 		storyTexts.set([]);
