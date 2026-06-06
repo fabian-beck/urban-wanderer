@@ -1,6 +1,8 @@
 import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
 import {
+	HISTORY_BROAD_ADDRESS_PART_KEYS,
+	HISTORY_LOCAL_ADDRESS_PART_KEYS,
 	HISTORY_MAX_CONTEXT_PLACES,
 	HISTORY_MIN_CONTEXT_PLACES,
 	HISTORY_NEARBY_FALLBACK_LIMIT
@@ -66,6 +68,10 @@ function getPlaceText(place) {
 	return [place.article, place.description, place.snippet, place.type].filter(Boolean).join('\n');
 }
 
+function getPlaceSummaryText(place) {
+	return [place.description, place.snippet, place.type].filter(Boolean).join('\n');
+}
+
 function uniquePlaces(places) {
 	const seen = new Set();
 	const result = [];
@@ -91,22 +97,136 @@ function compareHistoryContextPriority(a, b) {
 	return (a.dist || Infinity) - (b.dist || Infinity);
 }
 
-function getRelevantPlaces(placesHere, placesNearby, placesSurrounding) {
-	const primaryPlaces = uniquePlaces([...placesHere, ...placesSurrounding])
+function normalizePlaceMatchText(value) {
+	return String(value || '')
+		.normalize('NFKC')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.toLowerCase();
+}
+
+function getPlaceTitleVariants(title) {
+	const normalizedTitle = normalizePlaceMatchText(title);
+	const withoutParenthetical = normalizePlaceMatchText(
+		normalizedTitle.replace(/\s*\([^)]*\)\s*$/, '')
+	);
+	return new Set([normalizedTitle, withoutParenthetical].filter(Boolean));
+}
+
+function placeMatchesAddressPart(place, coordinates, key) {
+	const addressValue = normalizePlaceMatchText(coordinates?.[key]);
+	if (!addressValue) {
+		return false;
+	}
+	return [...getPlaceTitleVariants(place.title)].some((title) => title === addressValue);
+}
+
+function placeMatchesAnyAddressPart(place, coordinates, keys) {
+	return keys.some((key) => placeMatchesAddressPart(place, coordinates, key));
+}
+
+function getLocationSpecificity(coordinates) {
+	const hasRoad = Boolean(coordinates?.road);
+	const hasSuburb = Boolean(coordinates?.suburb);
+	const hasTown = Boolean(coordinates?.town);
+	const hasVillage = Boolean(coordinates?.village);
+
+	if (hasSuburb && hasTown) {
+		return 'specific quarter or suburb within a larger city';
+	}
+	if (hasRoad && hasTown) {
+		return 'street-level position within a town or city';
+	}
+	if (hasVillage) {
+		return 'village-level location';
+	}
+	if (hasTown) {
+		return 'town or city-level location with limited narrower context';
+	}
+	return 'location with limited address granularity';
+}
+
+function formatAddressParts(coordinates) {
+	const addressParts = [
+		['road', coordinates?.road],
+		['suburb/quarter', coordinates?.suburb],
+		['village', coordinates?.village],
+		['town/city', coordinates?.town],
+		['county', coordinates?.county],
+		['state', coordinates?.state],
+		['country', coordinates?.country]
+	].filter(([, value]) => value);
+
+	if (addressParts.length === 0) {
+		return '- no structured address parts available';
+	}
+
+	return addressParts.map(([label, value]) => `- ${label}: ${value}`).join('\n');
+}
+
+function getContextPlaceBlock(place, { includeFullText = true } = {}) {
+	const text = includeFullText ? getPlaceText(place) : getPlaceSummaryText(place);
+	return `## ${place.title}: ${place.labels?.join(', ') || 'no labels'}
+Rating: ${place.stars || 0}
+Distance: ${Number.isFinite(place.dist) ? Math.round(place.dist) + ' m' : 'unknown'}
+${text}`;
+}
+
+function formatContextTier(title, places, options) {
+	if (places.length === 0) {
+		return `# ${title}\nNo places available.`;
+	}
+	return `# ${title}\n${places.map((place) => getContextPlaceBlock(place, options)).join('\n\n')}`;
+}
+
+function getHistoryContext(placesHere, placesNearby, placesSurrounding, coordinates) {
+	let remainingPlaces = HISTORY_MAX_CONTEXT_PLACES;
+	const immediatePlaces = uniquePlaces(placesHere)
 		.filter((place) => (place.stars || 0) > 2 || getPlaceText(place))
-		.sort(compareHistoryContextPriority);
+		.sort(compareHistoryContextPriority)
+		.slice(0, remainingPlaces);
+	remainingPlaces -= immediatePlaces.length;
+
+	const localSurroundingPlaces = uniquePlaces(placesSurrounding)
+		.filter((place) =>
+			placeMatchesAnyAddressPart(place, coordinates, HISTORY_LOCAL_ADDRESS_PART_KEYS)
+		)
+		.filter((place) => (place.stars || 0) > 2 || getPlaceText(place))
+		.sort(compareHistoryContextPriority)
+		.slice(0, remainingPlaces);
+	remainingPlaces -= localSurroundingPlaces.length;
+
+	const primaryPlaces = uniquePlaces([...immediatePlaces, ...localSurroundingPlaces]);
 	const primaryPlacesWithContext = primaryPlaces.filter((place) => getPlaceText(place));
 	const fallbackPlaces = uniquePlaces(placesNearby)
 		.filter((place) => getPlaceText(place))
 		.sort(compareHistoryContextPriority)
-		.slice(0, HISTORY_NEARBY_FALLBACK_LIMIT);
+		.slice(0, Math.min(HISTORY_NEARBY_FALLBACK_LIMIT, Math.max(remainingPlaces, 0)));
 	const needsFallback = primaryPlaces.length < HISTORY_MIN_CONTEXT_PLACES;
 	const lacksTextContext = primaryPlacesWithContext.length < HISTORY_MIN_CONTEXT_PLACES;
+	const nearbyFallbackPlaces = needsFallback || lacksTextContext ? fallbackPlaces : [];
+	remainingPlaces -= nearbyFallbackPlaces.length;
 
-	return uniquePlaces([
-		...primaryPlaces,
-		...(needsFallback || lacksTextContext ? fallbackPlaces : [])
-	]).slice(0, HISTORY_MAX_CONTEXT_PLACES);
+	const broadSurroundingPlaces = uniquePlaces(placesSurrounding)
+		.filter((place) =>
+			placeMatchesAnyAddressPart(place, coordinates, HISTORY_BROAD_ADDRESS_PART_KEYS)
+		)
+		.filter((place) => getPlaceText(place))
+		.sort(compareHistoryContextPriority)
+		.slice(0, Math.max(remainingPlaces, 0));
+
+	return {
+		immediatePlaces,
+		localSurroundingPlaces,
+		broadSurroundingPlaces,
+		nearbyFallbackPlaces,
+		placesForLogging: uniquePlaces([
+			...immediatePlaces,
+			...localSurroundingPlaces,
+			...broadSurroundingPlaces,
+			...nearbyFallbackPlaces
+		]).slice(0, HISTORY_MAX_CONTEXT_PLACES)
+	};
 }
 
 // extract and list historic events
@@ -117,33 +237,75 @@ export async function extractHistoricEvents(
 	coordinates,
 	preferences
 ) {
-	const relevantPlaces = getRelevantPlaces(placesHere, placesNearby, placesSurrounding);
+	const historyContext = getHistoryContext(
+		placesHere,
+		placesNearby,
+		placesSurrounding,
+		coordinates
+	);
+	const isCityQuarter = Boolean(coordinates?.suburb && coordinates?.town);
 	const instructions = `You are a chat assistant helping a user to extract historic events for nearby places.
 
-Extract and list historic events from the following text describing nearby places. 
+Extract and list historic events from the following location context.
 
-Put more emphasis on higher rated places. Answer in language '${preferences.lang}'.
+Answer in language '${preferences.lang}'.
 
-${relevantPlaces
-	.map(
-		(place) =>
-			`# ${place.title}: ${place.labels?.join(', ')}
-Rating: ${place.stars || 0}
-Distance: ${Number.isFinite(place.dist) ? Math.round(place.dist) + ' m' : 'unknown'}
-${getPlaceText(place)}`
-	)
-	.join('\n\n')}
-
-Only output a list of events in ascending temporal in JSON format.If events refer to a time range, translate the range to the start year of the range("year"), but give the range description in "date_string".Years BC should be negative.
-
-Skip events if they are not immediately relevant for the specific, narrower place, especially early events from stone age, middle ages, or similar. Prefer truly local events of the very specific place, over those that affect the whole town or region.
-
-        Remember, the user is at this position:
+# Current position
 ${coordinates.address}
-                
-If the list of places is empty or the text is too short, leave the list of events empty.
+
+# Structured address parts
+${formatAddressParts(coordinates)}
+
+# Location specificity
+The user is at a ${getLocationSpecificity(coordinates)}.
+${isCityQuarter ? 'Because suburb/quarter and town/city are both present, city-wide events are background only and should usually be excluded.' : 'If the address indicates a small village and no narrower place evidence exists, village-level events may count as local.'}
+
+${formatContextTier(
+	'Tier 1: immediate location and places physically at the user position',
+	historyContext.immediatePlaces
+)}
+
+${formatContextTier(
+	'Tier 2: named enclosing local area, such as street, quarter, suburb, or village',
+	historyContext.localSurroundingPlaces
+)}
+
+${formatContextTier('Tier 3: nearby fallback places', historyContext.nearbyFallbackPlaces)}
+
+${formatContextTier(
+	'Tier 4: broader administrative context, such as city, county, state, or country',
+	historyContext.broadSurroundingPlaces,
+	{ includeFullText: false }
+)}
+
+Only output a list of events in ascending temporal in JSON format. If events refer to a time range, translate the range to the start year of the range ("year"), but give the range description in "date_string". Years BC should be negative.
+
+Use the context tiers in this strict order:
+1. Tier 1: immediate location and places physically at the user position.
+2. Tier 2: named enclosing local area, such as street, quarter, suburb, or village.
+3. Tier 3: nearby fallback places, only if Tier 1 and Tier 2 have no usable historic events.
+4. Tier 4: broader administrative context, only to disambiguate Tier 1 or Tier 2.
+
+Broad administrative places are context labels, not event sources. Do not mine their full history unless the event explicitly mentions a Tier 1 or Tier 2 place.
+
+Only include an event if it passes one of these tests:
+1. It happened at a Tier 1 place.
+2. It explicitly names or directly concerns the current street, building, quarter, suburb, or village.
+3. It concerns a nearby place within walking distance and is more locally specific than the city as a whole.
+
+Reject events that only concern the whole city, region, country, dynasty, war, or general historical era, unless the user is in a small village or town and no narrower evidence is available.
+Skip events if they are not immediately relevant for the specific, narrower place, especially early events from stone age, middle ages, or similar.
+Prefer returning an empty list over filling the result with broad city history.
+If only broad city-level history is available for a quarter of a larger city, return an empty list.
+If the list of local and fallback places is empty or the text is too short, leave the list of events empty.
 `;
-	logger.info('Extracting historic events', { places: relevantPlaces.length });
+	logger.info('Extracting historic events', {
+		places: historyContext.placesForLogging.length,
+		immediate: historyContext.immediatePlaces.length,
+		local: historyContext.localSurroundingPlaces.length,
+		broad: historyContext.broadSurroundingPlaces.length,
+		fallback: historyContext.nearbyFallbackPlaces.length
+	});
 	logger.debug('Historic events prompt', { prompt: instructions });
 	const response = await openai.responses.create({
 		model: getAiModel('advanced', preferences),

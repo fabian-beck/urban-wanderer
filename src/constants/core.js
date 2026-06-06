@@ -36,6 +36,8 @@ export const METADATA_BACKGROUND_DELAY_MS = 750;
 export const HISTORY_MIN_CONTEXT_PLACES = 2;
 export const HISTORY_NEARBY_FALLBACK_LIMIT = 8;
 export const HISTORY_MAX_CONTEXT_PLACES = 14;
+export const HISTORY_LOCAL_ADDRESS_PART_KEYS = ['road', 'suburb', 'village'];
+export const HISTORY_BROAD_ADDRESS_PART_KEYS = ['town', 'county', 'state', 'country'];
 
 // OSM search radius for Overpass API queries
 export const OSM_SEARCH_RADIUS = 500;
