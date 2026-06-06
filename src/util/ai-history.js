@@ -288,15 +288,19 @@ Use the context tiers in this strict order:
 
 Broad administrative places are context labels, not event sources. Do not mine their full history unless the event explicitly mentions a Tier 1 or Tier 2 place.
 
+Tier 1 is the most important evidence. If an event is stated in a Tier 1 place article, treat the Tier 1 heading as evidence that the event belongs to that place. Do not require every sentence to repeat the place name.
+Include important Tier 1 events such as construction, founding, first mention, opening, destruction, reconstruction, major renovation, change of use, ownership transfer, closure, relocation, excavation, protected status, or a notable incident at the place.
+Tier 1 events may be connected to a wider city event, war, dynasty, or historical period if the text makes clear what specifically happened at the Tier 1 place.
+
 Only include an event if it passes one of these tests:
 1. It happened at a Tier 1 place.
 2. It explicitly names or directly concerns the current street, building, quarter, suburb, or village.
 3. It concerns a nearby place within walking distance and is more locally specific than the city as a whole.
 
 Reject events that only concern the whole city, region, country, dynasty, war, or general historical era, unless the user is in a small village or town and no narrower evidence is available.
-Skip events if they are not immediately relevant for the specific, narrower place, especially early events from stone age, middle ages, or similar.
+Skip vague background from early history, the stone age, the middle ages, or similar periods if it is not tied to a Tier 1 or Tier 2 place.
 Prefer returning an empty list over filling the result with broad city history.
-If only broad city-level history is available for a quarter of a larger city, return an empty list.
+If only broad city-level history is available for a quarter of a larger city and there are no Tier 1 or Tier 2 place events, return an empty list.
 If the list of local and fallback places is empty or the text is too short, leave the list of events empty.
 `;
 	logger.info('Extracting historic events', {
