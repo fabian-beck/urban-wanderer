@@ -20,6 +20,8 @@ export const PLACE_VISIBLE_MIN_STARS = 2;
 export const PLACE_HIGH_RATED_MIN_STARS = 3;
 export const PLACE_TWO_STAR_HIGH_RATED_LIMIT = 5;
 export const PLACE_HERE_DEFAULT_RADIUS = 150;
+export const PLACE_PARTIAL_INTEREST_MATCH_STARS = 1;
+export const PLACE_FULL_INTEREST_MATCH_STARS = 2;
 export const SURROUNDING_ADDRESS_PART_KEYS = [
 	'road',
 	'suburb',

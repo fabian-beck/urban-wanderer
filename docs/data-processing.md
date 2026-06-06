@@ -289,10 +289,10 @@ Each place receives a `stars` score (0–5) and a `starDescriptions` array expla
 | `place.wikipedia` or `place.pageid` exists | +1    | "has a Wikipedia article"            |
 | `place.importance === 4`                   | +1    | "is important for the location"      |
 | `place.importance === 5`                   | +2    | "is very important for the location" |
-| 1 label matches user's selected interests  | +1    | "matches one of your interests"      |
-| 2+ labels match user's selected interests  | +2    | "matches multiple of your interests" |
+| Some place labels match selected interests | +1    | "matches one/some of your interests" |
+| All place labels match selected interests  | +2    | "all tags match your interests"      |
 
-The label matching is capped at 2 stars regardless of how many labels match.
+Label matching only awards 2 stars when every label on the place is selected in the user's interests.
 
 ### Derived Place Categories
 

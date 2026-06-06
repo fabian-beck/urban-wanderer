@@ -2,8 +2,10 @@ import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
 import {
 	nArticles,
+	PLACE_FULL_INTEREST_MATCH_STARS,
 	PLACE_HIGH_RATED_MIN_STARS,
 	PLACE_HERE_DEFAULT_RADIUS,
+	PLACE_PARTIAL_INTEREST_MATCH_STARS,
 	PLACE_TWO_STAR_HIGH_RATED_LIMIT,
 	PLACE_VISIBLE_MIN_STARS,
 	SURROUNDING_ADDRESS_PART_KEYS
@@ -497,16 +499,25 @@ function rate() {
 						: 'is important for the location'
 			});
 		}
-		// up to two stars for matching labels
-		const matchingLabels =
-			place.labels?.filter((label) => get(preferences).labels?.includes(label)) || [];
-		place.stars += Math.min(matchingLabels.length, 2);
-		if (matchingLabels.length > 0) {
+		const selectedLabels = get(preferences).labels || [];
+		const placeLabels = place.labels || [];
+		const matchingLabels = placeLabels.filter((label) => selectedLabels.includes(label));
+		const allPlaceLabelsMatched =
+			placeLabels.length > 0 && placeLabels.every((label) => selectedLabels.includes(label));
+		const labelMatchStars = allPlaceLabelsMatched
+			? PLACE_FULL_INTEREST_MATCH_STARS
+			: matchingLabels.length > 0
+				? PLACE_PARTIAL_INTEREST_MATCH_STARS
+				: 0;
+
+		place.stars += labelMatchStars;
+		if (labelMatchStars > 0) {
 			place.starDescriptions.push({
-				number: Math.min(matchingLabels.length, 2),
-				text:
-					matchingLabels.length > 1
-						? 'matches multiple of your interests'
+				number: labelMatchStars,
+				text: allPlaceLabelsMatched
+					? 'all tags match your interests'
+					: matchingLabels.length > 1
+						? 'matches some of your interests'
 						: 'matches one of your interests'
 			});
 		}
