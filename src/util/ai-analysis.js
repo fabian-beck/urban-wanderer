@@ -1,4 +1,4 @@
-import { LABELS, AI_REASONING_EFFORT } from '../constants/ui-config.js';
+import { LABELS, AI_REASONING_EFFORT, AI_ANALYSIS_BATCH_SIZE } from '../constants/ui-config.js';
 import { CLASSES } from '../constants/place-classes.js';
 import { openai, getAiModel } from './ai-core.js';
 import { ANALYSIS_CACHE_KEY as CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
@@ -61,8 +61,8 @@ export function getLastAnalysisCacheStats() {
 	return lastAnalysisCacheStats;
 }
 
-async function analyzeSinglePlace(place, preferences) {
-	const instructions = `You are a chat assistant helping a user analyze places:
+function getAnalysisInstructions() {
+	return `You are a chat assistant helping a user analyze places:
 (1) To classify them
 (2) To assign labels to them
 (3) To rate them based on their impact and importance to the user's environment
@@ -100,17 +100,22 @@ Aspects that contribute to LOWER IMPORTANCE are:
 * the place has vanished or is not accessible anymore
 * the place is built over or is not visible anymore
 
-To best best characterize the place answer with 
+To best characterize each place, answer with
 * exactly one class,
 * up to three labels, and
 * one importance value.
 
-For a place "A" and its description output a JSON object like this:
+For each input place, return one result with the same "id". Output a JSON object like this:
 
 {
-    "cls": "CLASS1",
-    "labels": ["LABEL1", "LABEL2"],
-    "importance": 5
+    "results": [
+        {
+            "id": "0",
+            "cls": "CLASS1",
+            "labels": ["LABEL1", "LABEL2"],
+            "importance": 5
+        }
+    ]
 }
     
 FURTHER INSTRUCTIONS:
@@ -118,11 +123,79 @@ FURTHER INSTRUCTIONS:
 * A considerable named river near the user should usually be classified as "WATERBODY", labeled with "GEOGRAPHY", and rated high importance because it shapes landscape, settlement pattern, movement, views, ecology, or local identity.
 * Broad administrative or abstract geographic areas should still have low importance unless they physically define what the user can perceive or experience at the current location.
 `;
+}
+
+function toPlaceAnalysisInput(place, id) {
 	const distanceText = Number.isFinite(place.dist) ? `, distance: ${Math.round(place.dist)}m` : '';
-	const dataString = `* ${place.title} (${place.type || 'unknown'}${distanceText}): ${place.snippet || place.description || ''}`;
+	return {
+		id,
+		title: place.title,
+		description: `${place.type || 'unknown'}${distanceText}: ${
+			place.snippet || place.description || ''
+		}`
+	};
+}
+
+function createFallbackAnalysis() {
+	return { cls: 'other', labels: [], importance: 0 };
+}
+
+function normalizeAnalysis(analysis) {
+	return {
+		...createFallbackAnalysis(),
+		...analysis,
+		labels: Array.isArray(analysis?.labels) ? analysis.labels.slice(0, 3) : [],
+		importance: Number.isFinite(analysis?.importance) ? analysis.importance : 0
+	};
+}
+
+function parseBatchAnalysisResponse(response, places) {
+	try {
+		const parsed = JSON.parse(response.output_text.trim());
+		const results = Array.isArray(parsed?.results) ? parsed.results : [];
+		const resultsById = new Map(results.map((result) => [String(result.id), result]));
+
+		return places.map((place, index) => {
+			const result = resultsById.get(String(index));
+			return {
+				place,
+				analysis: normalizeAnalysis(result)
+			};
+		});
+	} catch (parseError) {
+		logger.error('Analysis batch response parse failed', {
+			places: places.map((place) => place.title),
+			responseText: response.output_text,
+			error: parseError
+		});
+
+		return places.map((place) => ({
+			place,
+			analysis: createFallbackAnalysis()
+		}));
+	}
+}
+
+function cacheAnalysisResults(results) {
+	const timestamp = Date.now();
+
+	for (const { place, analysis } of results) {
+		const cacheKey = createAnalysisCacheKey(place);
+		analysisCache[cacheKey] = {
+			...analysis,
+			timestamp
+		};
+	}
+
+	saveAnalysisCache(analysisCache);
+}
+
+async function analyzePlaceBatch(places, preferences) {
+	const instructions = getAnalysisInstructions();
+	const placeInputs = places.map((place, index) => toPlaceAnalysisInput(place, String(index)));
 	const model = getAiModel('simple', preferences);
 	const response = await withPerformance(
-		'ai.analysis.place',
+		'ai.analysis.batch',
 		() =>
 			openai.responses.create({
 				model,
@@ -136,42 +209,52 @@ FURTHER INSTRUCTIONS:
 					},
 					{
 						role: 'user',
-						content: dataString
+						content: JSON.stringify({ places: placeInputs })
 					}
 				],
 				text: {
 					format: {
-						type: 'json_object'
+						type: 'json_schema',
+						name: 'place_analysis_batch',
+						schema: {
+							type: 'object',
+							additionalProperties: false,
+							properties: {
+								results: {
+									type: 'array',
+									items: {
+										type: 'object',
+										additionalProperties: false,
+										properties: {
+											id: { type: 'string' },
+											cls: { type: 'string' },
+											labels: {
+												type: 'array',
+												items: { type: 'string' }
+											},
+											importance: { type: 'number' }
+										},
+										required: ['id', 'cls', 'labels', 'importance']
+									}
+								}
+							},
+							required: ['results']
+						}
 					}
 				}
 			}),
-		{ title: place.title, model }
+		{ places: places.length, model }
 	);
-	let json;
-	try {
-		// Extract JSON from response, handling potential extra text
-		const text = response.output_text.trim();
-		const jsonStart = text.indexOf('{');
-		const jsonEnd = text.lastIndexOf('}') + 1;
-		const jsonText =
-			jsonStart !== -1 && jsonEnd > jsonStart ? text.slice(jsonStart, jsonEnd) : text;
-		json = JSON.parse(jsonText);
-	} catch (parseError) {
-		logger.error('Analysis response parse failed', {
-			title: place.title,
-			responseText: response.output_text,
-			error: parseError
-		});
-		// Fallback to empty analysis
-		json = { cls: 'other', labels: [], importance: 0 };
+
+	cacheAnalysisResults(parseBatchAnalysisResponse(response, places));
+}
+
+function chunkPlaces(places, batchSize) {
+	const chunks = [];
+	for (let index = 0; index < places.length; index += batchSize) {
+		chunks.push(places.slice(index, index + batchSize));
 	}
-	// update cache with timestamp and save to localStorage
-	const cacheKey = createAnalysisCacheKey(place);
-	analysisCache[cacheKey] = {
-		...json,
-		timestamp: Date.now()
-	};
-	saveAnalysisCache(analysisCache);
+	return chunks;
 }
 
 export async function analyzePlaces(places, preferences) {
@@ -192,14 +275,14 @@ export async function analyzePlaces(places, preferences) {
 	logger.info('Cache summary', lastAnalysisCacheStats);
 
 	if (placesWithoutCachedAnalysis.length > 0) {
+		const batches = chunkPlaces(placesWithoutCachedAnalysis, AI_ANALYSIS_BATCH_SIZE);
 		logger.info('Analyzing uncached places', {
 			uncached: placesWithoutCachedAnalysis.length,
+			batches: batches.length,
+			batchSize: AI_ANALYSIS_BATCH_SIZE,
 			total: places.length
 		});
-		// analyze each place separately, but concurrently
-		await Promise.all(
-			placesWithoutCachedAnalysis.map((place) => analyzeSinglePlace(place, preferences))
-		);
+		await Promise.all(batches.map((batch) => analyzePlaceBatch(batch, preferences)));
 	} else {
 		logger.info('All places found in cache', { total: places.length });
 	}
