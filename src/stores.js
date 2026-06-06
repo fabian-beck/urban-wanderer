@@ -2,6 +2,8 @@ import { writable, get, derived } from 'svelte/store';
 import { Geolocation } from '@capacitor/geolocation';
 import {
 	nArticles,
+	METADATA_BACKGROUND_DELAY_MS,
+	METADATA_PRIORITY_NEARBY_LIMIT,
 	PLACE_FULL_INTEREST_MATCH_STARS,
 	PLACE_HIGH_RATED_MIN_STARS,
 	PLACE_HERE_DEFAULT_RADIUS,
@@ -42,6 +44,8 @@ const placesLogger = createLogger('places');
 const metadataLogger = createLogger('metadata');
 const storyLogger = createLogger('story');
 let mapLayerLoadSequence = 0;
+let metadataLoadSequence = 0;
+const placeImageRequests = new Map();
 
 const DEFAULT_PREFERENCES = {
 	radius: 500,
@@ -524,40 +528,76 @@ function rate() {
 	});
 }
 
+function getUniquePlaces(placeGroups) {
+	const seen = new Set();
+	const uniquePlaces = [];
+	for (const place of placeGroups.flat()) {
+		if (!place || seen.has(place)) {
+			continue;
+		}
+		seen.add(place);
+		uniquePlaces.push(place);
+	}
+	return uniquePlaces;
+}
+
+function getPriorityMetadataPlaces() {
+	return getUniquePlaces([
+		get(placesHere),
+		get(placesSurrounding),
+		get(placesNearby).slice(0, METADATA_PRIORITY_NEARBY_LIMIT)
+	]);
+}
+
+function getRemainingMetadataPlaces(priorityPlaces) {
+	const prioritySet = new Set(priorityPlaces);
+	return getVisibleMetadataPlaces().filter((place) => !prioritySet.has(place));
+}
+
+function getVisibleMetadataPlaces() {
+	return getUniquePlaces([get(placesHere), get(placesSurrounding), get(placesNearby)]);
+}
+
+function startLowPriorityMetadataLoad(priorityPlaces, loadSequence) {
+	const remainingPlaces = getRemainingMetadataPlaces(priorityPlaces);
+	setTimeout(() => {
+		if (loadSequence !== metadataLoadSequence) {
+			return;
+		}
+		loadPlaceImages('imageThumb', 100, remainingPlaces, 'remaining');
+	}, METADATA_BACKGROUND_DELAY_MS);
+}
+
 async function loadMetadata() {
+	const loadSequence = ++metadataLoadSequence;
+	const herePlaces = get(placesHere);
+	const surroundingPlaces = get(placesSurrounding);
+	const priorityPlaces = getPriorityMetadataPlaces();
 	const perf = createPerformanceRun('metadata.load', {
-		here: get(placesHere).length,
+		here: herePlaces.length,
 		nearby: get(placesNearby).length,
-		surrounding: get(placesSurrounding).length
+		surrounding: surroundingPlaces.length,
+		priorityPlaces: priorityPlaces.length
 	});
-	// Load images asynchronously and trigger store updates when complete
-	loadPlaceImages('imageThumb', 100);
-	loadPlaceImages('image', 500);
+	loadPlaceImages('imageThumb', 100, priorityPlaces, 'priority');
 
 	await withPerformance(
-		'metadata.articleTexts',
+		'metadata.storyArticleTexts',
 		() =>
 			Promise.all([
-				loadWikipediaArticleTexts(get(placesHere), get(preferences).lang),
-				loadWikipediaArticleTexts(get(placesSurrounding), get(preferences).lang),
-				loadWikipediaArticleTexts(get(placesNearby), get(preferences).lang)
+				loadWikipediaArticleTexts(herePlaces, get(preferences).lang),
+				loadWikipediaArticleTexts(surroundingPlaces, get(preferences).lang)
 			]),
 		{
-			here: get(placesHere).length,
-			nearby: get(placesNearby).length,
-			surrounding: get(placesSurrounding).length
+			here: herePlaces.length,
+			surrounding: surroundingPlaces.length
 		}
 	);
 	perf.checkpoint('article texts loaded', {
-		articles: [...get(placesHere), ...get(placesNearby), ...get(placesSurrounding)].filter(
-			(place) => place.article
-		).length
+		articles: [...herePlaces, ...surroundingPlaces].filter((place) => place.article).length
 	});
 
-	// Extract insights for places that have articles (only for here and surrounding places)
-	const placesWithArticles = [...get(placesHere), ...get(placesSurrounding)].filter(
-		(place) => place.article
-	);
+	const placesWithArticles = [...herePlaces, ...surroundingPlaces].filter((place) => place.article);
 	await withPerformance(
 		'metadata.insights',
 		() =>
@@ -568,45 +608,84 @@ async function loadMetadata() {
 			),
 		{ placesWithArticles: placesWithArticles.length }
 	);
+	startLowPriorityMetadataLoad(priorityPlaces, loadSequence);
 	perf.end({
-		insights: placesWithArticles.filter((place) => place.insights).length
+		insights: placesWithArticles.filter((place) => place.insights).length,
+		deferredImages: getRemainingMetadataPlaces(priorityPlaces).length
 	});
 }
 
-async function loadPlaceImages(attribute, size) {
-	const perf = createPerformanceRun(`images.${attribute}`, {
+function getCurrentPlace(place) {
+	return get(places)?.find((currentPlace) => currentPlace.title === place.title) || place;
+}
+
+function getPlaceImageRequestKey(place, attribute, size) {
+	const identity = place.wikidata || place.pageid || place.wikipedia || place.title;
+	return `${identity}_${attribute}_${size}`;
+}
+
+export async function loadPlaceImage(place, attribute = 'image', size = 500) {
+	const currentPlace = getCurrentPlace(place);
+	if (currentPlace[attribute]) {
+		return currentPlace[attribute];
+	}
+
+	const requestKey = getPlaceImageRequestKey(currentPlace, attribute, size);
+	if (placeImageRequests.has(requestKey)) {
+		return placeImageRequests.get(requestKey);
+	}
+
+	const request = loadPlaceImages(attribute, size, [currentPlace], 'single').then(
+		() => currentPlace[attribute]
+	);
+	placeImageRequests.set(requestKey, request);
+	try {
+		return await request;
+	} finally {
+		placeImageRequests.delete(requestKey);
+	}
+}
+
+async function loadPlaceImages(
+	attribute,
+	size,
+	targetPlaces = get(places) || [],
+	priority = 'all'
+) {
+	if (targetPlaces.length === 0) {
+		return;
+	}
+	const perf = createPerformanceRun(`images.${attribute}.${priority}`, {
 		size,
-		places: get(places)?.length || 0
+		places: targetPlaces.length
 	});
 	try {
-		// 1. Try Wikipedia images first
 		await withPerformance(
-			`images.${attribute}.wikipedia`,
-			() => loadWikipediaImageUrls(get(places), attribute, size, get(preferences).lang),
-			{ size, places: get(places)?.length || 0 }
+			`images.${attribute}.${priority}.wikipedia`,
+			() => loadWikipediaImageUrls(targetPlaces, attribute, size, get(preferences).lang),
+			{ size, places: targetPlaces.length }
 		);
 	} catch (error) {
 		metadataLogger.warn(`Wikipedia ${attribute} load failed`, error);
 	} finally {
 		places.set(get(places));
 		perf.checkpoint('wikipedia images attempted', {
-			loaded: get(places).filter((place) => place[attribute]).length
+			loaded: targetPlaces.filter((place) => place[attribute]).length
 		});
 	}
 
 	try {
-		// 2. Try Wikidata for places without images
 		await withPerformance(
-			`images.${attribute}.wikidata`,
-			() => loadWikidataImages(get(places), attribute, size),
-			{ size, missingImages: get(places).filter((place) => !place[attribute]).length }
+			`images.${attribute}.${priority}.wikidata`,
+			() => loadWikidataImages(targetPlaces, attribute, size),
+			{ size, missingImages: targetPlaces.filter((place) => !place[attribute]).length }
 		);
 	} catch (error) {
 		metadataLogger.warn(`Wikidata ${attribute} load failed`, error);
 	} finally {
 		places.set(get(places));
 		perf.end({
-			loaded: get(places).filter((place) => place[attribute]).length
+			loaded: targetPlaces.filter((place) => place[attribute]).length
 		});
 	}
 }
@@ -745,6 +824,7 @@ export async function updateLocation(coords) {
 		loading.set(true);
 		errorMessage.set(null);
 		mapLayerLoadSequence += 1;
+		metadataLoadSequence += 1;
 		mapLayersLoading.set(false);
 		waterMap.set([]);
 		greenMap.set([]);

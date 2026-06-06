@@ -31,6 +31,8 @@ export const SURROUNDING_ADDRESS_PART_KEYS = [
 	'state',
 	'country'
 ];
+export const METADATA_PRIORITY_NEARBY_LIMIT = 12;
+export const METADATA_BACKGROUND_DELAY_MS = 750;
 
 // OSM search radius for Overpass API queries
 export const OSM_SEARCH_RADIUS = 500;

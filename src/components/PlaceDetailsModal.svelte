@@ -1,5 +1,4 @@
 <script>
-	import { onMount } from 'svelte';
 	import Button from 'flowbite-svelte/Button.svelte';
 	import Modal from 'flowbite-svelte/Modal.svelte';
 	import {
@@ -16,6 +15,7 @@
 		placesSurrounding,
 		preferences,
 		placeDetailsVisible,
+		loadPlaceImage,
 		updateLocation
 	} from '../stores.js';
 	import PlaceStars from './PlaceStars.svelte';
@@ -41,6 +41,8 @@
 	let imageElement;
 	let isPortrait = false;
 	let isExpanded = false;
+	let imageLoading = false;
+	let summaryLoading = false;
 
 	// Function to determine if image is portrait
 	const onImageLoad = () => {
@@ -75,26 +77,56 @@
 		placeFactListComponent.loadFacts();
 	}
 
-	onMount(() => {
-		(async () => {
-			if (place.pageid || (place.wikipedia && !place.wikipedia.includes('#'))) {
-				const url = place.pageid
-					? `https://${place.lang || $preferences.lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${place.pageid}&origin=*`
-					: `https://${place.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${place.wikipedia.split(':')[1]}&origin=*`;
+	$: if ($visible) {
+		loadModalImage();
+		loadModalSummary();
+	}
+
+	const loadModalImage = async () => {
+		const currentPlace = get(reactivePlace);
+		if (imageLoading || currentPlace?.image) {
+			return;
+		}
+		imageLoading = true;
+		try {
+			await loadPlaceImage(currentPlace, 'image', 500);
+		} finally {
+			imageLoading = false;
+		}
+	};
+
+	const loadModalSummary = async () => {
+		const currentPlace = get(reactivePlace);
+		if (summary || summaryLoading || !currentPlace) {
+			return;
+		}
+		summaryLoading = true;
+		try {
+			if (
+				currentPlace.pageid ||
+				(currentPlace.wikipedia && !currentPlace.wikipedia.includes('#'))
+			) {
+				const url = currentPlace.pageid
+					? `https://${currentPlace.lang || $preferences.lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${currentPlace.pageid}&origin=*`
+					: `https://${currentPlace.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${currentPlace.wikipedia.split(':')[1]}&origin=*`;
 				const response = await fetch(url);
 				const data = await response.json();
 				summary = await summarizeArticle(
 					Object.values(data.query.pages)[0].extract,
 					get(preferences)
 				);
-			} else if (place.description) {
+			} else if (currentPlace.description) {
 				summary = await summarizeArticle(
-					`${place.title}. ${place.description} (${place.type})`,
+					`${currentPlace.title}. ${currentPlace.description} (${currentPlace.type})`,
 					get(preferences)
 				);
 			}
-		})();
-	});
+		} catch {
+			summary = '';
+		} finally {
+			summaryLoading = false;
+		}
+	};
 </script>
 
 <Modal
