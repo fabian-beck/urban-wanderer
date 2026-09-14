@@ -8,3 +8,4 @@ export const ANALYSIS_CACHE_KEY = 'urban-wanderer-analysis-cache';
 export const REVERSE_GEOCODE_CACHE_KEY = 'urban-wanderer-reverse-geocode-cache';
 export const REVERSE_GEOCODE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 export const REVERSE_GEOCODE_CACHE_PRECISION = 4;
+export const WALK_STORAGE_KEY = 'urban-wanderer-walk';

@@ -26,7 +26,9 @@
 		placesSurrounding,
 		coordinates,
 		places,
-		placeDetailsVisible
+		placeDetailsVisible,
+		walk,
+		walkActive
 	} from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
 
@@ -98,7 +100,8 @@
 					get(placesSurrounding),
 					get(coordinates),
 					get(preferences),
-					lastResponseId
+					lastResponseId,
+					get(walk)
 				);
 			}
 
@@ -120,9 +123,12 @@
 		loading = false;
 	};
 
-	// Remove the redundant first story generation since it's handled by pregenerateStoryInBackground
-
 	export let visible = false;
+
+	// Story parts shown while a walk is active count as read on the walk
+	$: if (visible && $walkActive) {
+		$storyTexts.forEach((storyText) => walk.recordStory(storyText));
+	}
 </script>
 
 <Modal

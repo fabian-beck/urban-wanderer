@@ -16,8 +16,13 @@
 		preferences,
 		placeDetailsVisible,
 		loadPlaceImage,
-		updateLocation
+		updateLocation,
+		walk,
+		visitedPlaceIdentities
 	} from '../stores.js';
+	import { getPlaceIdentity } from '../util/place-identity.js';
+	import { formatWalkTime, getVisitedPlace } from '../util/walk.js';
+	import { CheckCircleSolid } from 'flowbite-svelte-icons';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import PlaceLabels from './PlaceLabels.svelte';
@@ -36,6 +41,9 @@
 	});
 
 	$: isSurroundingPlace = $placesSurrounding.find((p) => p.title === place.title);
+	$: visitedPlace = $visitedPlaceIdentities.has(getPlaceIdentity(place))
+		? getVisitedPlace($walk, place)
+		: null;
 	let summary = '';
 	let placeFactListComponent;
 	let imageElement;
@@ -201,6 +209,12 @@
 					{:else}
 						...
 					{/if}
+				</div>
+			{/if}
+			{#if visitedPlace}
+				<div class="mt-3 flex items-center text-sm text-green-800">
+					<CheckCircleSolid class="mr-1" />
+					Visited earlier on this walk at {formatWalkTime(visitedPlace.firstVisitedAt)}
 				</div>
 			{/if}
 			{#if !isSurroundingPlace}

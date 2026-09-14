@@ -22,6 +22,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **Wikidata Integration**: Structured data enrichment and image fallback
 - **Multi-language Support**: German and English interfaces with AI translation
 - **Offline-first Architecture**: Multi-level caching (OSM, AI analysis, user preferences)
+- **Walk Sessions**: Start a walk to record stops, visited places, and read stories; the guide avoids repetition and marks places already visited
 - **Responsive Design**: Works across mobile and desktop
 
 ## Core Components
@@ -31,7 +32,8 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **coordinates**: User location and address data
 - **places**: Nearby places with Wikipedia and OSM data
 - **preferences**: User settings (radius, interests, language)
-- **Derived stores**: Categorized places (here, nearby, surrounding)
+- **walk**: Active or ended walk session (stops, visited places, read stories, recap), persisted in localStorage; `recordStop()` runs after rating in `places.update()`
+- **Derived stores**: Categorized places (here, nearby, surrounding), `walkActive`, `visitedPlaceIdentities` (places that were "here" at an earlier stop)
 
 ### Place Classification (`src/constants/place-classes.js`)
 
@@ -52,7 +54,7 @@ Comprehensive classification system with 25+ place types:
 - **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment
 - **ai-history.js**: Historical content generation
 - **ai-comment.js**: Place commentary generation
-- **ai-speech.js**: Text-to-speech integration
+- **ai-speech.js**: Text-to-speech integration (story and comment prompts receive the walk context from `walk.js`; `generateWalkRecap` sums up a finished walk)
 
 **Data Integration:**
 
@@ -60,6 +62,8 @@ Comprehensive classification system with 25+ place types:
 - **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
 - **text.js**: Text processing utilities
+- **walk.js**: Pure walk-session helpers (stop merging, visited places, stats, prompt/recap context)
+- **place-identity.js**: Stable place identity (Wikidata ID → Wikipedia page ID → title) shared by walk and history code
 
 ### UI Components (`src/components/`)
 
@@ -67,6 +71,7 @@ Comprehensive classification system with 25+ place types:
 - **PlaceDetailsModal.svelte**: Detailed place information
 - **StoryModal.svelte**: AI-generated stories about places
 - **HistoryModal.svelte**: Historical information display
+- **WalkModal.svelte**: Start/end a walk, timeline of stops with visited places and read stories, optional AI recap
 - **UserPreferences.svelte**: Settings and customization
 
 ## Development Commands

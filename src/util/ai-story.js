@@ -1,6 +1,12 @@
 import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
 import { createLogger } from './logger.js';
+import {
+	buildWalkPromptContext,
+	buildWalkRecapContext,
+	getPreviouslyVisitedIdentities
+} from './walk.js';
+import { getPlaceIdentity } from './place-identity.js';
 
 const logger = createLogger('ai.story');
 
@@ -12,11 +18,16 @@ export async function generateStory(
 	placesSurrounding,
 	coordinates,
 	preferences,
-	previousResponseId = null
+	previousResponseId = null,
+	walk = null
 ) {
 	if (!storyTexts) {
 		storyTexts = [];
 	}
+	const walkContext = buildWalkPromptContext(walk);
+	const visitedIdentities = getPreviouslyVisitedIdentities(walk);
+	const visitedNote = (place) =>
+		visitedIdentities.has(getPlaceIdentity(place)) ? ' [already visited earlier on this walk]' : '';
 	const prioritizedNearbyPlaces = [...placesNearby]
 		.sort((a, b) => (a.dist || Infinity) - (b.dist || Infinity))
 		.slice(0, 5);
@@ -51,7 +62,7 @@ ${coordinates.address}
 ${placesHere
 	.map(
 		(place) =>
-			`## ${place.title}: ${place.labels?.join(', ')}    	    
+			`## ${place.title}${visitedNote(place)}: ${place.labels?.join(', ')}
 Rating: ${place.stars}
 
 ${place.insights || place.article || place.description || place.snippet || place.type || ''}
@@ -65,7 +76,7 @@ ${relevantNearbyPlaces
 	.map(
 		(place) =>
 			`
-## ${place.title} (${place.dist}m): ${place.labels?.join(', ')}
+## ${place.title}${visitedNote(place)} (${place.dist}m): ${place.labels?.join(', ')}
 Rating: ${place.stars}
     
 ${place.description || place.snippet || place.type || ''}
@@ -84,6 +95,7 @@ ${place.insights || place.article || place.description || place.snippet || place
 	)
 	.join('\n')}
 
+${walkContext}
 
 ----------------------------------------------
 
@@ -102,7 +114,15 @@ Personalization is mandatory: focus on details that match the listed user prefer
 Do not focus on topics that are not listed in the user's preferences (for example, do not go deep into religious aspects unless religion is explicitly listed).
 If no matching preference detail is available, prioritize neutral local facts about the immediate area.
 Avoid giving directions or distances.
-
+${
+	walkContext
+		? `
+The user is on a walk: treat the stops as one continuous narrative. Never repeat facts already told in the earlier stories of this walk.
+Prefer places the user has not visited yet; mention a place marked as already visited only briefly and acknowledge that the user has been there.
+You may draw one short connection between the current position and an earlier stop of the walk when it adds insight.
+`
+		: ''
+}
 Keep the language as concise as possible and factual. 
 You may use an informal tone, but use a moderate language.
 Try to realisticially describe the relevance of places, but do not exaggerate; not all places are "famous" or "important".
@@ -135,7 +155,7 @@ Remember, I am at this position:
 ${coordinates.address}
 
 The position is close to /in:
-${placesHere.map((place) => `* ${place.title}: ${place.labels?.join(', ')}`).join('\n')}
+${placesHere.map((place) => `* ${place.title}${visitedNote(place)}: ${place.labels?.join(', ')}`).join('\n')}
 
 Strictly stick to the initially provided instructions and facts about the places.
 Avoid generic conclusion statements and end with a concrete place-specific detail.
@@ -162,7 +182,8 @@ Give the text a headline marked in bold font.`
 		here: placesHere.length,
 		nearby: placesNearby.length,
 		surrounding: placesSurrounding.length,
-		usesPreviousResponse: Boolean(previousResponseId)
+		usesPreviousResponse: Boolean(previousResponseId),
+		walkStops: walk?.stops?.length || 0
 	});
 	logger.debug('Story prompt', { messages });
 	const requestConfig = {
@@ -190,4 +211,49 @@ Give the text a headline marked in bold font.`
 		text: response.output_text,
 		responseId: response.id
 	};
+}
+
+// summarize a completed walk in the voice of the guide
+export async function generateWalkRecap(walk, preferences) {
+	const messages = [
+		{
+			role: 'system',
+			content: `
+You are a city guide: ${preferences.guideCharacter}, and always concise and factual.
+
+The user has just finished a walk. Write a recap of this walk in language '${preferences.lang}'.
+
+${buildWalkRecapContext(walk)}
+
+----------------------------------------------
+
+# IMPORTANT INSTRUCTIONS:
+
+Write in past tense, addressing the user directly.
+Follow the order of the stops and highlight the most interesting visited places; skip stops without notable places.
+Only use facts given above or told in the listed stories; do not invent details and do not repeat whole stories.
+Write one to three short paragraphs, and give the text a headline marked in bold font.
+Avoid generic conclusion statements; end with a concrete, place-specific detail.
+Do not welcome the user, do not ask for feedback, and do not mention exact addresses or coordinates.
+
+Remember that you enact a ${preferences.guideCharacter} guide and take this role seriously towards exaggeration and over-enthusiasm.
+`
+		},
+		{ role: 'user', content: 'Sum up my walk.' }
+	];
+	logger.info('Generating walk recap', {
+		stops: walk.stops.length,
+		visitedPlaces: walk.visitedPlaces.length,
+		stories: walk.stories.length
+	});
+	logger.debug('Walk recap prompt', { messages });
+	const response = await openai.responses.create({
+		model: getAiModel('advanced', preferences),
+		reasoning: {
+			effort: AI_REASONING_EFFORT
+		},
+		input: messages
+	});
+	logger.info('Walk recap generated', { characters: response.output_text.length });
+	return response.output_text;
 }

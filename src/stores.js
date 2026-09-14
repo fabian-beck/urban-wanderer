@@ -18,6 +18,13 @@ import { analyzePlaces, getLastAnalysisCacheStats } from './util/ai-analysis.js'
 import { groupDuplicatePlaces } from './util/ai-translation.js';
 import { generateStory } from './util/ai-story.js';
 import {
+	addWalkStop,
+	addWalkStory,
+	createWalk,
+	getPreviouslyVisitedIdentities
+} from './util/walk.js';
+import { WALK_STORAGE_KEY } from './constants/cache-config.js';
+import {
 	extractHistoricEvents,
 	getHistoricEventKey,
 	prepareHistoricEvents
@@ -49,6 +56,7 @@ const placesLogger = createLogger('places');
 const metadataLogger = createLogger('metadata');
 const storyLogger = createLogger('story');
 const historyLogger = createLogger('history');
+const walkLogger = createLogger('walk');
 let mapLayerLoadSequence = 0;
 let metadataLoadSequence = 0;
 let historyLoadSequence = 0;
@@ -328,6 +336,7 @@ function createPlaces() {
 					filteredPlaces: placeCountBeforeAnalysis - analyzedPlaces.length
 				});
 				rate();
+				set(get(places));
 				perf.checkpoint('rating complete', {
 					visibleCandidates: get(places).filter((place) => place.stars > 1).length
 				});
@@ -350,6 +359,7 @@ function createPlaces() {
 				});
 				startMapLayerLoad();
 				perf.checkpoint('background map loads started');
+				walk.recordStop();
 				pregenerateLocationContentInBackground();
 				perf.end({
 					places: get(places)?.length || 0
@@ -454,6 +464,89 @@ export const placesNearby = derived(
 			})
 			.sort((a, b) => (a.dist || Infinity) - (b.dist || Infinity));
 	}
+);
+
+// walk session (persisted so an active walk survives app restarts)
+function loadStoredWalk() {
+	if (typeof localStorage === 'undefined') {
+		return null;
+	}
+	try {
+		const stored = localStorage.getItem(WALK_STORAGE_KEY);
+		return stored ? JSON.parse(stored) : null;
+	} catch (error) {
+		walkLogger.warn('Stored walk could not be loaded', error);
+		return null;
+	}
+}
+
+function createWalkStore() {
+	const { subscribe, set } = writable(loadStoredWalk());
+	const persist = (walk) => {
+		if (typeof localStorage === 'undefined') {
+			return;
+		}
+		if (walk) {
+			localStorage.setItem(WALK_STORAGE_KEY, JSON.stringify(walk));
+		} else {
+			localStorage.removeItem(WALK_STORAGE_KEY);
+		}
+	};
+	const commit = (walk) => {
+		set(walk);
+		persist(walk);
+	};
+	const recordStop = () => {
+		const currentWalk = get(walk);
+		const updatedWalk = addWalkStop(currentWalk, get(coordinates), get(placesHere));
+		if (updatedWalk !== currentWalk) {
+			commit(updatedWalk);
+			walkLogger.info('Walk stop recorded', {
+				stops: updatedWalk.stops.length,
+				visitedPlaces: updatedWalk.visitedPlaces.length
+			});
+		}
+	};
+	return {
+		subscribe,
+		start: () => {
+			commit(createWalk());
+			walkLogger.info('Walk started');
+			recordStop();
+		},
+		end: () => {
+			const currentWalk = get(walk);
+			if (!currentWalk || currentWalk.endedAt) {
+				return;
+			}
+			commit({ ...currentWalk, endedAt: Date.now() });
+			walkLogger.info('Walk ended', {
+				stops: currentWalk.stops.length,
+				visitedPlaces: currentWalk.visitedPlaces.length,
+				stories: currentWalk.stories.length
+			});
+		},
+		discard: () => commit(null),
+		recordStop,
+		recordStory: (text) => {
+			const currentWalk = get(walk);
+			const updatedWalk = addWalkStory(currentWalk, text);
+			if (updatedWalk !== currentWalk) {
+				commit(updatedWalk);
+			}
+		},
+		setRecap: (recap) => {
+			const currentWalk = get(walk);
+			if (currentWalk) {
+				commit({ ...currentWalk, recap });
+			}
+		}
+	};
+}
+export const walk = createWalkStore();
+export const walkActive = derived(walk, ($walk) => Boolean($walk && !$walk.endedAt));
+export const visitedPlaceIdentities = derived(walk, ($walk) =>
+	getPreviouslyVisitedIdentities($walk)
 );
 
 // story
@@ -773,7 +866,9 @@ async function pregenerateStoryInBackground(currentCoordinates = get(coordinates
 					get(placesNearby),
 					get(placesSurrounding),
 					currentCoordinates,
-					get(preferences)
+					get(preferences),
+					null,
+					get(walk)
 				),
 			{
 				here: get(placesHere).length,
@@ -894,7 +989,8 @@ export async function preloadNextStoryPart(currentStories) {
 					get(placesSurrounding),
 					get(coordinates),
 					get(preferences),
-					lastResponseId
+					lastResponseId,
+					get(walk)
 				),
 			{ previousResponseId: Boolean(lastResponseId), existingStories: currentStories.length }
 		);

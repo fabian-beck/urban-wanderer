@@ -11,8 +11,10 @@
 		greenMap,
 		activityMap,
 		mapLayersLoading,
-		preferences
+		preferences,
+		visitedPlaceIdentities
 	} from '../stores.js';
+	import { getPlaceIdentity } from '../util/place-identity.js';
 
 	import { derived } from 'svelte/store';
 	import { haversineDistance, latLonToX, latLonToY } from '../util/osm.js';
@@ -549,6 +551,20 @@
 								stroke="black"
 								style="filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));"
 							/>
+							{#if $visitedPlaceIdentities.has(getPlaceIdentity(place))}
+								{@const badgeOffset = (6 + place.stars * 1.5) * 0.8}
+								<g transform="translate({badgeOffset}, {-badgeOffset})">
+									<circle cx="0" cy="0" r="6" fill="#16A34A" stroke="white" stroke-width="1.5" />
+									<path
+										d="M -3 0 L -1 2 L 3 -2"
+										stroke="white"
+										stroke-width="1.5"
+										fill="none"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</g>
+							{/if}
 							<text x="0" y="30" class="place-label text-lg" text-anchor="middle">
 								{#each labelLines as line, index}
 									<tspan x="0" dy={index === 0 ? 0 : '1.1em'}>{line}</tspan>
