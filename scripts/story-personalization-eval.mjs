@@ -51,6 +51,12 @@ Study design:
                             For labels, join labels with '+', or use ALL / NONE.
   --base <key=value>        Fix a preference for all configurations (repeatable),
                             e.g. --base lang=en --base labels=HISTORY+ARCHITECTURE
+  --design <kind>           factorial: every combination of the varied values (default)
+                            random: a balanced random sample of the combinations, each
+                            level appearing equally often and level pairs spread evenly
+                            (a near-orthogonal design for estimating main effects)
+  --sample <n>              Number of configurations for --design random (default 40)
+  --seed <n>                Seed of the random sample, for reproducibility (default 1)
   --retries <n>             Repetitions per configuration (default 3)
   --segments <n>            Story segments per repetition; segment k continues the
                             chain of segments 1..k-1 like "Tell me more" (default 1)
@@ -82,6 +88,9 @@ function parseArgs(argv) {
 		vary: ['guideCharacter', 'familiarity'],
 		values: {},
 		base: {},
+		design: 'factorial',
+		sample: 40,
+		seed: 1,
 		retries: 3,
 		segments: 1,
 		concurrency: 4,
@@ -129,6 +138,18 @@ function parseArgs(argv) {
 				args.base[key] = value;
 				break;
 			}
+			case '--design':
+				args.design = next();
+				if (!['factorial', 'random'].includes(args.design)) {
+					throw new Error('--design expects "factorial" or "random"');
+				}
+				break;
+			case '--sample':
+				args.sample = parsePositiveInt(next(), arg);
+				break;
+			case '--seed':
+				args.seed = parsePositiveInt(next(), arg);
+				break;
 			case '--retries':
 				args.retries = parsePositiveInt(next(), arg);
 				break;
@@ -242,11 +263,17 @@ function buildConfigurations(args) {
 		Object.entries(args.base).map(([key, value]) => [key, parsePreferenceValue(key, value)])
 	);
 
-	let combinations = [{}];
-	for (const key of args.vary) {
-		combinations = combinations.flatMap((combination) =>
-			variedValues[key].map((value) => ({ ...combination, [key]: value }))
-		);
+	const fullSize = args.vary.reduce((product, key) => product * variedValues[key].length, 1);
+	let combinations;
+	if (args.design === 'random' && args.sample < fullSize) {
+		combinations = sampleBalancedDesign(args.vary, variedValues, args.sample, args.seed);
+	} else {
+		combinations = [{}];
+		for (const key of args.vary) {
+			combinations = combinations.flatMap((combination) =>
+				variedValues[key].map((value) => ({ ...combination, [key]: value }))
+			);
+		}
 	}
 	const configs = combinations.map((varied, index) => ({
 		id: index + 1,
@@ -256,7 +283,111 @@ function buildConfigurations(args) {
 			.map(([key, value]) => `${key}=${formatPreferenceValue(key, value)}`)
 			.join(', ')
 	}));
-	return { variedValues, base, configs };
+	return { variedValues, base, configs, fullSize };
+}
+
+// Deterministic PRNG (mulberry32) so a sample can be reproduced from its seed.
+function createRandom(seed) {
+	let state = seed >>> 0;
+	return () => {
+		state = (state + 0x6d2b79f5) >>> 0;
+		let t = state;
+		t = Math.imul(t ^ (t >>> 15), t | 1);
+		t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+function shuffle(items, random) {
+	for (let i = items.length - 1; i > 0; i--) {
+		const j = Math.floor(random() * (i + 1));
+		[items[i], items[j]] = [items[j], items[i]];
+	}
+	return items;
+}
+
+// Balanced random sample of the factor space: every level of every factor
+// appears equally often (±1), then random swaps within columns spread the
+// level pairs of all factor pairs as evenly as possible and remove duplicate
+// rows. The result approximates an orthogonal array for main-effect estimation.
+function sampleBalancedDesign(keys, variedValues, size, seed) {
+	const random = createRandom(seed);
+	const columns = keys.map((key) => {
+		const levels = variedValues[key].length;
+		const column = Array.from({ length: size }, (_, row) => row % levels);
+		return shuffle(column, random);
+	});
+
+	const rowKey = (row) => columns.map((column) => column[row]).join('|');
+	const score = () => {
+		let imbalance = 0;
+		for (let a = 0; a < columns.length; a++) {
+			for (let b = a + 1; b < columns.length; b++) {
+				const counts = new Map();
+				for (let row = 0; row < size; row++) {
+					const pair = `${columns[a][row]},${columns[b][row]}`;
+					counts.set(pair, (counts.get(pair) || 0) + 1);
+				}
+				const cells = variedValues[keys[a]].length * variedValues[keys[b]].length;
+				const expected = size / cells;
+				let deviation = 0;
+				for (const count of counts.values()) {
+					deviation += (count - expected) ** 2;
+				}
+				deviation += (cells - counts.size) * expected ** 2;
+				imbalance += deviation / cells;
+			}
+		}
+		const seen = new Set();
+		let duplicates = 0;
+		for (let row = 0; row < size; row++) {
+			const key = rowKey(row);
+			if (seen.has(key)) duplicates++;
+			seen.add(key);
+		}
+		return imbalance + duplicates * size;
+	};
+
+	let current = score();
+	const iterations = Math.max(2000, size * 100);
+	for (let iteration = 0; iteration < iterations && current > 0; iteration++) {
+		const column = columns[Math.floor(random() * columns.length)];
+		const rowA = Math.floor(random() * size);
+		const rowB = Math.floor(random() * size);
+		if (rowA === rowB || column[rowA] === column[rowB]) continue;
+		[column[rowA], column[rowB]] = [column[rowB], column[rowA]];
+		const candidate = score();
+		if (candidate <= current) {
+			current = candidate;
+		} else {
+			[column[rowA], column[rowB]] = [column[rowB], column[rowA]];
+		}
+	}
+
+	const seen = new Set();
+	const combinations = [];
+	for (let row = 0; row < size; row++) {
+		const key = rowKey(row);
+		if (seen.has(key)) continue;
+		seen.add(key);
+		combinations.push(
+			Object.fromEntries(
+				keys.map((factor, index) => [factor, variedValues[factor][columns[index][row]]])
+			)
+		);
+	}
+	return combinations;
+}
+
+function describeDesignBalance(configs, keys, variedValues) {
+	return keys.map((key) => {
+		const counts = variedValues[key].map(
+			(value) =>
+				configs.filter((config) => JSON.stringify(config.varied[key]) === JSON.stringify(value))
+					.length
+		);
+		return `${key} ${Math.min(...counts)}–${Math.max(...counts)}×`;
+	});
 }
 
 function contextKeyOf(preferences) {
@@ -340,8 +471,9 @@ function displayPath(target) {
 }
 
 function printEstimate(args, plan) {
-	const { configs, variedValues, base, contextCount, upstreamCount } = plan;
+	const { configs, variedValues, base, contextCount, upstreamCount, fullSize } = plan;
 	const storyRequests = configs.length * args.retries * args.segments;
+	const sampled = args.design === 'random' && configs.length < fullSize;
 	out('Story personalization evaluation');
 	out(`  Location:      ${args.lat}, ${args.lon}`);
 	out(
@@ -356,6 +488,14 @@ function printEstimate(args, plan) {
 				.join(', ') || 'app defaults'
 		}`
 	);
+	if (sampled) {
+		out(
+			`  Design:        balanced random sample of ${configs.length} of ${fullSize} combinations (seed ${args.seed});` +
+				` levels appear ${describeDesignBalance(configs, args.vary, variedValues).join(', ')}`
+		);
+	} else {
+		out(`  Design:        full factorial (${fullSize} combinations)`);
+	}
 	out(`  Configurations: ${configs.length}`);
 	out(`  Retries:        ${args.retries} per configuration`);
 	out(`  Segments:       ${args.segments} per story`);
@@ -436,7 +576,7 @@ function sumUsage(total, usage) {
 
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
-	const { variedValues, base, configs } = buildConfigurations(args);
+	const { variedValues, base, configs, fullSize } = buildConfigurations(args);
 
 	// The context grouping only depends on the overrides, so it can be estimated
 	// before loading the app (which requires the OpenAI key file).
@@ -447,11 +587,16 @@ async function main() {
 		variedValues,
 		base,
 		contextCount: contextKeys.size,
-		upstreamCount: upstreamKeys.size
+		upstreamCount: upstreamKeys.size,
+		fullSize
 	};
 	printEstimate(args, plan);
 
 	if (args.dryRun) {
+		out('Configurations:');
+		for (const config of configs) {
+			out(`  ${String(config.id).padStart(3)}: ${config.label || 'defaults'}`);
+		}
 		out('Dry run, nothing generated.');
 		return;
 	}
@@ -484,6 +629,11 @@ async function main() {
 			context: args.context && displayPath(args.context)
 		},
 		configs: configs.map(({ id, label, overrides }) => ({ id, label, overrides })),
+		design: {
+			kind: args.design === 'random' && configs.length < fullSize ? 'random' : 'factorial',
+			fullSize,
+			seed: args.seed
+		},
 		estimate: {
 			configurations: configs.length,
 			storyRequests: configs.length * args.retries * args.segments,

@@ -438,24 +438,121 @@ function summarizeConsistency(rows) {
 	return consistency;
 }
 
+// Solves the normal equations of a least-squares fit by Gaussian elimination
+// with a tiny ridge term so rank-deficient designs do not blow up.
+function solveLeastSquares(designRows, targets) {
+	const columns = designRows[0].length;
+	const matrix = Array.from({ length: columns }, () => new Array(columns + 1).fill(0));
+	for (let row = 0; row < designRows.length; row++) {
+		for (let a = 0; a < columns; a++) {
+			for (let b = 0; b < columns; b++) {
+				matrix[a][b] += designRows[row][a] * designRows[row][b];
+			}
+			matrix[a][columns] += designRows[row][a] * targets[row];
+		}
+	}
+	for (let a = 0; a < columns; a++) {
+		matrix[a][a] += 1e-8;
+	}
+	for (let pivot = 0; pivot < columns; pivot++) {
+		let best = pivot;
+		for (let row = pivot + 1; row < columns; row++) {
+			if (Math.abs(matrix[row][pivot]) > Math.abs(matrix[best][pivot])) best = row;
+		}
+		[matrix[pivot], matrix[best]] = [matrix[best], matrix[pivot]];
+		for (let row = 0; row < columns; row++) {
+			if (row === pivot) continue;
+			const factor = matrix[row][pivot] / matrix[pivot][pivot];
+			for (let column = pivot; column <= columns; column++) {
+				matrix[row][column] -= factor * matrix[pivot][column];
+			}
+		}
+	}
+	return matrix.map((row, index) => row[columns] / row[index]);
+}
+
+// Additive (main effects only) model over all varied factors. Returns, per
+// dimension, the estimated marginal mean of every level: the mean prediction
+// over all judged texts with that factor set to the level and the other
+// factors as observed. With a balanced design this equals the raw mean; with
+// an unbalanced sample it removes the influence of the other factors.
+function fitAdditiveModel(rows, factors, levelsByFactor) {
+	if (factors.length < 2) return null;
+	const dummyColumns = [];
+	for (const factor of factors) {
+		for (const level of levelsByFactor[factor].slice(1)) {
+			dummyColumns.push({ factor, level });
+		}
+	}
+	const encode = (levelOf) => [
+		1,
+		...dummyColumns.map((column) => (levelOf(column.factor) === column.level ? 1 : 0))
+	];
+	const designRows = rows.map((row) => encode((factor) => formatValue(factor, row.varied[factor])));
+	if (designRows.length <= designRows[0].length) return null;
+	const model = { dimensions: {} };
+	for (const dimension of DIMENSIONS) {
+		const targets = rows.map((row) => row.judgment[dimension.key]);
+		const coefficients = solveLeastSquares(designRows, targets);
+		const predict = (encoded) =>
+			encoded.reduce((sum, value, index) => sum + value * coefficients[index], 0);
+		const residual = rows.reduce(
+			(sum, row, index) => sum + (targets[index] - predict(designRows[index])) ** 2,
+			0
+		);
+		const total = rows.reduce((sum, row, index) => sum + (targets[index] - mean(targets)) ** 2, 0);
+		const marginalMeans = {};
+		for (const factor of factors) {
+			marginalMeans[factor] = {};
+			for (const level of levelsByFactor[factor]) {
+				const predictions = rows.map((row) =>
+					predict(
+						encode((other) => (other === factor ? level : formatValue(other, row.varied[other])))
+					)
+				);
+				marginalMeans[factor][level] = round(mean(predictions));
+			}
+		}
+		model.dimensions[dimension.key] = {
+			r2: round(total ? 1 - residual / total : 0),
+			marginalMeans
+		};
+	}
+	return model;
+}
+
 function aggregate(runMeta, rows) {
 	const factors = runMeta.args?.vary || [];
+	const levelsByFactor = {};
+	for (const factor of factors) {
+		levelsByFactor[factor] = [];
+		for (const config of runMeta.configs) {
+			const level = formatValue(factor, config.overrides[factor]);
+			if (!levelsByFactor[factor].includes(level)) levelsByFactor[factor].push(level);
+		}
+	}
+	const model = fitAdditiveModel(rows, factors, levelsByFactor);
 	const summary = {
+		design: runMeta.design || null,
 		overall: summarizeGroup(rows),
 		factors: {},
 		configs: [],
-		consistency: summarizeConsistency(rows)
+		consistency: summarizeConsistency(rows),
+		model
 	};
 	for (const factor of factors) {
-		const levels = [];
-		for (const config of runMeta.configs) {
-			const level = formatValue(factor, config.overrides[factor]);
-			if (!levels.includes(level)) levels.push(level);
-		}
-		summary.factors[factor] = levels.map((level) => ({
-			level,
-			...summarizeGroup(rows.filter((row) => formatValue(factor, row.varied[factor]) === level))
-		}));
+		summary.factors[factor] = levelsByFactor[factor].map((level) => {
+			const group = summarizeGroup(
+				rows.filter((row) => formatValue(factor, row.varied[factor]) === level)
+			);
+			if (model) {
+				for (const dimension of DIMENSIONS) {
+					group.dimensions[dimension.key].adjustedMean =
+						model.dimensions[dimension.key].marginalMeans[factor][level];
+				}
+			}
+			return { level, ...group };
+		});
 	}
 	for (const config of runMeta.configs) {
 		summary.configs.push({
@@ -539,9 +636,14 @@ function renderDimensionChart(dimension, groups, labelWidth = 170) {
 		const low = Math.max(SCALE_MIN, stats.mean - stats.sd);
 		const high = Math.min(SCALE_MAX, stats.mean + stats.sd);
 		const tooltip = `${group.level}: mean ${stats.mean}, SD ${stats.sd}, n=${group.n}`;
+		const adjusted =
+			stats.adjustedMean !== undefined && stats.adjustedMean !== null
+				? `<circle class="ring" cx="${x(stats.adjustedMean)}" cy="${cy}" r="5"><title>${escapeHtml(`${group.level}: adjusted mean ${stats.adjustedMean} (additive model)`)}</title></circle>`
+				: '';
 		parts.push(
 			`<g class="mark"><title>${escapeHtml(tooltip)}</title>` +
 				`<line class="whisker" x1="${x(low)}" y1="${cy}" x2="${x(high)}" y2="${cy}"/>` +
+				adjusted +
 				`<circle class="dot" cx="${x(stats.mean)}" cy="${cy}" r="5"/>` +
 				`<text class="value" x="${labelWidth + plotWidth + 12}" y="${cy + 4}">${stats.mean.toFixed(2)}</text></g>`
 		);
@@ -591,10 +693,15 @@ function renderTopicHeatmap(groups, labelWidth = 170) {
 }
 
 function renderGroupTable(groups, firstColumn) {
+	const withAdjusted = groups.some((group) =>
+		DIMENSIONS.some((dimension) => group.dimensions[dimension.key].adjustedMean !== undefined)
+	);
 	const header = [
 		firstColumn,
 		'n',
-		...DIMENSIONS.map((dimension) => `${dimension.name} (mean ± SD)`),
+		...DIMENSIONS.map((dimension) =>
+			withAdjusted ? `${dimension.name} (mean ± SD; adjusted)` : `${dimension.name} (mean ± SD)`
+		),
 		'Topics per text',
 		'Topic precision',
 		'Topic recall',
@@ -606,7 +713,11 @@ function renderGroupTable(groups, firstColumn) {
 			group.n,
 			...DIMENSIONS.map((dimension) => {
 				const stats = group.dimensions[dimension.key];
-				return stats.mean === null ? '–' : `${stats.mean.toFixed(2)} ± ${stats.sd.toFixed(2)}`;
+				if (stats.mean === null) return '–';
+				const raw = `${stats.mean.toFixed(2)} ± ${stats.sd.toFixed(2)}`;
+				return withAdjusted && stats.adjustedMean !== undefined
+					? `${raw}; ${stats.adjustedMean.toFixed(2)}`
+					: raw;
 			}),
 			group.topicsPerText ?? '–',
 			formatRate(group.topicPrecision),
@@ -626,14 +737,19 @@ function formatRate(value) {
 	return value === null || value === undefined ? '–' : `${Math.round(value * 100)}%`;
 }
 
-function renderFactorSection(factor, groups) {
+function renderFactorSection(factor, groups, model) {
 	const charts = DIMENSIONS.map(
 		(dimension) =>
-			`<figure><figcaption>${escapeHtml(dimension.name)}</figcaption>${renderDimensionChart(dimension, groups)}</figure>`
+			`<figure><figcaption>${escapeHtml(dimension.name)}${
+				model ? ` <span class="muted">(R² ${model.dimensions[dimension.key].r2})</span>` : ''
+			}</figcaption>${renderDimensionChart(dimension, groups)}</figure>`
 	).join('');
+	const modelNote = model
+		? ` The hollow ring is the level's adjusted mean from an additive model over all varied factors; it removes the influence of the other factors when the sample is unbalanced.`
+		: '';
 	return `<section>
 <h2>Factor: ${escapeHtml(factor)}</h2>
-<p class="muted">Mean rating per level with ±1 SD whiskers on the ${SCALE_MIN}–${SCALE_MAX} scale; the heatmap shows the share of texts the judge saw focusing on each topic.</p>
+<p class="muted">Filled dot: mean rating per level with ±1 SD whiskers on the ${SCALE_MIN}–${SCALE_MAX} scale.${modelNote} The heatmap shows the share of texts the judge saw focusing on each topic.</p>
 <div class="chart-grid">${charts}</div>
 <figure><figcaption>Topic focus (% of texts)</figcaption>${renderTopicHeatmap(groups)}</figure>
 <details><summary>Table view</summary>${renderGroupTable(groups, 'Level')}</details>
@@ -682,7 +798,7 @@ ${judgments.join('') || '<p class="muted">No successful judgment.</p>'}
 function renderReport(runMeta, judgeMeta, summary, rows, units) {
 	const factors = Object.keys(summary.factors);
 	const factorSections = factors
-		.map((factor) => renderFactorSection(factor, summary.factors[factor]))
+		.map((factor) => renderFactorSection(factor, summary.factors[factor], summary.model))
 		.join('');
 	const consistency = summary.consistency
 		? `<section><h2>Judge consistency</h2><p>Across ${summary.consistency.units} units judged ${judgeMeta.repeats} times each: mean within-unit SD ${DIMENSIONS.map(
@@ -764,6 +880,7 @@ svg .row-label { fill: var(--text-primary); font-size: 12px; }
 svg .value { fill: var(--text-secondary); font-size: 12px; }
 svg .whisker { stroke: var(--series-1); stroke-width: 2; stroke-linecap: round; opacity: 0.6; }
 svg .dot { fill: var(--series-1); stroke: var(--surface-1); stroke-width: 2; }
+svg .ring { fill: var(--surface-1); stroke: var(--series-1); stroke-width: 2; }
 svg .cell-value { font-size: 11px; }
 svg .cell-value.zero { fill: var(--text-muted); }
 svg .cell-value.on-light { fill: #0b0b0b; }
@@ -793,6 +910,11 @@ ul.contexts { padding-left: 18px; }
 <dt>Location</dt><dd>${escapeHtml(location)}</dd>
 <dt>Generation run</dt><dd>${escapeHtml(judgeMeta.run)} (started ${escapeHtml(runMeta.startedAt || '')}, commit ${escapeHtml(runMeta.gitCommit || '–')})</dd>
 <dt>Varied factors</dt><dd>${escapeHtml(factors.join(', ') || 'none')}</dd>
+<dt>Design</dt><dd>${escapeHtml(
+		runMeta.design?.kind === 'random'
+			? `balanced random sample of ${runMeta.configs.length} of ${runMeta.design.fullSize} combinations (seed ${runMeta.design.seed})`
+			: `full factorial (${runMeta.configs?.length ?? '–'} configurations)`
+	)}</dd>
 <dt>Fixed preferences</dt><dd>${escapeHtml(
 		Object.entries(runMeta.args?.base || {})
 			.map(([key, value]) => `${key}=${value}`)
