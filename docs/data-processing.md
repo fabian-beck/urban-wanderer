@@ -21,7 +21,7 @@ updateLocation(coords?)
     ├── loadWikipediaExtracts()                                # Stage 5
     ├── analyzePlaces()                                        # Stage 6
     ├── rate()                                                 # Stage 7
-    ├── walk.recordStop()             # active walk only: remember position + "here" places
+    ├── walk.recordStop()             # remember position + "here" places (creates a walk if none is active)
     └── [background] pregenerateStoryInBackground()
             ├── loadMetadata()                                 # Stage 8
             └── generateStory()                                # Stage 9
@@ -674,11 +674,11 @@ After full pipeline processing, a place object carries:
 
 **Source:** [src/stores.js](../src/stores.js) `createWalkStore()`, [src/util/walk.js](../src/util/walk.js)
 
-A walk is an optional session started from the walk button in the bottom bar. While it is active:
+Every location update belongs to a walk, including virtual jumps (random place, search, URL links). The front page offers "Start walk" next to the preferences: `beginWalk()` gets a GPS fix first and, if the stored walk's last stop is under `WALK_MAX_AGE_MS` old and within `WALK_RESUME_DISTANCE`, asks whether to continue that walk or start a new one; otherwise a new walk starts. The header menu entry "Walk" opens the summary, where a new walk can be started at any time (this discards the previous walk).
 
-- After every `places.update()` (Stage 7), `walk.recordStop()` stores the current position and the identities of all `placesHere` places. A position within `WALK_STOP_MERGE_DISTANCE` of the last stop extends that stop instead of adding a new one.
+- After every `places.update()` (Stage 7), `walk.recordStop()` stores the current position and the identities of all `placesHere` places; a missing or expired walk is replaced first. A position within `WALK_STOP_MERGE_DISTANCE` of the last stop extends that stop instead of adding a new one.
 - Story parts shown in the story modal are remembered as read stories (headline + text) for the current stop.
 - `visitedPlaceIdentities` contains places that were "here" at an earlier stop than the current one; lists, place details, and the map mark them as visited.
 - `generateStory()` and `generateLocationComment()` receive the walk and prepend a "walk so far" context (duration, distance, earlier visited places, excerpts of read stories) with instructions not to repeat content and to acknowledge revisited places.
 
-Ending a walk freezes the session; the walk modal shows the timeline summary and can request an AI recap (`generateWalkRecap()`). The walk is persisted under `WALK_STORAGE_KEY` in localStorage so it survives app restarts.
+The walk modal shows the timeline summary and can request an AI recap of the walk so far (`generateWalkRecap()`); the recap is kept until stops or stories change. The walk is persisted under `WALK_STORAGE_KEY` in localStorage so it survives app restarts.

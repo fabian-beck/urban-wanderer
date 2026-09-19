@@ -10,10 +10,12 @@
 	import Navbar from 'flowbite-svelte/Navbar.svelte';
 	import NavUl from 'flowbite-svelte/NavUl.svelte';
 	import UserPreferences from './UserPreferences.svelte';
+	import WalkModal from './WalkModal.svelte';
 
 	export let updateRandom;
 	export let searchForPlace;
 	let preferencesVisible = false;
+	let walkVisible = false;
 	let hideNavUl = true;
 	let searchModalVisible = false;
 	let searchQuery = '';
@@ -49,6 +51,13 @@
 		<NavLi
 			class="bg-white"
 			on:click={() => {
+				walkVisible = true;
+				hideNavUl = true;
+			}}>Walk</NavLi
+		>
+		<NavLi
+			class="bg-white"
+			on:click={() => {
 				hideNavUl = true;
 				updateRandom();
 			}}>Travel to random place</NavLi
@@ -64,6 +73,7 @@
 </Navbar>
 
 <UserPreferences bind:visible={preferencesVisible} />
+<WalkModal bind:visible={walkVisible} />
 
 <Modal bind:open={searchModalVisible} title="Search for Place" outsideclose>
 	<form on:submit|preventDefault={handleSearch}>

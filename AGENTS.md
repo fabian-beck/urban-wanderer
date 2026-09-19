@@ -22,7 +22,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **Wikidata Integration**: Structured data enrichment and image fallback
 - **Multi-language Support**: German and English interfaces with AI translation
 - **Offline-first Architecture**: Multi-level caching (OSM, AI analysis, user preferences)
-- **Walk Sessions**: Start a walk to record stops, visited places, and read stories; the guide avoids repetition and marks places already visited
+- **Walk Sessions**: Every location update belongs to a walk that records stops, visited places, and read stories; the guide avoids repetition and marks places already visited
 - **Responsive Design**: Works across mobile and desktop
 
 ## Core Components
@@ -32,7 +32,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **coordinates**: User location and address data
 - **places**: Nearby places with Wikipedia and OSM data
 - **preferences**: User settings (radius, interests, language)
-- **walk**: Active or ended walk session (stops, visited places, read stories, recap), persisted in localStorage; `recordStop()` runs after rating in `places.update()`
+- **walk**: Current walk (stops, visited places, read stories, recap), persisted in localStorage; `recordStop()` runs after rating in `places.update()` and creates a walk if none is active (expiry: last stop older than `WALK_MAX_AGE_MS`). `beginWalk()` is the front-page entry (GPS fix, then continue-or-new choice via `walkResumeCandidate` when the last stop is within `WALK_RESUME_DISTANCE`); `startNewWalk()` replaces the walk from the walk modal
 - **Derived stores**: Categorized places (here, nearby, surrounding), `walkActive`, `visitedPlaceIdentities` (places that were "here" at an earlier stop)
 
 ### Place Classification (`src/constants/place-classes.js`)
@@ -77,7 +77,8 @@ Comprehensive classification system with 25+ place types:
 - **PlaceDetailsModal.svelte**: Detailed place information
 - **StoryModal.svelte**: AI-generated stories about places
 - **HistoryModal.svelte**: Historical information display
-- **WalkModal.svelte**: Start/end a walk, timeline of stops with visited places and read stories, optional AI recap
+- **WalkModal.svelte**: Walk summary from the header menu (stats, timeline of stops with visited places and read stories, AI recap, start new walk)
+- **WalkResumeModal.svelte**: Continue-or-new decision shown after the front-page "Start walk" tap when a recent walk is nearby
 - **UserPreferences.svelte**: Settings and customization
 
 ## Development Commands

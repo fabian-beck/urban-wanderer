@@ -8,6 +8,7 @@
 		heading,
 		updateLocation,
 		searchForPlace,
+		beginWalk,
 		loading
 	} from '../stores.js';
 	import Header from '../components/Header.svelte';
@@ -23,6 +24,8 @@
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
 	import UserPreferences from '../components/UserPreferences.svelte';
+	import WalkResumeModal from '../components/WalkResumeModal.svelte';
+	import { TrackingOutline } from 'flowbite-svelte-icons';
 	import { preferences } from '../stores.js';
 	import { LABELS, FAMILIARITY, LANGUAGES } from '../constants/ui-config.js';
 
@@ -120,8 +123,16 @@
 			</div>
 		{:else}
 			<div class="mx-6 mt-6 text-center">
-				<p class="mb-3 text-sm text-gray-600">To personalize the guide, set your preferences.</p>
-				<Button on:click={() => (preferencesVisible = true)}>Open Preferences</Button>
+				<p class="mb-3 text-sm text-gray-600">
+					Start a walk to discover the places around you. Your guide keeps track of your stops and
+					the stories you read.
+				</p>
+				<div class="flex justify-center gap-2">
+					<Button color="alternative" on:click={() => (preferencesVisible = true)}>
+						Preferences
+					</Button>
+					<Button on:click={beginWalk}><TrackingOutline class="mr-2" />Start walk</Button>
+				</div>
 				<p class="mt-4 text-xs text-gray-500">
 					Interests: {LABELS.filter((label) => $preferences.labels.includes(label.value))
 						.map((label) => label.name.split(' ')[0])
@@ -133,5 +144,8 @@
 		{/if}
 	{/if}
 </main>
-<Location loading={$loading} update={() => updateLocation(false)} />
+{#if $coordinates}
+	<Location loading={$loading} update={() => updateLocation(false)} />
+{/if}
 <UserPreferences bind:visible={preferencesVisible} />
+<WalkResumeModal />

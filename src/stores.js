@@ -21,7 +21,10 @@ import {
 	addWalkStop,
 	addWalkStory,
 	createWalk,
-	getPreviouslyVisitedIdentities
+	getPreviouslyVisitedIdentities,
+	getWalkRecapKey,
+	getWalkResumeDistance,
+	isWalkActive
 } from './util/walk.js';
 import { WALK_STORAGE_KEY } from './constants/cache-config.js';
 import {
@@ -496,10 +499,15 @@ function createWalkStore() {
 		set(walk);
 		persist(walk);
 	};
+	const start = () => {
+		commit(createWalk());
+		walkLogger.info('Walk started');
+	};
+	// Every location update belongs to a walk; an expired or missing walk is replaced
 	const recordStop = () => {
-		const currentWalk = get(walk);
+		const currentWalk = isWalkActive(get(walk)) ? get(walk) : createWalk();
 		const updatedWalk = addWalkStop(currentWalk, get(coordinates), get(placesHere));
-		if (updatedWalk !== currentWalk) {
+		if (updatedWalk !== get(walk)) {
 			commit(updatedWalk);
 			walkLogger.info('Walk stop recorded', {
 				stops: updatedWalk.stops.length,
@@ -509,24 +517,7 @@ function createWalkStore() {
 	};
 	return {
 		subscribe,
-		start: () => {
-			commit(createWalk());
-			walkLogger.info('Walk started');
-			recordStop();
-		},
-		end: () => {
-			const currentWalk = get(walk);
-			if (!currentWalk || currentWalk.endedAt) {
-				return;
-			}
-			commit({ ...currentWalk, endedAt: Date.now() });
-			walkLogger.info('Walk ended', {
-				stops: currentWalk.stops.length,
-				visitedPlaces: currentWalk.visitedPlaces.length,
-				stories: currentWalk.stories.length
-			});
-		},
-		discard: () => commit(null),
+		start,
 		recordStop,
 		recordStory: (text) => {
 			const currentWalk = get(walk);
@@ -535,16 +526,18 @@ function createWalkStore() {
 				commit(updatedWalk);
 			}
 		},
-		setRecap: (recap) => {
+		setRecap: (text) => {
 			const currentWalk = get(walk);
 			if (currentWalk) {
-				commit({ ...currentWalk, recap });
+				commit({ ...currentWalk, recap: { text, key: getWalkRecapKey(currentWalk) } });
 			}
 		}
 	};
 }
 export const walk = createWalkStore();
-export const walkActive = derived(walk, ($walk) => Boolean($walk && !$walk.endedAt));
+export const walkActive = derived(walk, ($walk) => isWalkActive($walk));
+// Recent walk within reach of the freshly located position, waiting for the user's continue/new decision
+export const walkResumeCandidate = writable(null);
 export const visitedPlaceIdentities = derived(walk, ($walk) =>
 	getPreviouslyVisitedIdentities($walk)
 );
@@ -1061,6 +1054,56 @@ export async function updateLocation(coords) {
 		errorMessage.set('Error updating location: ' + error);
 		logger.error('Location update failed', error);
 	}
+}
+
+async function locate() {
+	try {
+		const { coords } = await withPerformance('walk.locate', () =>
+			Geolocation.getCurrentPosition({ enableHighAccuracy: true })
+		);
+		return { latitude: coords.latitude, longitude: coords.longitude };
+	} catch (error) {
+		logger.error('Locating failed', error);
+		errorMessage.set('Could not determine your location: ' + error);
+		return null;
+	}
+}
+
+// Front page entry point: locate the user, then continue a nearby recent walk or start a new one
+export async function beginWalk() {
+	loading.set(true);
+	errorMessage.set(null);
+	loadingMessage.set('Locating ...');
+	const position = await locate();
+	loadingMessage.reset();
+	loading.set(false);
+	if (!position) {
+		return;
+	}
+	const resumeDistance = getWalkResumeDistance(get(walk), position);
+	if (resumeDistance !== null) {
+		walkResumeCandidate.set({ position, distance: resumeDistance });
+		return;
+	}
+	walk.start();
+	await updateLocation(position);
+}
+
+export async function resolveWalkResume(continueWalk) {
+	const candidate = get(walkResumeCandidate);
+	walkResumeCandidate.set(null);
+	if (!candidate) {
+		return;
+	}
+	if (!continueWalk) {
+		walk.start();
+	}
+	await updateLocation(candidate.position);
+}
+
+export async function startNewWalk() {
+	walk.start();
+	await updateLocation(false);
 }
 
 // Search for place by name and update location

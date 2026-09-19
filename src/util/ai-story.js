@@ -213,7 +213,7 @@ Give the text a headline marked in bold font.`
 	};
 }
 
-// summarize a completed walk in the voice of the guide
+// summarize the walk so far in the voice of the guide
 export async function generateWalkRecap(walk, preferences) {
 	const messages = [
 		{
@@ -221,7 +221,7 @@ export async function generateWalkRecap(walk, preferences) {
 			content: `
 You are a city guide: ${preferences.guideCharacter}, and always concise and factual.
 
-The user has just finished a walk. Write a recap of this walk in language '${preferences.lang}'.
+The user asks for a recap of the walk so far. Write it in language '${preferences.lang}'.
 
 ${buildWalkRecapContext(walk)}
 

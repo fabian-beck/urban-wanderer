@@ -63,6 +63,8 @@ export const OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES =
 
 // Walk session
 export const WALK_STOP_MERGE_DISTANCE = 30;
+export const WALK_RESUME_DISTANCE = 10000;
+export const WALK_MAX_AGE_MS = 2 * 24 * 60 * 60 * 1000;
 export const WALK_VISITED_CONTEXT_LIMIT = 20;
 export const WALK_STORY_CONTEXT_LIMIT = 8;
 export const WALK_STORY_EXCERPT_LENGTH = 300;

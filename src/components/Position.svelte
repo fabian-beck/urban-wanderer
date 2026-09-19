@@ -4,13 +4,11 @@
 		RefreshOutline,
 		MapPinAltOutline,
 		MessageDotsOutline,
-		CalendarMonthOutline,
-		TrackingOutline
+		CalendarMonthOutline
 	} from 'flowbite-svelte-icons';
-	import { coordinates, walkActive } from '../stores.js';
+	import { coordinates } from '../stores.js';
 	import StoryModal from './StoryModal.svelte';
 	import HistoryModal from './HistoryModal.svelte';
-	import WalkModal from './WalkModal.svelte';
 
 	export let loading = false;
 	export let update;
@@ -24,7 +22,6 @@
 
 	let storyVisible = false;
 	let historyVisible = false;
-	let walkVisible = false;
 </script>
 
 <div
@@ -59,21 +56,6 @@
 				<CalendarMonthOutline size="xl" />
 			</Button>
 		</div>
-		<div
-			class="absolute -top-12 right-32 m-2 flex items-center justify-center rounded-full border border-slate-200/70 bg-slate-100/75 p-1 shadow-md shadow-gray-900/10 backdrop-blur-md"
-		>
-			<Button
-				on:click={() => (walkVisible = true)}
-				pill
-				class="!p-2"
-				color={$walkActive ? 'primary' : 'alternative'}
-				disabled={loading}
-				size="xl"
-				aria-label={$walkActive ? 'Walk in progress' : 'Start a walk'}
-			>
-				<TrackingOutline size="xl" />
-			</Button>
-		</div>
 	{/if}
 	<div class="flex flex-auto">
 		{#if $coordinates}
@@ -91,8 +73,6 @@
 					</a>
 				</div>
 			</div>
-		{:else if !loading}
-			<i class="text-sm text-primary-800">Click the refresh button to get your location</i>
 		{/if}
 	</div>
 	<div class="ml-2 flex-none">
@@ -103,4 +83,3 @@
 </div>
 <StoryModal bind:visible={storyVisible} />
 <HistoryModal bind:visible={historyVisible} />
-<WalkModal bind:visible={walkVisible} />

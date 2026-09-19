@@ -1,5 +1,7 @@
 import {
+	WALK_MAX_AGE_MS,
 	WALK_RECAP_STORY_EXCERPT_LENGTH,
+	WALK_RESUME_DISTANCE,
 	WALK_STOP_MERGE_DISTANCE,
 	WALK_STORY_CONTEXT_LIMIT,
 	WALK_STORY_EXCERPT_LENGTH,
@@ -12,7 +14,6 @@ export function createWalk() {
 	return {
 		id: `walk-${Date.now()}`,
 		startedAt: Date.now(),
-		endedAt: null,
 		stops: [],
 		visitedPlaces: [],
 		stories: [],
@@ -20,8 +21,28 @@ export function createWalk() {
 	};
 }
 
+export function getWalkLastActivity(walk) {
+	const lastStop = walk?.stops?.[walk.stops.length - 1];
+	return lastStop?.at || walk?.startedAt || 0;
+}
+
+// A walk stays active until it is replaced or its last stop is older than WALK_MAX_AGE_MS
 export function isWalkActive(walk) {
-	return Boolean(walk && !walk.endedAt);
+	return Boolean(walk && Date.now() - getWalkLastActivity(walk) < WALK_MAX_AGE_MS);
+}
+
+// Distance from the given position to the last stop when the walk can be continued from there
+export function getWalkResumeDistance(walk, position) {
+	if (!isWalkActive(walk) || walk.stops.length === 0 || !position) {
+		return null;
+	}
+	const distance = getStopDistance(walk.stops[walk.stops.length - 1], position);
+	return distance <= WALK_RESUME_DISTANCE ? distance : null;
+}
+
+// Identifies the walk state a recap was generated for
+export function getWalkRecapKey(walk) {
+	return `${walk?.stops?.length || 0}:${walk?.stories?.length || 0}`;
 }
 
 function getStopDistance(stop, coordinates) {
@@ -179,9 +200,8 @@ export function getWalkStats(walk) {
 	if (!walk) {
 		return null;
 	}
-	const endedAt = walk.endedAt || Date.now();
 	return {
-		durationMs: Math.max(endedAt - walk.startedAt, 0),
+		durationMs: Math.max(getWalkLastActivity(walk) - walk.startedAt, 0),
 		stops: walk.stops.length,
 		distanceMeters: getWalkDistance(walk),
 		visitedPlaces: walk.visitedPlaces.length,

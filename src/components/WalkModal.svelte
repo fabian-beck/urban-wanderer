@@ -6,11 +6,19 @@
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { marked } from 'marked';
 	import { TrackingOutline, CheckCircleSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
-	import { walk, walkActive, preferences, errorMessage } from '../stores.js';
+	import {
+		walk,
+		walkActive,
+		preferences,
+		errorMessage,
+		beginWalk,
+		startNewWalk
+	} from '../stores.js';
 	import {
 		formatWalkDistance,
 		formatWalkDuration,
 		formatWalkTime,
+		getWalkRecapKey,
 		getWalkStats
 	} from '../util/walk.js';
 	import { generateWalkRecap } from '../util/ai-story.js';
@@ -21,6 +29,7 @@
 
 	const logger = createLogger('walk.modal');
 	let recapLoading = false;
+	let confirmNewWalk = false;
 	let tick = 0;
 	let tickInterval;
 
@@ -29,7 +38,11 @@
 	});
 	onDestroy(() => clearInterval(tickInterval));
 
-	$: stats = $walk && tick >= 0 ? getWalkStats($walk) : null;
+	$: if (!visible) {
+		confirmNewWalk = false;
+	}
+	$: stats = $walkActive && tick >= 0 ? getWalkStats($walk) : null;
+	$: recapCurrent = $walk?.recap && $walk.recap.key === getWalkRecapKey($walk);
 	$: stopPlaces = ($walk?.stops || []).map((stop, index) =>
 		stop.placeIdentities
 			.map((identity) => $walk.visitedPlaces.find((place) => place.identity === identity))
@@ -59,6 +72,16 @@
 			recapLoading = false;
 		}
 	};
+
+	const handleStartWalk = () => {
+		visible = false;
+		beginWalk();
+	};
+
+	const handleNewWalk = () => {
+		visible = false;
+		startNewWalk();
+	};
 </script>
 
 <Modal
@@ -73,33 +96,23 @@
 				<TrackingOutline size="lg" />
 			</div>
 			<div class="ml-1 flex-auto text-xl">Walk</div>
-			{#if $walkActive}
-				<span class="ml-4 rounded-full bg-primary-100 px-2 py-0.5 text-xs text-primary-800">
-					in progress
-				</span>
-			{/if}
 		</div>
 	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
 		<div class="p-4">
-			{#if !$walk}
+			{#if !$walkActive}
 				<Alert color="primary">
 					<i>
-						Start a walk to keep track of the places you visit and the stories you read. Your guide
-						remembers the route, avoids repeating itself, and marks places you have already seen.
+						No walk in progress. Start a walk to explore the places around you; your guide remembers
+						the route, avoids repeating itself, and marks places you have already seen.
 					</i>
 				</Alert>
 				<div class="mt-4 flex justify-end">
-					<Button on:click={() => walk.start()}>
+					<Button on:click={handleStartWalk}>
 						<TrackingOutline class="mr-2" />Start walk
 					</Button>
 				</div>
 			{:else}
-				{#if $walk.endedAt}
-					<Alert color="green" class="mb-4 text-sm">
-						Walk ended at {formatWalkTime($walk.endedAt)}.
-					</Alert>
-				{/if}
 				<div class="grid grid-cols-4 gap-2 text-center">
 					<div class="rounded-lg bg-gray-100 p-2">
 						<div class="text-lg font-bold text-primary-800">
@@ -125,16 +138,16 @@
 					</div>
 				</div>
 
-				{#if $walk.endedAt}
+				{#if $walk.stops.length > 0}
 					<hr class="my-4" />
-					{#if $walk.recap}
+					{#if recapCurrent}
 						<div class="prose prose-sm max-w-none">
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-							{@html marked($walk.recap)}
+							{@html marked($walk.recap.text)}
 						</div>
 					{:else}
 						<div class="flex items-center justify-between gap-2">
-							<span class="text-sm text-gray-600">Let your guide sum up the walk.</span>
+							<span class="text-sm text-gray-600">Let your guide sum up the walk so far.</span>
 							<Button size="sm" outline on:click={loadRecap} disabled={recapLoading}>
 								{#if recapLoading}
 									<Spinner size="4" class="mr-2" />Summarizing...
@@ -201,16 +214,23 @@
 				{/if}
 
 				<hr class="my-4" />
-				<div class="flex justify-end gap-2">
-					{#if $walkActive}
-						<Button color="red" outline size="sm" on:click={() => walk.end()}>End walk</Button>
-					{:else}
-						<Button color="alternative" size="sm" on:click={() => walk.discard()}>Discard</Button>
-						<Button size="sm" on:click={() => walk.start()}>
+				{#if confirmNewWalk}
+					<Alert color="yellow" class="text-sm">
+						<div>Starting a new walk discards this walk and locates you again.</div>
+						<div class="mt-2 flex justify-end gap-2">
+							<Button color="alternative" size="xs" on:click={() => (confirmNewWalk = false)}>
+								Cancel
+							</Button>
+							<Button color="red" size="xs" on:click={handleNewWalk}>Start new walk</Button>
+						</div>
+					</Alert>
+				{:else}
+					<div class="flex justify-end">
+						<Button color="alternative" size="sm" on:click={() => (confirmNewWalk = true)}>
 							<TrackingOutline class="mr-2" />Start new walk
 						</Button>
-					{/if}
-				</div>
+					</div>
+				{/if}
 			{/if}
 		</div>
 	</div>
