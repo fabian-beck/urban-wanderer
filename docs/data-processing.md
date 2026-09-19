@@ -592,16 +592,16 @@ Fetches shops, food and drink venues, entertainment amenities, and commercial la
 
 ## Caching Summary
 
-| Cache             | Storage        | TTL     | Key format                                             | Max entries                                    |
-| ----------------- | -------------- | ------- | ------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------- | --------- |
-| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_{radius}`          | 50 total OSM entries                           |
-| OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
-| OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
-| OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`          | (shared 50 limit)                              |
-| Place analysis    | localStorage   | 7 days  | `place.title` (within `urban-wanderer-analysis-cache`) | unbounded                                      |
-| Insights          | localStorage   | 7 days  | `{article[0:100]}                                      | {lang}`(within`urban-wanderer-insights-cache`) | unbounded                                   |
-| Facts             | localStorage   | 7 days  | `{title}                                               | {sortedPropertyNames}                          | {lang}`(within`urban-wanderer-facts-cache`) | unbounded |
-| Article summaries | in-memory only | session | full article text                                      | unbounded                                      |
+| Cache             | Storage        | TTL     | Key format                                                                     | Max entries          |
+| ----------------- | -------------- | ------- | ------------------------------------------------------------------------------ | -------------------- |
+| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_{radius}`                                  | 50 total OSM entries |
+| OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`                                     | (shared 50 limit)    |
+| OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`                                     | (shared 50 limit)    |
+| OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`                                  | (shared 50 limit)    |
+| Place analysis    | localStorage   | 7 days  | `place.title` (within `urban-wanderer-analysis-cache`)                         | unbounded            |
+| Insights          | localStorage   | 7 days  | `{article[0:100]}\|{lang}` (within `urban-wanderer-insights-cache`)            | unbounded            |
+| Facts             | localStorage   | 7 days  | `{title}\|{sortedPropertyNames}\|{lang}` (within `urban-wanderer-facts-cache`) | unbounded            |
+| Article summaries | in-memory only | session | full article text                                                              | unbounded            |
 
 OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first). Analysis/insights/facts caches filter expired entries on module load. Summaries are lost on page refresh.
 
