@@ -91,6 +91,9 @@ export const AI_MODELS = {
 
 export const AI_SPEECH_MODEL = 'gpt-4o-mini-tts';
 
+// Model used by the headless evaluation scripts to judge generated content
+export const AI_EVAL_JUDGE_MODEL = 'gpt-5.6-terra';
+
 // Reasoning effort per task: 'low' for classification and short free-text answers,
 // 'medium' where schema-constrained extraction or longer narration benefits from deliberation.
 export const AI_REASONING_EFFORT = {
@@ -101,7 +104,8 @@ export const AI_REASONING_EFFORT = {
 	COMMENT: 'low',
 	FACTS: 'medium',
 	HISTORY: 'medium',
-	STORY: 'medium'
+	STORY: 'medium',
+	JUDGE: 'medium'
 };
 
 export const AI_ANALYSIS_BATCH_SIZE = 10;

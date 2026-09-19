@@ -502,6 +502,10 @@ async function main() {
 	if (args.context) {
 		fixedContext = { ...JSON.parse(readFileSync(args.context, 'utf8')), id: 1 };
 		contexts.set('fixed', fixedContext);
+		writeFileSync(
+			path.join(args.out, 'contexts', 'context-1.json'),
+			JSON.stringify(fixedContext, null, 2)
+		);
 		out(
 			`Using fixed context from ${displayPath(args.context)}: here=${fixedContext.placesHere.length}` +
 				` nearby=${fixedContext.placesNearby.length} surrounding=${fixedContext.placesSurrounding.length}`
