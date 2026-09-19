@@ -57,7 +57,7 @@
 		{error}
 	</div>
 {:else if comment}
-	<div class="text-gray-700">
+	<div class="text-gray-700" data-testid="location-comment">
 		<i>{comment}</i>
 	</div>
 {:else}

@@ -87,7 +87,16 @@ npm run format        # Format code with Prettier
 # Mobile Development
 npx cap sync          # Sync web code to native projects
 # Use Android Studio to build/run the Android app
+
+# Demo Video
+npm run demo:video    # Record a scripted user journey with Playwright (see scripts/demo-video/)
 ```
+
+### Demo Video Recording (`scripts/demo-video/`)
+
+- **record-demo.mjs**: Builds, serves (`vite preview`), runs a cache warm-up pass, then records a paced pass in an emulated phone; writes WebM/MP4 and `steps.json` to `demo-video/`
+- **journey.mjs**: The scripted user journey (jump to location, browse lists, place details, story, preferences, search); relies on `data-testid` attributes in the components
+- **config.mjs**: Start location, search query, seeded preferences, device emulation, pacing and timeouts
 
 ## Mobile Deployment
 

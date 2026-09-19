@@ -24,6 +24,7 @@
 			placeDetailsVisible.set(place.title);
 		}}
 		class="flex w-full flex-col align-top {isCompact ? 'min-h-8' : 'min-h-10'}"
+		data-testid="place-item"
 	>
 		<div class="w-row flex w-full {isCompact ? 'space-x-2' : '-ml-2 space-x-2'}">
 			<div class={isCompact ? 'h-10 w-10 shrink-0' : 'h-16 w-16 shrink-0'}>

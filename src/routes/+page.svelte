@@ -85,6 +85,7 @@
 					urlCoordinates = null;
 				}}
 				class="w-full"
+				data-testid="jump-button"
 			>
 				Jump to {urlCoordinates.latitude.toFixed(4)}, {urlCoordinates.longitude.toFixed(4)}
 			</Button>

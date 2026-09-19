@@ -194,6 +194,7 @@
 							on:keydown={(e) => e.key === 'Enter' && (isExpanded = !isExpanded)}
 							role="button"
 							tabindex="0"
+							data-testid="place-summary"
 							class={`cursor-pointer ${isExpanded ? '' : 'line-clamp-3'}`}
 						>
 							{summary}

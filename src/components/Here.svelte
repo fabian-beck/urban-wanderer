@@ -8,7 +8,7 @@
 
 <div class="mb-2 flex items-center text-primary-800">
 	<FlagOutline />
-	<h2 class="ml-2 flex-auto text-xl">Here</h2>
+	<h2 class="ml-2 flex-auto text-xl" data-testid="section-here">Here</h2>
 </div>
 
 {#if $placesHere?.length > 0}

@@ -174,6 +174,7 @@
 					<div
 						on:click={handleStoryClick}
 						on:keydown={handleStoryKeydown}
+						data-testid="story-text"
 						role="button"
 						tabindex="0"
 					>
@@ -200,6 +201,7 @@
 					<div class="mb-2 flex justify-end">
 						<Button
 							on:click={updateStory}
+							data-testid="story-more"
 							pill
 							size="xs"
 							outline

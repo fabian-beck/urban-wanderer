@@ -8,7 +8,7 @@
 
 <div class="mb-2 flex items-center text-primary-800">
 	<LandmarkOutline />
-	<h2 class="ml-2 flex-auto text-xl">Nearby</h2>
+	<h2 class="ml-2 flex-auto text-xl" data-testid="section-nearby">Nearby</h2>
 </div>
 {#if $placesNearby}
 	{@const filteredPlaces = $placesNearby.filter((place) => place.stars > 1)}

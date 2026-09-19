@@ -32,6 +32,7 @@
 		<h1 class="ml-2">{appName}</h1>
 	</NavBrand>
 	<NavHamburger
+		data-testid="nav-menu"
 		onClick={() => {
 			hideNavUl = !hideNavUl;
 		}}
@@ -39,6 +40,7 @@
 	<NavUl hidden={hideNavUl} classUl="bg-white" slideParams={{ duration: 150, delay: 0 }}>
 		<NavLi
 			class="bg-white"
+			data-testid="nav-preferences"
 			on:click={() => {
 				preferencesVisible = true;
 				hideNavUl = true;
@@ -48,6 +50,7 @@
 		>
 		<NavLi
 			class="bg-white"
+			data-testid="nav-random"
 			on:click={() => {
 				hideNavUl = true;
 				updateRandom();
@@ -55,6 +58,7 @@
 		>
 		<NavLi
 			class="bg-white"
+			data-testid="nav-search"
 			on:click={() => {
 				hideNavUl = true;
 				searchModalVisible = true;
@@ -86,7 +90,9 @@
 			>
 				Cancel
 			</Button>
-			<Button type="submit" disabled={!searchQuery.trim()}>Search</Button>
+			<Button type="submit" data-testid="search-submit" disabled={!searchQuery.trim()}
+				>Search</Button
+			>
 		</div>
 	</form>
 </Modal>

@@ -33,6 +33,7 @@
 		>
 			<Button
 				on:click={() => (storyVisible = true)}
+				data-testid="story-button"
 				pill
 				class="!p-2"
 				color="alternative"
@@ -47,6 +48,7 @@
 		>
 			<Button
 				on:click={() => (historyVisible = true)}
+				data-testid="history-button"
 				pill
 				class="!p-2"
 				color="alternative"
@@ -78,7 +80,7 @@
 		{/if}
 	</div>
 	<div class="ml-2 flex-none">
-		<Button on:click={update} pill class="!p-2" disabled={loading}
+		<Button on:click={update} data-testid="refresh-button" pill class="!p-2" disabled={loading}
 			><RefreshOutline size="xl" /></Button
 		>
 	</div>

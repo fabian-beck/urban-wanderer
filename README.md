@@ -43,6 +43,19 @@ You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
 
+## Recording a Demo Video
+
+A scripted user journey can be recorded as a video with Playwright:
+
+```bash
+npx playwright install chromium   # once
+npm run demo:video
+```
+
+The script builds the app, serves it with `vite preview`, runs the journey once without pauses to fill the AI and geocoding caches, and then records a second, paced pass in an emulated phone. The output lands in `demo-video/` as WebM (plus MP4 if `ffmpeg` is on the PATH or set via `FFMPEG_PATH`) together with `steps.json`, which lists the start and end time of each journey step for later editing.
+
+Options: `--skip-build` reuses the existing build, `--skip-warmup` reuses the cached storage state from a previous run, `--url <base>` drives an already running server, and `--headed` shows the browser. The start location, search query, seeded preferences, device size and pacing are defined in `scripts/demo-video/config.mjs`; the journey steps live in `scripts/demo-video/journey.mjs`.
+
 # Run as Android App (supported by Capacitor)
 
 ## Build a Debug APK
