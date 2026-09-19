@@ -75,19 +75,32 @@ export const FAMILIARITY = [
 
 export const AI_MODELS = {
 	SIMPLE: [
-		{ value: 'gpt-5.4-nano', name: 'GPT-5.4 Nano (fastest)' },
-		{ value: 'gpt-5.4-mini', name: 'GPT-5.4 Mini (default)' },
-		{ value: 'gpt-5.4', name: 'GPT-5.4 (higher quality)' },
-		{ value: 'gpt-5.5', name: 'GPT-5.5 (best quality)' }
+		{ value: 'gpt-5.6-luna', name: 'GPT-5.6 Luna (default, fastest)' },
+		{ value: 'gpt-5.6-terra', name: 'GPT-5.6 Terra (higher quality)' },
+		{ value: 'gpt-5.6-sol', name: 'GPT-5.6 Sol (best quality)' }
 	],
 	ADVANCED: [
-		{ value: 'gpt-5.4-mini', name: 'GPT-5.4 Mini (faster)' },
-		{ value: 'gpt-5.4', name: 'GPT-5.4 (default)' },
-		{ value: 'gpt-5.5', name: 'GPT-5.5 (best quality)' }
+		{ value: 'gpt-5.6-luna', name: 'GPT-5.6 Luna (faster)' },
+		{ value: 'gpt-5.6-terra', name: 'GPT-5.6 Terra (default)' },
+		{ value: 'gpt-5.6-sol', name: 'GPT-5.6 Sol (best quality)' }
 	],
-	DEFAULT_SIMPLE: 'gpt-5.4-mini',
-	DEFAULT_ADVANCED: 'gpt-5.4'
+	DEFAULT_SIMPLE: 'gpt-5.6-luna',
+	DEFAULT_ADVANCED: 'gpt-5.6-terra'
 };
 
-export const AI_REASONING_EFFORT = 'low';
+export const AI_SPEECH_MODEL = 'gpt-4o-mini-tts';
+
+// Reasoning effort per task: 'low' for classification and short free-text answers,
+// 'medium' where schema-constrained extraction or longer narration benefits from deliberation.
+export const AI_REASONING_EFFORT = {
+	ANALYSIS: 'low',
+	TRANSLATION: 'low',
+	SUMMARY: 'low',
+	INSIGHTS: 'low',
+	COMMENT: 'low',
+	FACTS: 'medium',
+	HISTORY: 'medium',
+	STORY: 'medium'
+};
+
 export const AI_ANALYSIS_BATCH_SIZE = 10;

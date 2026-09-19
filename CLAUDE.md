@@ -45,7 +45,7 @@ Comprehensive classification system with 25+ place types:
 
 **AI Modules:**
 
-- **ai-core.js**: OpenAI client configuration
+- **ai-core.js**: OpenAI client configuration and model tier selection (`getAiModel`); model IDs (`AI_MODELS`), the TTS model (`AI_SPEECH_MODEL`) and per-task reasoning effort (`AI_REASONING_EFFORT`) are defined in `src/constants/ui-config.js`
 - **ai-analysis.js**: Place classification, labeling, and importance rating
 - **ai-translation.js**: Multi-language place name translation and deduplication
 - **ai-story.js**: AI-powered location storytelling

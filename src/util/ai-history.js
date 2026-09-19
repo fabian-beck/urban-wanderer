@@ -314,7 +314,7 @@ If the list of local and fallback places is empty or the text is too short, leav
 	const response = await openai.responses.create({
 		model: getAiModel('advanced', preferences),
 		reasoning: {
-			effort: AI_REASONING_EFFORT
+			effort: AI_REASONING_EFFORT.HISTORY
 		},
 		input: [
 			{

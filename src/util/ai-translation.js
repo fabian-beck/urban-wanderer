@@ -41,7 +41,7 @@ IMPORTANT: In case of doubt, skip the place. Fewer translations are better. Then
 			openai.responses.create({
 				model,
 				reasoning: {
-					effort: AI_REASONING_EFFORT
+					effort: AI_REASONING_EFFORT.TRANSLATION
 				},
 				input: [
 					{ role: 'system', content: instructions },

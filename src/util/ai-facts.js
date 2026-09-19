@@ -99,7 +99,7 @@ export async function summarizeArticle(article, preferences) {
 	const response = await openai.responses.create({
 		model: getAiModel('simple', preferences),
 		reasoning: {
-			effort: AI_REASONING_EFFORT
+			effort: AI_REASONING_EFFORT.SUMMARY
 		},
 		input: [
 			{
@@ -154,7 +154,7 @@ ${place.article || place.description || place.snippet || '[no description availa
 	const response = await openai.responses.create({
 		model: getAiModel('advanced', preferences),
 		reasoning: {
-			effort: AI_REASONING_EFFORT
+			effort: AI_REASONING_EFFORT.FACTS
 		},
 		input: initialMessage,
 		text: {
@@ -233,7 +233,7 @@ Answer in language '${preferences.lang}'.
 	const response = await openai.responses.create({
 		model: getAiModel('simple', preferences),
 		reasoning: {
-			effort: AI_REASONING_EFFORT
+			effort: AI_REASONING_EFFORT.INSIGHTS
 		},
 		input: [
 			{

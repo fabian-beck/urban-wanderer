@@ -1,6 +1,7 @@
 import { openai } from './ai-core.js';
 import { get } from 'svelte/store';
 import { createLogger } from './logger.js';
+import { AI_SPEECH_MODEL } from '../constants/ui-config.js';
 
 const logger = createLogger('ai.speech');
 
@@ -30,7 +31,7 @@ export async function textToSpeech(text, audioState, preferences) {
 You are ${preferences.guideCharacter} city guide and speak accordingly.
 `;
 	const response = await openai.audio.speech.create({
-		model: 'gpt-4o-mini-tts',
+		model: AI_SPEECH_MODEL,
 		voice: 'alloy',
 		instructions,
 		speed: 1.2,

@@ -200,7 +200,7 @@ async function analyzePlaceBatch(places, preferences) {
 			openai.responses.create({
 				model,
 				reasoning: {
-					effort: AI_REASONING_EFFORT
+					effort: AI_REASONING_EFFORT.ANALYSIS
 				},
 				input: [
 					{

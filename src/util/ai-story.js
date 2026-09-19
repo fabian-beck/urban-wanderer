@@ -169,7 +169,7 @@ Give the text a headline marked in bold font.`
 		model: getAiModel('advanced', preferences),
 		store: true,
 		reasoning: {
-			effort: AI_REASONING_EFFORT
+			effort: AI_REASONING_EFFORT.STORY
 		}
 	};
 
