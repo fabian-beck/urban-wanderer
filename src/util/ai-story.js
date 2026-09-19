@@ -188,6 +188,7 @@ Give the text a headline marked in bold font.`
 
 	return {
 		text: response.output_text,
-		responseId: response.id
+		responseId: response.id,
+		usage: response.usage
 	};
 }

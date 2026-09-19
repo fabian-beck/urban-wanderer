@@ -87,7 +87,14 @@ npm run format        # Format code with Prettier
 # Mobile Development
 npx cap sync          # Sync web code to native projects
 # Use Android Studio to build/run the Android app
+
+# Evaluation
+npm run eval:stories -- --lat <lat> --lon <lon> [--vary ...] [--retries n] [--segments n] [--dry-run]
 ```
+
+## Headless Evaluation
+
+`scripts/story-personalization-eval.mjs` generates stories for one location under a full-factorial set of preference variations (guide character, familiarity, labels, language, model) and runs the app's own code in Node: `updateLocation(coords, { background: false })` and `loadMetadata({ loadImages: false })` from `src/stores.js` build the place context, `generateStory` from `src/util/ai-story.js` produces the segments. A file-backed `localStorage` stand-in in `.eval-cache/` keeps the app caches across runs. The script prints the number of configurations, story requests and pipeline runs before asking for confirmation, then generates story chains in parallel. Results go to `eval-results/stories/<timestamp>/` (`results.jsonl`, `stories.md`, `contexts/`, `run.json`). `--context <file>` reuses a saved place context to isolate the story prompt effect. Both output directories are gitignored.
 
 ## Mobile Deployment
 
