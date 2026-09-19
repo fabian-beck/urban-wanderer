@@ -47,7 +47,7 @@ Comprehensive classification system with 25+ place types:
 
 **AI Modules:**
 
-- **ai-core.js**: OpenAI client configuration
+- **ai-core.js**: OpenAI client configuration and model tier selection (`getAiModel`); model IDs (`AI_MODELS`), the TTS model (`AI_SPEECH_MODEL`) and per-task reasoning effort (`AI_REASONING_EFFORT`) are defined in `src/constants/ui-config.js`
 - **ai-analysis.js**: Place classification, labeling, and importance rating
 - **ai-translation.js**: Multi-language place name translation and deduplication
 - **ai-story.js**: AI-powered location storytelling
@@ -232,3 +232,4 @@ This application demonstrates modern web-to-mobile development patterns, AI inte
 
 - After bigger changes, check CLAUDE.md if it requires updates.
 - when some request required considerable code search, consider updating CLAUDE.md to easier get the right context.
+- Record bugs and defects discovered incidentally (outside the scope of the current task) as GitHub issues instead of fixing them inline.

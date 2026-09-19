@@ -51,7 +51,7 @@
 	}
 	$: stats = $walkActive && tick >= 0 ? getWalkStats($walk) : null;
 	$: recapCurrent = $walk?.recap?.headline && $walk.recap.key === getWalkRecapKey($walk);
-	$: recapPlaceEmoji = (title) => {
+	const recapPlaceEmoji = (title) => {
 		const place = $walk?.visitedPlaces.find((candidate) => candidate.title === title);
 		return CLASSES[place?.cls]?.emoji || '';
 	};

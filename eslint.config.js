@@ -18,6 +18,16 @@ export default [
 		}
 	},
 	{
+		// Findings newly reported by eslint 10 / eslint-plugin-svelte 3, tracked in issue #9
+		rules: {
+			'no-useless-assignment': 'warn',
+			'svelte/require-each-key': 'warn',
+			'svelte/no-navigation-without-resolve': 'warn',
+			'svelte/prefer-svelte-reactivity': 'warn',
+			'svelte/no-immutable-reactive-statements': 'warn'
+		}
+	},
+	{
 		ignores: ['build/', '.svelte-kit/', 'dist/', 'android/']
 	}
 ];

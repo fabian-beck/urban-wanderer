@@ -83,13 +83,20 @@ const DEFAULT_PREFERENCES = {
 
 const LEGACY_AI_MODEL_MIGRATIONS = {
 	simple: {
-		'gpt-5-nano': 'gpt-5.4-nano',
+		'gpt-5-nano': AI_MODELS.DEFAULT_SIMPLE,
 		'gpt-5-mini': AI_MODELS.DEFAULT_SIMPLE,
-		'gpt-5': 'gpt-5.4'
+		'gpt-5': 'gpt-5.6-terra',
+		'gpt-5.4-nano': AI_MODELS.DEFAULT_SIMPLE,
+		'gpt-5.4-mini': AI_MODELS.DEFAULT_SIMPLE,
+		'gpt-5.4': 'gpt-5.6-terra',
+		'gpt-5.5': 'gpt-5.6-sol'
 	},
 	advanced: {
-		'gpt-5-mini': 'gpt-5.4-mini',
-		'gpt-5': AI_MODELS.DEFAULT_ADVANCED
+		'gpt-5-mini': 'gpt-5.6-luna',
+		'gpt-5': AI_MODELS.DEFAULT_ADVANCED,
+		'gpt-5.4-mini': 'gpt-5.6-luna',
+		'gpt-5.4': AI_MODELS.DEFAULT_ADVANCED,
+		'gpt-5.5': 'gpt-5.6-sol'
 	}
 };
 

@@ -183,7 +183,7 @@ When translation is triggered, the model is prompted to translate only place nam
 { "title": "original", "translation": "translated" }
 ```
 
-**Model:** simple (default: gpt-5.4-mini), **reasoning effort:** low
+**Model:** simple (default: gpt-5.6-luna), **reasoning effort:** low
 
 If the translation differs from the original title, the place title is rewritten to `"{translation} ({original})"`.
 
@@ -238,7 +238,7 @@ The extracted text is stored as `place.description`.
 ## Stage 6 — AI Place Analysis
 
 **Source:** [src/util/ai-analysis.js](../src/util/ai-analysis.js) `analyzePlaces()`  
-**Model:** simple (default: gpt-5.4-mini)
+**Model:** simple (default: gpt-5.6-luna)
 **Reasoning effort:** low
 **Cache:** localStorage, key = `place.title`, TTL = 7 days
 
@@ -399,7 +399,7 @@ If the page has a `wikibase_item` property, `place.wikidata` is set from it.
 After article texts load, insights are extracted for `placesHere` and `placesSurrounding` that have an `article` (full text). Each place's insights are extracted concurrently.
 
 **Source:** [src/util/ai-facts.js](../src/util/ai-facts.js) `extractInsightsFromArticle()`  
-**Model:** simple (default: gpt-5.4-mini)
+**Model:** simple (default: gpt-5.6-luna)
 **Cache:** localStorage key `urban-wanderer-insights-cache`, key = `{first 100 chars of article}|{lang}`, TTL = 7 days
 
 The model is prompted to return a bullet-point list of the most important visit-relevant insights from the article. Output is unstructured text, not JSON. Stored in `place.insights`.
@@ -409,8 +409,8 @@ The model is prompted to return a bullet-point list of the most important visit-
 ## Stage 9 — Story Generation
 
 **Source:** [src/util/ai-story.js](../src/util/ai-story.js) `generateStory()`  
-**Model:** advanced (default: gpt-5.4)
-**Reasoning effort:** low
+**Model:** advanced (default: gpt-5.6-terra)
+**Reasoning effort:** medium
 **Persistence:** `store: true`, uses `previous_response_id` for continuation
 
 Story generation runs after `loadMetadata()` completes. It uses the OpenAI Responses API with server-side conversation storage.
@@ -461,7 +461,7 @@ These functions are called from UI components when the user opens place detail v
 ### Fact Extraction
 
 **Source:** [src/util/ai-facts.js](../src/util/ai-facts.js) `extractPlaceFacts()`  
-**Model:** advanced (default: gpt-5.4)
+**Model:** advanced (default: gpt-5.6-terra)
 **Cache:** localStorage key `urban-wanderer-facts-cache`, key = `{title}|{sorted property names}|{lang}`, TTL = 7 days
 
 Facts are extracted using a dynamic JSON schema derived from the place's class definition in `place-classes.js`. The schema is built from `factsProperties` (a dict of property name → JSON schema fragment).
@@ -487,7 +487,7 @@ Null normalization post-processing strips various null representations: `null`, 
 ### Article Summary
 
 **Source:** [src/util/ai-facts.js](../src/util/ai-facts.js) `summarizeArticle()`  
-**Model:** simple (default: gpt-5.4-mini)
+**Model:** simple (default: gpt-5.6-luna)
 **Cache:** in-memory only (`summaryCache`, keyed by full article text)
 
 Returns a short paragraph summarizing the place. Not persisted to localStorage.
@@ -501,7 +501,7 @@ Builds a structured event timeline. Selects places with `stars > 2` from here an
 ### Location Comment
 
 **Source:** [src/util/ai-comment.js](../src/util/ai-comment.js) `generateLocationComment()`  
-**Model:** advanced (default: gpt-5.4)
+**Model:** advanced (default: gpt-5.6-terra)
 
 Generates a single-sentence characterization of the user's position using the top 5 nearby places and top 3 surrounding places as context.
 
@@ -593,16 +593,16 @@ Fetches shops, food and drink venues, entertainment amenities, and commercial la
 
 ## Caching Summary
 
-| Cache             | Storage        | TTL     | Key format                                             | Max entries                                    |
-| ----------------- | -------------- | ------- | ------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------- | --------- |
-| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_{radius}`          | 50 total OSM entries                           |
-| OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
-| OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
-| OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`          | (shared 50 limit)                              |
-| Place analysis    | localStorage   | 7 days  | `place.title` (within `urban-wanderer-analysis-cache`) | unbounded                                      |
-| Insights          | localStorage   | 7 days  | `{article[0:100]}                                      | {lang}`(within`urban-wanderer-insights-cache`) | unbounded                                   |
-| Facts             | localStorage   | 7 days  | `{title}                                               | {sortedPropertyNames}                          | {lang}`(within`urban-wanderer-facts-cache`) | unbounded |
-| Article summaries | in-memory only | session | full article text                                      | unbounded                                      |
+| Cache             | Storage        | TTL     | Key format                                                                     | Max entries          |
+| ----------------- | -------------- | ------- | ------------------------------------------------------------------------------ | -------------------- |
+| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_{radius}`                                  | 50 total OSM entries |
+| OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`                                     | (shared 50 limit)    |
+| OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`                                     | (shared 50 limit)    |
+| OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`                                  | (shared 50 limit)    |
+| Place analysis    | localStorage   | 7 days  | `place.title` (within `urban-wanderer-analysis-cache`)                         | unbounded            |
+| Insights          | localStorage   | 7 days  | `{article[0:100]}\|{lang}` (within `urban-wanderer-insights-cache`)            | unbounded            |
+| Facts             | localStorage   | 7 days  | `{title}\|{sortedPropertyNames}\|{lang}` (within `urban-wanderer-facts-cache`) | unbounded            |
+| Article summaries | in-memory only | session | full article text                                                              | unbounded            |
 
 OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first). Analysis/insights/facts caches filter expired entries on module load. Summaries are lost on page refresh.
 
@@ -614,12 +614,12 @@ OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first
 
 **Model tiers** (user-configurable, defaults shown):
 
-| Tier     | Default        | Options                                      |
-| -------- | -------------- | -------------------------------------------- |
-| Simple   | `gpt-5.4-mini` | gpt-5.4-nano, gpt-5.4-mini, gpt-5.4, gpt-5.5 |
-| Advanced | `gpt-5.4`      | gpt-5.4-mini, gpt-5.4, gpt-5.5               |
+| Tier     | Default         | Options                                               |
+| -------- | --------------- | ----------------------------------------------------- |
+| Simple   | `gpt-5.6-luna`  | gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol              |
+| Advanced | `gpt-5.6-terra` | gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol, gpt-6-astra |
 
-**Reasoning effort:** `'low'` for all calls (constant `AI_REASONING_EFFORT`).
+**Reasoning effort:** per task via the `AI_REASONING_EFFORT` map — `'low'` for place analysis, translation, article summary, insights, and location comment; `'medium'` for fact extraction, historic events, and story generation. Supported values of the GPT-5.6 family are `none`, `low`, `medium` (API default), `high`, `xhigh`, and `max`; `gpt-6-astra` rejects `none`.
 
 **API used:** OpenAI Responses API (`openai.responses.create()`), not the Chat Completions API.
 

@@ -1,5 +1,5 @@
 import { openai, getAiModel } from './ai-core.js';
-import { AI_REASONING_EFFORT, AI_RECAP_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
+import { AI_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
 import { createLogger } from './logger.js';
 import {
 	buildWalkPromptContext,
@@ -190,7 +190,7 @@ Give the text a headline marked in bold font.`
 		model: getAiModel('advanced', preferences),
 		store: true,
 		reasoning: {
-			effort: AI_REASONING_EFFORT
+			effort: AI_REASONING_EFFORT.STORY
 		}
 	};
 
@@ -257,7 +257,7 @@ Remember that you enact a ${preferences.guideCharacter} guide and take this role
 	const response = await openai.responses.create({
 		model: getAiModel('advanced', preferences),
 		reasoning: {
-			effort: AI_RECAP_REASONING_EFFORT
+			effort: AI_REASONING_EFFORT.WALK_RECAP
 		},
 		input: [{ role: 'system', content: instructions }],
 		text: {
