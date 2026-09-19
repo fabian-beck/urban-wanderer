@@ -1,5 +1,5 @@
 import { openai, getAiModel } from './ai-core.js';
-import { AI_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
+import { AI_REASONING_EFFORT, AI_RECAP_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
 import { createLogger } from './logger.js';
 import {
 	buildWalkPromptContext,
@@ -213,47 +213,91 @@ Give the text a headline marked in bold font.`
 	};
 }
 
-// summarize the walk so far in the voice of the guide
+// synthesize the walk so far: highlights, cross-stop connections, timeline, missed places, open threads
 export async function generateWalkRecap(walk, preferences) {
-	const messages = [
-		{
-			role: 'system',
-			content: `
+	const instructions = `
 You are a city guide: ${preferences.guideCharacter}, and always concise and factual.
 
-The user asks for a recap of the walk so far. Write it in language '${preferences.lang}'.
+The user asks for a recap of the walk so far. Answer in language '${preferences.lang}'.
+Your value is synthesis across stops: say what no single stop could tell. Do not retell the stops in order.
 
-${buildWalkRecapContext(walk)}
+${buildWalkRecapContext(walk, preferences)}
 
 ----------------------------------------------
 
 # IMPORTANT INSTRUCTIONS:
 
-Write in past tense, addressing the user directly.
-Follow the order of the stops and highlight the most interesting visited places; skip stops without notable places.
-Only use facts given above or told in the listed stories; do not invent details and do not repeat whole stories.
-Write one to three short paragraphs, and give the text a headline marked in bold font.
-Avoid generic conclusion statements; end with a concrete, place-specific detail.
-Do not welcome the user, do not ask for feedback, and do not mention exact addresses or coordinates.
+Fill the JSON fields as follows; use only the material given above and never invent facts.
+- headline: a short, specific title for this walk (no markdown).
+- highlights: two to four visited places that matter most for the user's interests, ordered by relevance. "title" must be the exact title of a visited place; "text" gives one or two sentences with a concrete detail why this place stood out for this user.
+- connections: one to three threads that link at least two different stops or places (shared persons, eras, building styles, events, landscape, institutions). "title" names the thread; "text" explains it in two or three sentences and names the places involved. Leave the list empty if the material does not support a real connection.
+- timeline: up to eight dated entries ordered by year ascending, drawn from the historic events and place facts above and tied to visited places or the walked area; "year" is a number (BC negative), "date_string" a readable date or range, "text" one sentence. Leave empty if no dates are available.
+- missed: up to three passed-by places from the list above that fit the user's interests and are worth a return visit. "title" must be the exact listed title; "text" one sentence why.
+- openThreads: up to three short questions or things to look up later that this walk raised, each anchored in a named place.
 
+Address the user directly and write in past tense where you refer to the walk.
+Avoid generic praise and generic conclusions; every sentence should carry a concrete detail.
 Remember that you enact a ${preferences.guideCharacter} guide and take this role seriously towards exaggeration and over-enthusiasm.
-`
-		},
-		{ role: 'user', content: 'Sum up my walk.' }
-	];
+`;
 	logger.info('Generating walk recap', {
 		stops: walk.stops.length,
 		visitedPlaces: walk.visitedPlaces.length,
 		stories: walk.stories.length
 	});
-	logger.debug('Walk recap prompt', { messages });
+	logger.debug('Walk recap prompt', { instructions });
+	const titledEntry = {
+		type: 'object',
+		properties: {
+			title: { type: 'string' },
+			text: { type: 'string' }
+		},
+		required: ['title', 'text'],
+		additionalProperties: false
+	};
 	const response = await openai.responses.create({
 		model: getAiModel('advanced', preferences),
 		reasoning: {
-			effort: AI_REASONING_EFFORT
+			effort: AI_RECAP_REASONING_EFFORT
 		},
-		input: messages
+		input: [{ role: 'system', content: instructions }],
+		text: {
+			format: {
+				type: 'json_schema',
+				name: 'walk_recap',
+				schema: {
+					type: 'object',
+					properties: {
+						headline: { type: 'string' },
+						highlights: { type: 'array', items: titledEntry },
+						connections: { type: 'array', items: titledEntry },
+						timeline: {
+							type: 'array',
+							items: {
+								type: 'object',
+								properties: {
+									year: { type: 'number' },
+									date_string: { type: 'string' },
+									text: { type: 'string' }
+								},
+								required: ['year', 'date_string', 'text'],
+								additionalProperties: false
+							}
+						},
+						missed: { type: 'array', items: titledEntry },
+						openThreads: { type: 'array', items: { type: 'string' } }
+					},
+					required: ['headline', 'highlights', 'connections', 'timeline', 'missed', 'openThreads'],
+					additionalProperties: false
+				}
+			}
+		}
 	});
-	logger.info('Walk recap generated', { characters: response.output_text.length });
-	return response.output_text;
+	const recap = JSON.parse(response.output_text);
+	logger.info('Walk recap generated', {
+		highlights: recap.highlights.length,
+		connections: recap.connections.length,
+		timeline: recap.timeline.length,
+		missed: recap.missed.length
+	});
+	return recap;
 }

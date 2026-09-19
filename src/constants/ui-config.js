@@ -90,4 +90,5 @@ export const AI_MODELS = {
 };
 
 export const AI_REASONING_EFFORT = 'low';
+export const AI_RECAP_REASONING_EFFORT = 'medium';
 export const AI_ANALYSIS_BATCH_SIZE = 10;

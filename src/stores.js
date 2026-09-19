@@ -18,9 +18,12 @@ import { analyzePlaces, getLastAnalysisCacheStats } from './util/ai-analysis.js'
 import { groupDuplicatePlaces } from './util/ai-translation.js';
 import { generateStory } from './util/ai-story.js';
 import {
+	addWalkComment,
+	addWalkEvents,
 	addWalkStop,
 	addWalkStory,
 	createWalk,
+	enrichWalkPlaces,
 	getPreviouslyVisitedIdentities,
 	getWalkRecapKey,
 	getWalkResumeDistance,
@@ -499,6 +502,11 @@ function createWalkStore() {
 		set(walk);
 		persist(walk);
 	};
+	const commitIfChanged = (updatedWalk) => {
+		if (updatedWalk !== get(walk)) {
+			commit(updatedWalk);
+		}
+	};
 	const start = () => {
 		commit(createWalk());
 		walkLogger.info('Walk started');
@@ -506,7 +514,12 @@ function createWalkStore() {
 	// Every location update belongs to a walk; an expired or missing walk is replaced
 	const recordStop = () => {
 		const currentWalk = isWalkActive(get(walk)) ? get(walk) : createWalk();
-		const updatedWalk = addWalkStop(currentWalk, get(coordinates), get(placesHere));
+		const updatedWalk = addWalkStop(
+			currentWalk,
+			get(coordinates),
+			get(placesHere),
+			get(placesNearby)
+		);
 		if (updatedWalk !== get(walk)) {
 			commit(updatedWalk);
 			walkLogger.info('Walk stop recorded', {
@@ -519,17 +532,14 @@ function createWalkStore() {
 		subscribe,
 		start,
 		recordStop,
-		recordStory: (text) => {
-			const currentWalk = get(walk);
-			const updatedWalk = addWalkStory(currentWalk, text);
-			if (updatedWalk !== currentWalk) {
-				commit(updatedWalk);
-			}
-		},
-		setRecap: (text) => {
+		recordStory: (text) => commitIfChanged(addWalkStory(get(walk), text)),
+		recordComment: (text) => commitIfChanged(addWalkComment(get(walk), text)),
+		recordEvents: (events) => commitIfChanged(addWalkEvents(get(walk), events)),
+		enrich: () => commitIfChanged(enrichWalkPlaces(get(walk), get(places))),
+		setRecap: (recap) => {
 			const currentWalk = get(walk);
 			if (currentWalk) {
-				commit({ ...currentWalk, recap: { text, key: getWalkRecapKey(currentWalk) } });
+				commit({ ...currentWalk, recap: { ...recap, key: getWalkRecapKey(currentWalk) } });
 			}
 		}
 	};
@@ -820,6 +830,7 @@ async function pregenerateLocationContentInBackground() {
 
 	try {
 		await withPerformance('locationContent.metadataPrerequisites', () => loadMetadata());
+		walk.enrich();
 		perf.checkpoint('metadata loaded');
 
 		const results = await Promise.allSettled([
@@ -944,6 +955,7 @@ export async function loadHistoricEvents() {
 
 		const preparedEvents = prepareHistoricEvents(rawEvents);
 		events.set(preparedEvents);
+		walk.recordEvents(preparedEvents);
 		eventsLoadedKey.set(requestKey);
 		eventsStatus.set(preparedEvents.length > 0 ? 'ready' : 'empty');
 		perf.end({

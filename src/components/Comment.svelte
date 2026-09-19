@@ -30,6 +30,7 @@
 				$preferences,
 				get(walk)
 			);
+			walk.recordComment(comment);
 		} catch (err) {
 			logger.error('Comment generation failed', err);
 			error = 'Could not generate comment';

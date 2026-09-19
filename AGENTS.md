@@ -62,7 +62,7 @@ Comprehensive classification system with 25+ place types:
 - **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
 - **text.js**: Text processing utilities
-- **walk.js**: Pure walk-session helpers (stop merging, visited places, stats, prompt/recap context)
+- **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context)
 - **place-identity.js**: Stable place identity (Wikidata ID → Wikipedia page ID → title) shared by walk and history code
 
 **Logging:**
@@ -77,7 +77,7 @@ Comprehensive classification system with 25+ place types:
 - **PlaceDetailsModal.svelte**: Detailed place information
 - **StoryModal.svelte**: AI-generated stories about places
 - **HistoryModal.svelte**: Historical information display
-- **WalkModal.svelte**: Walk summary from the header menu (stats, timeline of stops with visited places and read stories, AI recap, start new walk)
+- **WalkModal.svelte**: Walk summary from the header menu (stats, timeline of stops with visited places and read stories, structured AI recap with highlights/connections/timeline/missed places/open threads, start new walk)
 - **WalkResumeModal.svelte**: Continue-or-new decision shown after the front-page "Start walk" tap when a recent walk is nearby
 - **UserPreferences.svelte**: Settings and customization
 

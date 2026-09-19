@@ -4,8 +4,16 @@
 	import Button from 'flowbite-svelte/Button.svelte';
 	import Modal from 'flowbite-svelte/Modal.svelte';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
-	import { marked } from 'marked';
-	import { TrackingOutline, CheckCircleSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
+	import {
+		TrackingOutline,
+		CheckCircleSolid,
+		MessageDotsOutline,
+		LinkOutline,
+		CalendarMonthOutline,
+		MapPinAltOutline,
+		QuestionCircleOutline,
+		StarSolid
+	} from 'flowbite-svelte-icons';
 	import {
 		walk,
 		walkActive,
@@ -42,7 +50,11 @@
 		confirmNewWalk = false;
 	}
 	$: stats = $walkActive && tick >= 0 ? getWalkStats($walk) : null;
-	$: recapCurrent = $walk?.recap && $walk.recap.key === getWalkRecapKey($walk);
+	$: recapCurrent = $walk?.recap?.headline && $walk.recap.key === getWalkRecapKey($walk);
+	$: recapPlaceEmoji = (title) => {
+		const place = $walk?.visitedPlaces.find((candidate) => candidate.title === title);
+		return CLASSES[place?.cls]?.emoji || '';
+	};
 	$: stopPlaces = ($walk?.stops || []).map((stop, index) =>
 		stop.placeIdentities
 			.map((identity) => $walk.visitedPlaces.find((place) => place.identity === identity))
@@ -64,6 +76,7 @@
 		}
 		recapLoading = true;
 		try {
+			walk.enrich();
 			walk.setRecap(await generateWalkRecap($walk, $preferences));
 		} catch (error) {
 			logger.error('Walk recap generation failed', error);
@@ -141,10 +154,70 @@
 				{#if $walk.stops.length > 0}
 					<hr class="my-4" />
 					{#if recapCurrent}
-						<div class="prose prose-sm max-w-none">
-							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-							{@html marked($walk.recap.text)}
-						</div>
+						{@const recap = $walk.recap}
+						<h3 class="text-lg font-bold text-primary-800">{recap.headline}</h3>
+						{#if recap.highlights.length > 0}
+							<div class="mt-3 flex items-center text-sm font-semibold text-primary-800">
+								<StarSolid size="sm" class="mr-1" />Highlights for you
+							</div>
+							<ul class="mt-1 space-y-2 text-sm">
+								{#each recap.highlights as item}
+									<li>
+										<span class="font-medium">{recapPlaceEmoji(item.title)} {item.title}</span>
+										<span class="text-gray-700"> – {item.text}</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+						{#if recap.connections.length > 0}
+							<div class="mt-4 flex items-center text-sm font-semibold text-primary-800">
+								<LinkOutline size="sm" class="mr-1" />Threads across your walk
+							</div>
+							<ul class="mt-1 space-y-2 text-sm">
+								{#each recap.connections as item}
+									<li>
+										<span class="font-medium">{item.title}</span>
+										<span class="text-gray-700"> – {item.text}</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+						{#if recap.timeline.length > 0}
+							<div class="mt-4 flex items-center text-sm font-semibold text-primary-800">
+								<CalendarMonthOutline size="sm" class="mr-1" />Timeline
+							</div>
+							<ul class="mt-1 space-y-1 text-sm">
+								{#each recap.timeline as item}
+									<li class="flex">
+										<span class="w-24 shrink-0 font-bold text-primary-800">{item.date_string}</span>
+										<span class="text-gray-700">{item.text}</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+						{#if recap.missed.length > 0}
+							<div class="mt-4 flex items-center text-sm font-semibold text-primary-800">
+								<MapPinAltOutline size="sm" class="mr-1" />Worth a return visit
+							</div>
+							<ul class="mt-1 space-y-2 text-sm">
+								{#each recap.missed as item}
+									<li>
+										<span class="font-medium">{item.title}</span>
+										<span class="text-gray-700"> – {item.text}</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+						{#if recap.openThreads.length > 0}
+							<div class="mt-4 flex items-center text-sm font-semibold text-primary-800">
+								<QuestionCircleOutline size="sm" class="mr-1" />To look up later
+							</div>
+							<ul class="mt-1 list-inside list-disc space-y-1 text-sm text-gray-700">
+								{#each recap.openThreads as thread}
+									<li>{thread}</li>
+								{/each}
+							</ul>
+						{/if}
 					{:else}
 						<div class="flex items-center justify-between gap-2">
 							<span class="text-sm text-gray-600">Let your guide sum up the walk so far.</span>
