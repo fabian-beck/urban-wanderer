@@ -161,7 +161,7 @@
 								<StarSolid size="sm" class="mr-1" />Highlights for you
 							</div>
 							<ul class="mt-1 space-y-2 text-sm">
-								{#each recap.highlights as item}
+								{#each recap.highlights as item (item.title)}
 									<li>
 										<span class="font-medium">{recapPlaceEmoji(item.title)} {item.title}</span>
 										<span class="text-gray-700"> – {item.text}</span>
@@ -174,7 +174,7 @@
 								<LinkOutline size="sm" class="mr-1" />Threads across your walk
 							</div>
 							<ul class="mt-1 space-y-2 text-sm">
-								{#each recap.connections as item}
+								{#each recap.connections as item (item.title)}
 									<li>
 										<span class="font-medium">{item.title}</span>
 										<span class="text-gray-700"> – {item.text}</span>
@@ -187,7 +187,7 @@
 								<CalendarMonthOutline size="sm" class="mr-1" />Timeline
 							</div>
 							<ul class="mt-1 space-y-1 text-sm">
-								{#each recap.timeline as item}
+								{#each recap.timeline as item (`${item.year}-${item.text}`)}
 									<li class="flex">
 										<span class="w-24 shrink-0 font-bold text-primary-800">{item.date_string}</span>
 										<span class="text-gray-700">{item.text}</span>
@@ -200,7 +200,7 @@
 								<MapPinAltOutline size="sm" class="mr-1" />Worth a return visit
 							</div>
 							<ul class="mt-1 space-y-2 text-sm">
-								{#each recap.missed as item}
+								{#each recap.missed as item (item.title)}
 									<li>
 										<span class="font-medium">{item.title}</span>
 										<span class="text-gray-700"> – {item.text}</span>
@@ -213,7 +213,7 @@
 								<QuestionCircleOutline size="sm" class="mr-1" />To look up later
 							</div>
 							<ul class="mt-1 list-inside list-disc space-y-1 text-sm text-gray-700">
-								{#each recap.openThreads as thread}
+								{#each recap.openThreads as thread (thread)}
 									<li>{thread}</li>
 								{/each}
 							</ul>
@@ -239,7 +239,7 @@
 					</p>
 				{:else}
 					<ul>
-						{#each $walk.stops as stop, index}
+						{#each $walk.stops as stop, index (stop.at)}
 							<li class="relative pb-4 pl-6">
 								{#if index < $walk.stops.length - 1}
 									<div class="absolute bottom-0 left-[7px] top-4 w-0.5 bg-primary-200"></div>
@@ -253,7 +253,7 @@
 								</div>
 								{#if stopPlaces[index]?.length > 0}
 									<ul class="mt-1 text-sm">
-										{#each stopPlaces[index] as place}
+										{#each stopPlaces[index] as place (place.identity)}
 											<li class="flex items-baseline">
 												<CheckCircleSolid size="xs" class="mr-1 shrink-0 text-green-600" />
 												<span>
@@ -273,7 +273,7 @@
 								{/if}
 								{#if stopStories[index]?.length > 0}
 									<ul class="mt-1 text-sm">
-										{#each stopStories[index] as story}
+										{#each stopStories[index] as story (story.at)}
 											<li class="flex items-baseline text-gray-700">
 												<MessageDotsOutline size="xs" class="mr-1 shrink-0" />
 												<i>{story.headline || 'Story'}</i>
