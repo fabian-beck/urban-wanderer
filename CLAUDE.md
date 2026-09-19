@@ -226,3 +226,4 @@ This application demonstrates modern web-to-mobile development patterns, AI inte
 
 - After bigger changes, check CLAUDE.md if it requires updates.
 - when some request required considerable code search, consider updating CLAUDE.md to easier get the right context.
+- Record bugs and defects discovered incidentally (outside the scope of the current task) as GitHub issues instead of fixing them inline.
