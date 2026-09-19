@@ -106,3 +106,4 @@ export const AI_REASONING_EFFORT = {
 };
 
 export const AI_ANALYSIS_BATCH_SIZE = 10;
+export const AI_TRANSLATION_BATCH_SIZE = 25;

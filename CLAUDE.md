@@ -49,7 +49,7 @@ Comprehensive classification system with 25+ place types:
 
 - **ai-core.js**: OpenAI client configuration and model tier selection (`getAiModel`); model IDs (`AI_MODELS`), the TTS model (`AI_SPEECH_MODEL`) and per-task reasoning effort (`AI_REASONING_EFFORT`) are defined in `src/constants/ui-config.js`
 - **ai-analysis.js**: Place classification, labeling, and importance rating
-- **ai-translation.js**: Multi-language place name translation and deduplication
+- **ai-translation.js**: Identity-first and name-similarity deduplication (local), plus batched AI title translation of visible places after rating
 - **ai-story.js**: AI-powered location storytelling
 - **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment
 - **ai-history.js**: Historical content generation
@@ -58,7 +58,7 @@ Comprehensive classification system with 25+ place types:
 
 **Data Integration:**
 
-- **wikipedia.js**: Wikipedia API integration (articles, extracts, images, metadata)
+- **wikipedia.js**: Wikipedia API integration (plain-text articles via TextExtracts, intro extracts, images, metadata)
 - **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
 - **text.js**: Text processing utilities
@@ -178,10 +178,10 @@ The application processes location data through 9 distinct stages:
 1. **Location Acquisition**: GPS, random location, or search-based coordinates
 2. **Parallel Data Fetching**: Concurrent Wikipedia, OSM, and map overlay requests
 3. **Data Merging**: Combines Wikipedia and OSM data by matching place titles
-4. **Deduplication & Translation**: AI-powered grouping using Levenshtein distance
+4. **Deduplication**: Identity-first grouping using Wikidata/Wikipedia references with Levenshtein fallback (no AI)
 5. **Content Enrichment**: Wikipedia extracts for all places
 6. **AI Analysis**: Classification, labeling, and importance rating
-7. **Rating & Categorization**: Star-based rating and filtering into here/nearby/surrounding
+7. **Rating & Translation**: Star-based rating, then batched AI translation of visible place titles only, and filtering into here/nearby/surrounding
 8. **Metadata Loading**: Images (Wikipedia → Wikidata fallback), articles, AI insights
 9. **Story Generation**: Background pregeneration with Wikidata-enhanced context
 
