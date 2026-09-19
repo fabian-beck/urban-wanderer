@@ -126,24 +126,18 @@
 	const animatedActivityStipples = derived(activityMap, ($activityMap) => {
 		if (!$activityMap) return new Set();
 
-		const animated = new Set();
-		$activityMap.forEach((row, rowIndex) => {
-			row.forEach((cell, colIndex) => {
-				if (cell && cell > 0.1) {
-					const x = rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET;
-					const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y;
-					const distanceFromCenter = Math.sqrt(x * x + y * y);
-					if (distanceFromCenter < 450) {
-						// Use deterministic pattern: every 4th point in both directions for fewer animated points
-						if (rowIndex % 4 === 1 && colIndex % 4 === 1) {
-							animated.add(`${rowIndex}-${colIndex}`);
-						}
-					}
-				}
-			});
-		});
+		// Deterministic pattern: every 4th point in both directions for fewer animated points
+		const animated = $activityMap.flatMap((row, rowIndex) =>
+			row.flatMap((cell, colIndex) => {
+				if (!cell || cell <= 0.1 || rowIndex % 4 !== 1 || colIndex % 4 !== 1) return [];
+				const x = rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET;
+				const y = colIndex * GRID_CELL_SIZE - GRID_OFFSET_Y;
+				const distanceFromCenter = Math.sqrt(x * x + y * y);
+				return distanceFromCenter < 450 ? [`${rowIndex}-${colIndex}`] : [];
+			})
+		);
 
-		return animated;
+		return new Set(animated);
 	});
 
 	const tryHyphenate = (word, lang) => {
@@ -404,7 +398,7 @@
 			<g clip-path="url(#circleClip)">
 				<!-- background: all places as blurred circles -->
 				<g class="places-bg">
-					{#each ($places || []).filter((place) => place.lon && place.lat && place.stars > 1 && isMapLocationPlace(place)) as place}
+					{#each ($places || []).filter((place) => place.lon && place.lat && place.stars > 1 && isMapLocationPlace(place)) as place (place.title)}
 						<circle
 							cx={latLonToX(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
 							cy={latLonToY(place.lat, place.lon, $coordinates.latitude, $coordinates.longitude)}
@@ -418,8 +412,8 @@
 				<!-- green map -->
 				{#if !$mapLayersLoading && $preferences.labels?.includes('NATURE')}
 					<g class="green-map">
-						{#each $greenMap || [] as row, rowIndex}
-							{#each row || [] as cell, colIndex}
+						{#each $greenMap || [] as row, rowIndex (rowIndex)}
+							{#each row || [] as cell, colIndex (colIndex)}
 								{#if cell}
 									{@const triangleX =
 										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
@@ -440,8 +434,8 @@
 				<!-- water map -->
 				{#if !$mapLayersLoading}
 					<g class="water-map">
-						{#each $waterMap || [] as row, rowIndex}
-							{#each row || [] as cell, colIndex}
+						{#each $waterMap || [] as row, rowIndex (rowIndex)}
+							{#each row || [] as cell, colIndex (colIndex)}
 								{#if cell && cell > 0.1}
 									{@const x =
 										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
@@ -466,8 +460,8 @@
 				<!-- activity map -->
 				{#if !$mapLayersLoading && $preferences.labels?.includes('ACTIVITIES')}
 					<g class="activity-map">
-						{#each $activityMap || [] as row, rowIndex}
-							{#each row || [] as cell, colIndex}
+						{#each $activityMap || [] as row, rowIndex (rowIndex)}
+							{#each row || [] as cell, colIndex (colIndex)}
 								{#if cell && cell > 0.1}
 									{@const x =
 										rowIndex * GRID_CELL_SIZE - GRID_OFFSET_X + (colIndex % 2) * GRID_HEX_OFFSET}
@@ -511,7 +505,7 @@
 				</g>
 				<!-- places -->
 				<g class="places">
-					{#each $placesToHighlight as place}
+					{#each $placesToHighlight as place (place.title)}
 						{@const labelLines = layoutLabel(place.title).split('\n')}
 						<!-- svelte-ignore a11y-click-events-have-key-events -->
 						<!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -566,7 +560,7 @@
 								</g>
 							{/if}
 							<text x="0" y="30" class="place-label text-lg" text-anchor="middle">
-								{#each labelLines as line, index}
+								{#each labelLines as line, index (index)}
 									<tspan x="0" dy={index === 0 ? 0 : '1.1em'}>{line}</tspan>
 								{/each}
 							</text>

@@ -191,7 +191,7 @@
 			</div>
 			{#if showIcons && isotype.icons > 0}
 				<div class="flex max-w-full flex-wrap justify-center">
-					{#each iconIndices as i}
+					{#each iconIndices as i (i)}
 						<span
 							class={getIconSize(isotype.scale)}
 							style="margin-left: {i > 0 ? (i % 5 === 0 ? '-0.6em' : '-0.9em') : '0'};"

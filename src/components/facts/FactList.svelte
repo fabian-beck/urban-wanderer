@@ -271,12 +271,12 @@
 
 	function simpleLayout(facts) {
 		const result = [];
-		const used = new Set(); // Track which facts have been used
+		const used = []; // Indices of facts already placed
 		let i = 0;
 
 		while (i < facts.length) {
 			// Skip already used facts
-			while (i < facts.length && used.has(i)) {
+			while (i < facts.length && used[i]) {
 				i++;
 			}
 			if (i >= facts.length) break;
@@ -288,7 +288,7 @@
 			// Fill the row as much as possible with sequential facts
 			let j = i;
 			while (j < facts.length && rowWidth < 4) {
-				if (used.has(j)) {
+				if (used[j]) {
 					j++;
 					continue;
 				}
@@ -300,7 +300,7 @@
 					// Item fits in current row
 					row.push({ fact, minWidth, index: j });
 					rowWidth += minWidth;
-					used.add(j);
+					used[j] = true;
 					j++;
 				} else {
 					// Item doesn't fit, break to try gap filling
@@ -313,7 +313,7 @@
 			if (remainingSpace > 0) {
 				// Look for unused facts that could fill the remaining space
 				for (let k = j; k < facts.length && remainingSpace > 0; k++) {
-					if (used.has(k)) continue;
+					if (used[k]) continue;
 
 					const fact = facts[k];
 					const minWidth = getMinWidthSpan(fact.label, fact.value, fact.key);
@@ -323,7 +323,7 @@
 						row.push({ fact, minWidth, index: k });
 						rowWidth += minWidth;
 						remainingSpace -= minWidth;
-						used.add(k);
+						used[k] = true;
 					}
 				}
 			}
@@ -374,7 +374,7 @@
 			}
 
 			// Move to next unused fact
-			while (i < facts.length && used.has(i)) {
+			while (i < facts.length && used[i]) {
 				i++;
 			}
 		}
@@ -431,7 +431,7 @@
 			</div>
 		{:else if facts}
 			<div class="grid w-full auto-rows-min grid-cols-4 gap-3">
-				{#each optimizedFacts as fact}
+				{#each optimizedFacts as fact (fact.key)}
 					{#if fact.key === 'height'}
 						<HeightFact
 							value={fact.value}

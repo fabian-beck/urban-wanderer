@@ -45,7 +45,7 @@ export function prepareHistoricEvents(events) {
 		if (!event.year) {
 			return event;
 		}
-		let yearDiff = 0;
+		let yearDiff;
 		if (index < sortedEvents.length - 1) {
 			yearDiff = sortedEvents[index + 1].year - event.year;
 		} else {

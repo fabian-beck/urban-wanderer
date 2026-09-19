@@ -85,11 +85,6 @@
 		placeFactListComponent.loadFacts();
 	}
 
-	$: if ($visible) {
-		loadModalImage();
-		loadModalSummary();
-	}
-
 	const loadModalImage = async () => {
 		const currentPlace = get(reactivePlace);
 		if (imageLoading || currentPlace?.image) {
@@ -135,6 +130,11 @@
 			summaryLoading = false;
 		}
 	};
+
+	$: if ($visible) {
+		loadModalImage();
+		loadModalSummary();
+	}
 </script>
 
 <Modal
@@ -165,7 +165,7 @@
 							<a
 								href={$reactivePlace.imageSource}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="external noopener noreferrer"
 								class="hover:underline"
 								aria-label="View image source"
 							>
@@ -182,7 +182,7 @@
 							<a
 								href={$reactivePlace.imageLicenseUrl || $reactivePlace.imageSource}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="external noopener noreferrer"
 								class="hover:underline"
 								aria-label="View image license"
 							>
@@ -264,7 +264,7 @@
 						<FileOutline class="!mr-1" />Wikipedia
 					</a>
 				{:else if place.url}
-					<a href={place.url} target="_blank" class="mr-3 flex">
+					<a href={place.url} target="_blank" rel="external" class="mr-3 flex">
 						<GlobeOutline class="!mr-1" />Page
 					</a>
 				{/if}

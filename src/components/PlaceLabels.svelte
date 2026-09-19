@@ -22,7 +22,7 @@
 
 {#if visibleLabels.length > 0}
 	<div class="flex flex-wrap">
-		{#each visibleLabels as label}
+		{#each visibleLabels as label (label)}
 			<div
 				class={$preferences.labels?.includes(label)
 					? 'mb-1 mr-2 rounded-full bg-primary-100 px-2 text-sm text-primary-800'

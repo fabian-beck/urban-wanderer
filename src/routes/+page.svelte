@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import {
 		coordinates,
 		errorMessage,
@@ -40,24 +41,26 @@
 	let urlUpdateTimeout = null;
 
 	// Update URL params when coordinates change (debounced)
-	$: if ($coordinates) {
-		if (urlUpdateTimeout) {
-			clearTimeout(urlUpdateTimeout);
-		}
+	function scheduleUrlUpdate(currentCoordinates) {
+		clearTimeout(urlUpdateTimeout);
 		urlUpdateTimeout = setTimeout(() => {
 			const newUrl = new URL($page.url);
 			const currentLat = newUrl.searchParams.get('lat');
 			const currentLon = newUrl.searchParams.get('lon');
-			const newLat = $coordinates.latitude.toString();
-			const newLon = $coordinates.longitude.toString();
+			const newLat = currentCoordinates.latitude.toString();
+			const newLon = currentCoordinates.longitude.toString();
 
 			// Only update URL if coordinates actually changed
 			if (currentLat !== newLat || currentLon !== newLon) {
 				newUrl.searchParams.set('lat', newLat);
 				newUrl.searchParams.set('lon', newLon);
-				goto(newUrl.toString(), { replaceState: true, noScroll: true });
+				goto(resolve(`/${newUrl.search}`), { replaceState: true, noScroll: true });
 			}
 		}, 500);
+	}
+
+	$: if ($coordinates) {
+		scheduleUrlUpdate($coordinates);
 	}
 
 	onMount(() => {

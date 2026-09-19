@@ -27,7 +27,7 @@
 
 	export let visible = false;
 
-	let currentHistoryKey = '';
+	let currentHistoryKey;
 
 	// Function to make place names clickable with icons
 	const makeClickablePlaces = (htmlContent) => {
@@ -140,7 +140,7 @@
 				{/if}
 				<div class="timeline">
 					<ul>
-						{#each $events as event}
+						{#each $events as event, index (index)}
 							<li class="mt-2">
 								<span class="text-sm font-bold text-primary-800">{event.date_string}</span>
 								<div

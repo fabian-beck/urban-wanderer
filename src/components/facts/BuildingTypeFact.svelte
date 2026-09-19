@@ -795,11 +795,6 @@
 		return $language === 'de' ? 'Gebäudetyp' : 'Building Type';
 	}
 
-	function getTypeName() {
-		// Always return the original value, don't use the matched type's name
-		return value;
-	}
-
 	function getValueLength() {
 		return value ? value.toString().length : 0;
 	}
@@ -822,7 +817,8 @@
 	$: showBackgroundImage = shouldShowBackgroundImage(containerWidth, widthSpan);
 	$: backgroundImage =
 		matchedType && showBackgroundImage ? `/building-types/${matchedType.image}` : null;
-	$: typeName = getTypeName();
+	// Show the original value, not the matched type's name
+	$: typeName = value;
 </script>
 
 <div

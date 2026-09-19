@@ -66,7 +66,7 @@
 	<h3 class="mb-4 border-b pb-2 text-lg font-semibold">Personalization</h3>
 	<Label>My Interests</Label>
 	<div class="grid grid-cols-2 gap-4">
-		{#each LABELS as label}
+		{#each LABELS as label (label.value)}
 			<Checkbox
 				id={label.value}
 				checked={$preferences.labels?.includes(label.value)}
@@ -94,7 +94,7 @@
 	<Label>Content presentation language</Label>
 	<Select bind:value={$preferences.lang} items={langOptions} />
 	<Label>Content source languages</Label>
-	{#each LANGUAGES as lang}
+	{#each LANGUAGES as lang (lang.value)}
 		<Checkbox
 			id={lang.value}
 			checked={$preferences.sourceLanguages?.includes(lang.value)}

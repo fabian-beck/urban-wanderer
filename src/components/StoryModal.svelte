@@ -176,7 +176,7 @@
 	<div class="flex min-h-screen flex-col">
 		<div class="p-4">
 			{#if $storyTexts.length > 0}
-				{#each $storyTexts as storyText}
+				{#each $storyTexts as storyText, index (index)}
 					<div
 						on:click={handleStoryClick}
 						on:keydown={handleStoryKeydown}
