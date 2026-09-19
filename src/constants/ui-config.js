@@ -82,7 +82,8 @@ export const AI_MODELS = {
 	ADVANCED: [
 		{ value: 'gpt-5.6-luna', name: 'GPT-5.6 Luna (faster)' },
 		{ value: 'gpt-5.6-terra', name: 'GPT-5.6 Terra (default)' },
-		{ value: 'gpt-5.6-sol', name: 'GPT-5.6 Sol (best quality)' }
+		{ value: 'gpt-5.6-sol', name: 'GPT-5.6 Sol (best quality)' },
+		{ value: 'gpt-6-astra', name: 'GPT-6 Astra (latest generation, most expensive)' }
 	],
 	DEFAULT_SIMPLE: 'gpt-5.6-luna',
 	DEFAULT_ADVANCED: 'gpt-5.6-terra'

@@ -613,12 +613,12 @@ OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first
 
 **Model tiers** (user-configurable, defaults shown):
 
-| Tier     | Default         | Options                                  |
-| -------- | --------------- | ---------------------------------------- |
-| Simple   | `gpt-5.6-luna`  | gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol |
-| Advanced | `gpt-5.6-terra` | gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol |
+| Tier     | Default         | Options                                               |
+| -------- | --------------- | ----------------------------------------------------- |
+| Simple   | `gpt-5.6-luna`  | gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol              |
+| Advanced | `gpt-5.6-terra` | gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol, gpt-6-astra |
 
-**Reasoning effort:** per task via the `AI_REASONING_EFFORT` map — `'low'` for place analysis, translation, article summary, insights, and location comment; `'medium'` for fact extraction, historic events, and story generation. Supported values of the GPT-5.6 family are `none`, `low`, `medium` (API default), `high`, `xhigh`, and `max`.
+**Reasoning effort:** per task via the `AI_REASONING_EFFORT` map — `'low'` for place analysis, translation, article summary, insights, and location comment; `'medium'` for fact extraction, historic events, and story generation. Supported values of the GPT-5.6 family are `none`, `low`, `medium` (API default), `high`, `xhigh`, and `max`; `gpt-6-astra` rejects `none`.
 
 **API used:** OpenAI Responses API (`openai.responses.create()`), not the Chat Completions API.
 
