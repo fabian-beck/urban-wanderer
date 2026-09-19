@@ -354,11 +354,6 @@
 		return style.description; // fallback to English
 	}
 
-	function getStyleName() {
-		// Always return the original value, don't use the matched style's name
-		return value;
-	}
-
 	function getValueLength() {
 		return value ? value.toString().length : 0;
 	}
@@ -388,7 +383,8 @@
 	$: showBackgroundImage = shouldShowBackgroundImage(containerWidth, widthSpan);
 	$: backgroundImage =
 		matchedStyle && showBackgroundImage ? `/architecture-styles/${matchedStyle.image}` : null;
-	$: styleName = getStyleName();
+	// Show the original value, not the matched style's name
+	$: styleName = value;
 </script>
 
 <div

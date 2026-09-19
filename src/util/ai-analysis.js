@@ -1,7 +1,12 @@
 import { LABELS, AI_REASONING_EFFORT, AI_ANALYSIS_BATCH_SIZE } from '../constants/ui-config.js';
 import { CLASSES } from '../constants/place-classes.js';
 import { openai, getAiModel } from './ai-core.js';
-import { ANALYSIS_CACHE_KEY as CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
+import {
+	ANALYSIS_CACHE_KEY as CACHE_KEY,
+	ANALYSIS_CACHE_VERSION,
+	ANALYSIS_CACHE_COORDINATE_PRECISION,
+	CACHE_TTL
+} from '../constants/cache-config.js';
 import { withPerformance } from './performance.js';
 import { createLogger } from './logger.js';
 
@@ -40,8 +45,19 @@ function saveAnalysisCache(cache) {
 	}
 }
 
+// Keyed by stable identity so generic titles ("Rathaus", "Bahnhof") don't collide across towns
 function createAnalysisCacheKey(place) {
-	return place.title;
+	let identity;
+	if (place.wikidata) {
+		identity = `wd:${place.wikidata}`;
+	} else if (place.pageid) {
+		identity = `wp:${place.lang || ''}:${place.pageid}`;
+	} else if (Number.isFinite(place.lat) && Number.isFinite(place.lon)) {
+		identity = `title:${place.title}@${place.lat.toFixed(ANALYSIS_CACHE_COORDINATE_PRECISION)},${place.lon.toFixed(ANALYSIS_CACHE_COORDINATE_PRECISION)}`;
+	} else {
+		identity = `title:${place.title}`;
+	}
+	return `v${ANALYSIS_CACHE_VERSION}:${identity}`;
 }
 
 let analysisCache = loadAnalysisCache();

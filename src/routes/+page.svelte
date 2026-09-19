@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import {
 		coordinates,
 		errorMessage,
@@ -8,6 +9,7 @@
 		heading,
 		updateLocation,
 		searchForPlace,
+		beginWalk,
 		loading
 	} from '../stores.js';
 	import Header from '../components/Header.svelte';
@@ -23,6 +25,8 @@
 	import Map from '../components/Map.svelte';
 	import Comment from '../components/Comment.svelte';
 	import UserPreferences from '../components/UserPreferences.svelte';
+	import WalkResumeModal from '../components/WalkResumeModal.svelte';
+	import { TrackingOutline } from 'flowbite-svelte-icons';
 	import { preferences } from '../stores.js';
 	import { LABELS, FAMILIARITY, LANGUAGES } from '../constants/ui-config.js';
 
@@ -37,24 +41,26 @@
 	let urlUpdateTimeout = null;
 
 	// Update URL params when coordinates change (debounced)
-	$: if ($coordinates) {
-		if (urlUpdateTimeout) {
-			clearTimeout(urlUpdateTimeout);
-		}
+	function scheduleUrlUpdate(currentCoordinates) {
+		clearTimeout(urlUpdateTimeout);
 		urlUpdateTimeout = setTimeout(() => {
 			const newUrl = new URL($page.url);
 			const currentLat = newUrl.searchParams.get('lat');
 			const currentLon = newUrl.searchParams.get('lon');
-			const newLat = $coordinates.latitude.toString();
-			const newLon = $coordinates.longitude.toString();
+			const newLat = currentCoordinates.latitude.toString();
+			const newLon = currentCoordinates.longitude.toString();
 
 			// Only update URL if coordinates actually changed
 			if (currentLat !== newLat || currentLon !== newLon) {
 				newUrl.searchParams.set('lat', newLat);
 				newUrl.searchParams.set('lon', newLon);
-				goto(newUrl.toString(), { replaceState: true, noScroll: true });
+				goto(resolve(`/${newUrl.search}`), { replaceState: true, noScroll: true });
 			}
 		}, 500);
+	}
+
+	$: if ($coordinates) {
+		scheduleUrlUpdate($coordinates);
 	}
 
 	onMount(() => {
@@ -120,8 +126,16 @@
 			</div>
 		{:else}
 			<div class="mx-6 mt-6 text-center">
-				<p class="mb-3 text-sm text-gray-600">To personalize the guide, set your preferences.</p>
-				<Button on:click={() => (preferencesVisible = true)}>Open Preferences</Button>
+				<p class="mb-3 text-sm text-gray-600">
+					Start a walk to discover the places around you. Your guide keeps track of your stops and
+					the stories you read.
+				</p>
+				<div class="flex justify-center gap-2">
+					<Button color="alternative" on:click={() => (preferencesVisible = true)}>
+						Preferences
+					</Button>
+					<Button on:click={beginWalk}><TrackingOutline class="mr-2" />Start walk</Button>
+				</div>
 				<p class="mt-4 text-xs text-gray-500">
 					Interests: {LABELS.filter((label) => $preferences.labels.includes(label.value))
 						.map((label) => label.name.split(' ')[0])
@@ -133,5 +147,8 @@
 		{/if}
 	{/if}
 </main>
-<Location loading={$loading} update={() => updateLocation(false)} />
+{#if $coordinates}
+	<Location loading={$loading} update={() => updateLocation(false)} />
+{/if}
 <UserPreferences bind:visible={preferencesVisible} />
+<WalkResumeModal />

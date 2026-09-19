@@ -226,7 +226,7 @@
 >
 	<!-- Background layers for multiple materials -->
 	{#if showBackgroundImage && hasMultipleMaterials}
-		{#each parsedMaterials as material, i}
+		{#each parsedMaterials as material, i (i)}
 			<div
 				class="absolute inset-0"
 				style={`

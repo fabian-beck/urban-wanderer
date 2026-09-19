@@ -8,6 +8,7 @@ import {
 	HISTORY_NEARBY_FALLBACK_LIMIT
 } from '../constants/core.js';
 import { createLogger } from './logger.js';
+import { getPlaceIdentity } from './place-identity.js';
 
 const logger = createLogger('ai.history');
 
@@ -44,7 +45,7 @@ export function prepareHistoricEvents(events) {
 		if (!event.year) {
 			return event;
 		}
-		let yearDiff = 0;
+		let yearDiff;
 		if (index < sortedEvents.length - 1) {
 			yearDiff = sortedEvents[index + 1].year - event.year;
 		} else {
@@ -58,10 +59,6 @@ export function prepareHistoricEvents(events) {
 		}
 		return { ...event, yearDiff };
 	});
-}
-
-function getPlaceIdentity(place) {
-	return place.wikidata || place.pageid || place.title;
 }
 
 function getPlaceText(place) {

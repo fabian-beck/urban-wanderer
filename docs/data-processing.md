@@ -22,6 +22,7 @@ updateLocation(coords?)
     ├── analyzePlaces()                                        # Stage 6
     ├── rate()                                                 # Stage 7
     ├── translatePlaceTitles()                                 # Stage 7b
+    ├── walk.recordStop()             # remember position + "here" places (creates a walk if none is active)
     └── [background] pregenerateStoryInBackground()
             ├── loadMetadata()                                 # Stage 8
             └── generateStory()                                # Stage 9
@@ -587,16 +588,16 @@ Fetches shops, food and drink venues, entertainment amenities, and commercial la
 
 ## Caching Summary
 
-| Cache             | Storage        | TTL     | Key format                                             | Max entries                                    |
-| ----------------- | -------------- | ------- | ------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------- | --------- |
-| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_{radius}`          | 50 total OSM entries                           |
-| OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
-| OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`             | (shared 50 limit)                              |
-| OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`          | (shared 50 limit)                              |
-| Place analysis    | localStorage   | 7 days  | `place.title` (within `urban-wanderer-analysis-cache`) | unbounded                                      |
-| Insights          | localStorage   | 7 days  | `{article[0:100]}                                      | {lang}`(within`urban-wanderer-insights-cache`) | unbounded                                   |
-| Facts             | localStorage   | 7 days  | `{title}                                               | {sortedPropertyNames}                          | {lang}`(within`urban-wanderer-facts-cache`) | unbounded |
-| Article summaries | in-memory only | session | full article text                                      | unbounded                                      |
+| Cache             | Storage        | TTL     | Key format                                                                     | Max entries          |
+| ----------------- | -------------- | ------- | ------------------------------------------------------------------------------ | -------------------- |
+| OSM places        | localStorage   | 15 min  | `osm_cache_places_{lat3dp}_{lon3dp}_{radius}`                                  | 50 total OSM entries |
+| OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`                                     | (shared 50 limit)    |
+| OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`                                     | (shared 50 limit)    |
+| OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`                                  | (shared 50 limit)    |
+| Place analysis    | localStorage   | 7 days  | `place.title` (within `urban-wanderer-analysis-cache`)                         | unbounded            |
+| Insights          | localStorage   | 7 days  | `{article[0:100]}\|{lang}` (within `urban-wanderer-insights-cache`)            | unbounded            |
+| Facts             | localStorage   | 7 days  | `{title}\|{sortedPropertyNames}\|{lang}` (within `urban-wanderer-facts-cache`) | unbounded            |
+| Article summaries | in-memory only | session | full article text                                                              | unbounded            |
 
 OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first). Analysis/insights/facts caches filter expired entries on module load. Summaries are lost on page refresh.
 
@@ -661,3 +662,19 @@ After full pipeline processing, a place object carries:
 | `imageArtist`      | Image artist/credit                                    |
 | `article`          | Full Wikipedia article plain text (max 30,000 chars)   |
 | `insights`         | AI bullet-point insights from article                  |
+
+---
+
+## Walk Sessions
+
+**Source:** [src/stores.js](../src/stores.js) `createWalkStore()`, [src/util/walk.js](../src/util/walk.js)
+
+Every location update belongs to a walk, including virtual jumps (random place, search, URL links). The front page offers "Start walk" next to the preferences: `beginWalk()` gets a GPS fix first and, if the stored walk's last stop is under `WALK_MAX_AGE_MS` old and within `WALK_RESUME_DISTANCE`, asks whether to continue that walk or start a new one; otherwise a new walk starts. The header menu entry "Walk" opens the summary, where a new walk can be started at any time (this discards the previous walk).
+
+- After every `places.update()` (Stage 7), `walk.recordStop()` stores the current position, a snapshot of every `placesHere` place (identity, class, labels, stars, IDs, condensed text, thumbnail), and up to `WALK_PASSED_PLACES_PER_STOP` high-rated nearby places that were not reached; a missing or expired walk is replaced first. A position within `WALK_STOP_MERGE_DISTANCE` of the last stop extends that stop instead of adding a new one.
+- Material that arrives later is attached to the walk: `walk.enrich()` copies insights and thumbnails into the snapshots after metadata loading, the location comment is stored on the stop, and extracted historic events are stored per stop.
+- Story parts shown in the story modal are remembered as read stories (headline + text) for the current stop.
+- `visitedPlaceIdentities` contains places that were "here" at an earlier stop than the current one; lists, place details, and the map mark them as visited.
+- `generateStory()` and `generateLocationComment()` receive the walk and prepend a "walk so far" context (duration, distance, earlier visited places, excerpts of read stories) with instructions not to repeat content and to acknowledge revisited places.
+
+The walk modal shows the timeline summary and can request an AI recap of the walk so far (`generateWalkRecap()`). The recap is a structured JSON response synthesizing across stops: personal highlights ranked by interests, connections linking several stops, a timeline from the collected historic events, passed-by places worth a return visit, and open threads to look up later. It is kept until stops or stories change. The walk is persisted under `WALK_STORAGE_KEY` in localStorage so it survives app restarts.

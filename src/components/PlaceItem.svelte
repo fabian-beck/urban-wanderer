@@ -2,7 +2,9 @@
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import PlaceDirection from './PlaceDirection.svelte';
-	import { placeDetailsVisible, preferences } from '../stores.js';
+	import { placeDetailsVisible, preferences, visitedPlaceIdentities } from '../stores.js';
+	import { getPlaceIdentity } from '../util/place-identity.js';
+	import { CheckOutline } from 'flowbite-svelte-icons';
 	import PlaceDetailsModal from './PlaceDetailsModal.svelte';
 	import PlaceLabels from './PlaceLabels.svelte';
 	import { PLACE_HIGH_RATED_MIN_STARS, PLACE_VISIBLE_MIN_STARS } from '../constants/core.js';
@@ -12,6 +14,7 @@
 	export let hideRating = false;
 
 	$: isCompact = !hideRating && (place?.stars || 0) <= PLACE_VISIBLE_MIN_STARS;
+	$: visited = $visitedPlaceIdentities.has(getPlaceIdentity(place));
 	$: showLabels =
 		!hideRating &&
 		(place?.stars || 0) >= PLACE_HIGH_RATED_MIN_STARS &&
@@ -43,6 +46,13 @@
 				<div class="flex flex-auto flex-col overflow-hidden text-left">
 					<div class={isCompact ? 'text-sm leading-tight' : 'text-md'}>
 						<PlaceTitle {place} />
+						{#if visited}
+							<span
+								class="ml-1 inline-flex items-center rounded-full bg-green-100 px-1.5 align-middle text-[10px] font-medium text-green-800"
+							>
+								<CheckOutline size="xs" class="mr-0.5" />visited
+							</span>
+						{/if}
 					</div>
 					{#if !hideRating}
 						<div>

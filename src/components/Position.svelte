@@ -73,8 +73,6 @@
 					</a>
 				</div>
 			</div>
-		{:else if !loading}
-			<i class="text-sm text-primary-800">Click the refresh button to get your location</i>
 		{/if}
 	</div>
 	<div class="ml-2 flex-none">

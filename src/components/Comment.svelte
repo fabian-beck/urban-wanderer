@@ -1,6 +1,7 @@
 <script>
 	import { generateLocationComment } from '../util/ai-comment.js';
-	import { placesHere, placesSurrounding, coordinates, preferences } from '../stores.js';
+	import { placesHere, placesSurrounding, coordinates, preferences, walk } from '../stores.js';
+	import { get } from 'svelte/store';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { AnnotationOutline } from 'flowbite-svelte-icons';
 	import { createLogger } from '../util/logger.js';
@@ -26,8 +27,10 @@
 				$placesHere,
 				$placesSurrounding,
 				$coordinates,
-				$preferences
+				$preferences,
+				get(walk)
 			);
+			walk.recordComment(comment);
 		} catch (err) {
 			logger.error('Comment generation failed', err);
 			error = 'Could not generate comment';

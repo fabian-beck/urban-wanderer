@@ -16,8 +16,13 @@
 		preferences,
 		placeDetailsVisible,
 		loadPlaceImage,
-		updateLocation
+		updateLocation,
+		walk,
+		visitedPlaceIdentities
 	} from '../stores.js';
+	import { getPlaceIdentity } from '../util/place-identity.js';
+	import { formatWalkTime, getVisitedPlace } from '../util/walk.js';
+	import { CheckCircleSolid } from 'flowbite-svelte-icons';
 	import PlaceStars from './PlaceStars.svelte';
 	import PlaceTitle from './PlaceTitle.svelte';
 	import PlaceLabels from './PlaceLabels.svelte';
@@ -36,6 +41,9 @@
 	});
 
 	$: isSurroundingPlace = $placesSurrounding.find((p) => p.title === place.title);
+	$: visitedPlace = $visitedPlaceIdentities.has(getPlaceIdentity(place))
+		? getVisitedPlace($walk, place)
+		: null;
 	let summary = '';
 	let placeFactListComponent;
 	let imageElement;
@@ -75,11 +83,6 @@
 		typeof placeFactListComponent.loadFacts === 'function'
 	) {
 		placeFactListComponent.loadFacts();
-	}
-
-	$: if ($visible) {
-		loadModalImage();
-		loadModalSummary();
 	}
 
 	const loadModalImage = async () => {
@@ -127,6 +130,11 @@
 			summaryLoading = false;
 		}
 	};
+
+	$: if ($visible) {
+		loadModalImage();
+		loadModalSummary();
+	}
 </script>
 
 <Modal
@@ -157,7 +165,7 @@
 							<a
 								href={$reactivePlace.imageSource}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="external noopener noreferrer"
 								class="hover:underline"
 								aria-label="View image source"
 							>
@@ -174,7 +182,7 @@
 							<a
 								href={$reactivePlace.imageLicenseUrl || $reactivePlace.imageSource}
 								target="_blank"
-								rel="noopener noreferrer"
+								rel="external noopener noreferrer"
 								class="hover:underline"
 								aria-label="View image license"
 							>
@@ -201,6 +209,12 @@
 					{:else}
 						...
 					{/if}
+				</div>
+			{/if}
+			{#if visitedPlace}
+				<div class="mt-3 flex items-center text-sm text-green-800">
+					<CheckCircleSolid class="mr-1" />
+					Visited earlier on this walk at {formatWalkTime(visitedPlace.firstVisitedAt)}
 				</div>
 			{/if}
 			{#if !isSurroundingPlace}
@@ -250,7 +264,7 @@
 						<FileOutline class="!mr-1" />Wikipedia
 					</a>
 				{:else if place.url}
-					<a href={place.url} target="_blank" class="mr-3 flex">
+					<a href={place.url} target="_blank" rel="external" class="mr-3 flex">
 						<GlobeOutline class="!mr-1" />Page
 					</a>
 				{/if}

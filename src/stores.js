@@ -18,6 +18,19 @@ import { analyzePlaces, getLastAnalysisCacheStats } from './util/ai-analysis.js'
 import { groupDuplicatePlaces, translatePlaceTitles } from './util/ai-translation.js';
 import { generateStory } from './util/ai-story.js';
 import {
+	addWalkComment,
+	addWalkEvents,
+	addWalkStop,
+	addWalkStory,
+	createWalk,
+	enrichWalkPlaces,
+	getPreviouslyVisitedIdentities,
+	getWalkRecapKey,
+	getWalkResumeDistance,
+	isWalkActive
+} from './util/walk.js';
+import { WALK_STORAGE_KEY } from './constants/cache-config.js';
+import {
 	extractHistoricEvents,
 	getHistoricEventKey,
 	prepareHistoricEvents
@@ -49,6 +62,7 @@ const placesLogger = createLogger('places');
 const metadataLogger = createLogger('metadata');
 const storyLogger = createLogger('story');
 const historyLogger = createLogger('history');
+const walkLogger = createLogger('walk');
 let mapLayerLoadSequence = 0;
 let metadataLoadSequence = 0;
 let historyLoadSequence = 0;
@@ -335,6 +349,7 @@ function createPlaces() {
 					filteredPlaces: placeCountBeforeAnalysis - analyzedPlaces.length
 				});
 				rate();
+				set(get(places));
 				perf.checkpoint('rating complete', {
 					visibleCandidates: get(places).filter((place) => place.stars > 1).length
 				});
@@ -380,6 +395,7 @@ function createPlaces() {
 				});
 				startMapLayerLoad();
 				perf.checkpoint('background map loads started');
+				walk.recordStop();
 				pregenerateLocationContentInBackground();
 				perf.end({
 					places: get(places)?.length || 0
@@ -484,6 +500,86 @@ export const placesNearby = derived(
 			})
 			.sort((a, b) => (a.dist || Infinity) - (b.dist || Infinity));
 	}
+);
+
+// walk session (persisted so an active walk survives app restarts)
+function loadStoredWalk() {
+	if (typeof localStorage === 'undefined') {
+		return null;
+	}
+	try {
+		const stored = localStorage.getItem(WALK_STORAGE_KEY);
+		return stored ? JSON.parse(stored) : null;
+	} catch (error) {
+		walkLogger.warn('Stored walk could not be loaded', error);
+		return null;
+	}
+}
+
+function createWalkStore() {
+	const { subscribe, set } = writable(loadStoredWalk());
+	const persist = (walk) => {
+		if (typeof localStorage === 'undefined') {
+			return;
+		}
+		if (walk) {
+			localStorage.setItem(WALK_STORAGE_KEY, JSON.stringify(walk));
+		} else {
+			localStorage.removeItem(WALK_STORAGE_KEY);
+		}
+	};
+	const commit = (walk) => {
+		set(walk);
+		persist(walk);
+	};
+	const commitIfChanged = (updatedWalk) => {
+		if (updatedWalk !== get(walk)) {
+			commit(updatedWalk);
+		}
+	};
+	const start = () => {
+		commit(createWalk());
+		walkLogger.info('Walk started');
+	};
+	// Every location update belongs to a walk; an expired or missing walk is replaced
+	const recordStop = () => {
+		const currentWalk = isWalkActive(get(walk)) ? get(walk) : createWalk();
+		const updatedWalk = addWalkStop(
+			currentWalk,
+			get(coordinates),
+			get(placesHere),
+			get(placesNearby)
+		);
+		if (updatedWalk !== get(walk)) {
+			commit(updatedWalk);
+			walkLogger.info('Walk stop recorded', {
+				stops: updatedWalk.stops.length,
+				visitedPlaces: updatedWalk.visitedPlaces.length
+			});
+		}
+	};
+	return {
+		subscribe,
+		start,
+		recordStop,
+		recordStory: (text) => commitIfChanged(addWalkStory(get(walk), text)),
+		recordComment: (text) => commitIfChanged(addWalkComment(get(walk), text)),
+		recordEvents: (events) => commitIfChanged(addWalkEvents(get(walk), events)),
+		enrich: () => commitIfChanged(enrichWalkPlaces(get(walk), get(places))),
+		setRecap: (recap) => {
+			const currentWalk = get(walk);
+			if (currentWalk) {
+				commit({ ...currentWalk, recap: { ...recap, key: getWalkRecapKey(currentWalk) } });
+			}
+		}
+	};
+}
+export const walk = createWalkStore();
+export const walkActive = derived(walk, ($walk) => isWalkActive($walk));
+// Recent walk within reach of the freshly located position, waiting for the user's continue/new decision
+export const walkResumeCandidate = writable(null);
+export const visitedPlaceIdentities = derived(walk, ($walk) =>
+	getPreviouslyVisitedIdentities($walk)
 );
 
 // story
@@ -764,6 +860,7 @@ async function pregenerateLocationContentInBackground() {
 
 	try {
 		await withPerformance('locationContent.metadataPrerequisites', () => loadMetadata());
+		walk.enrich();
 		perf.checkpoint('metadata loaded');
 
 		const results = await Promise.allSettled([
@@ -803,7 +900,9 @@ async function pregenerateStoryInBackground(currentCoordinates = get(coordinates
 					get(placesNearby),
 					get(placesSurrounding),
 					currentCoordinates,
-					get(preferences)
+					get(preferences),
+					null,
+					get(walk)
 				),
 			{
 				here: get(placesHere).length,
@@ -886,6 +985,7 @@ export async function loadHistoricEvents() {
 
 		const preparedEvents = prepareHistoricEvents(rawEvents);
 		events.set(preparedEvents);
+		walk.recordEvents(preparedEvents);
 		eventsLoadedKey.set(requestKey);
 		eventsStatus.set(preparedEvents.length > 0 ? 'ready' : 'empty');
 		perf.end({
@@ -924,7 +1024,8 @@ export async function preloadNextStoryPart(currentStories) {
 					get(placesSurrounding),
 					get(coordinates),
 					get(preferences),
-					lastResponseId
+					lastResponseId,
+					get(walk)
 				),
 			{ previousResponseId: Boolean(lastResponseId), existingStories: currentStories.length }
 		);
@@ -995,6 +1096,56 @@ export async function updateLocation(coords) {
 		errorMessage.set('Error updating location: ' + error);
 		logger.error('Location update failed', error);
 	}
+}
+
+async function locate() {
+	try {
+		const { coords } = await withPerformance('walk.locate', () =>
+			Geolocation.getCurrentPosition({ enableHighAccuracy: true })
+		);
+		return { latitude: coords.latitude, longitude: coords.longitude };
+	} catch (error) {
+		logger.error('Locating failed', error);
+		errorMessage.set('Could not determine your location: ' + error);
+		return null;
+	}
+}
+
+// Front page entry point: locate the user, then continue a nearby recent walk or start a new one
+export async function beginWalk() {
+	loading.set(true);
+	errorMessage.set(null);
+	loadingMessage.set('Locating ...');
+	const position = await locate();
+	loadingMessage.reset();
+	loading.set(false);
+	if (!position) {
+		return;
+	}
+	const resumeDistance = getWalkResumeDistance(get(walk), position);
+	if (resumeDistance !== null) {
+		walkResumeCandidate.set({ position, distance: resumeDistance });
+		return;
+	}
+	walk.start();
+	await updateLocation(position);
+}
+
+export async function resolveWalkResume(continueWalk) {
+	const candidate = get(walkResumeCandidate);
+	walkResumeCandidate.set(null);
+	if (!candidate) {
+		return;
+	}
+	if (!continueWalk) {
+		walk.start();
+	}
+	await updateLocation(candidate.position);
+}
+
+export async function startNewWalk() {
+	walk.start();
+	await updateLocation(false);
 }
 
 // Search for place by name and update location

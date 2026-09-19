@@ -101,7 +101,8 @@ export const AI_REASONING_EFFORT = {
 	COMMENT: 'low',
 	FACTS: 'medium',
 	HISTORY: 'medium',
-	STORY: 'medium'
+	STORY: 'medium',
+	WALK_RECAP: 'medium'
 };
 
 export const AI_ANALYSIS_BATCH_SIZE = 10;

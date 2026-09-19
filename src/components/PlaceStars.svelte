@@ -22,13 +22,13 @@
 
 <div class="mt-1 flex text-left text-xs {detail ? 'flex-col' : dense ? 'h-4' : 'h-5'}">
 	{#if item.starDescriptions?.length > 0}
-		{#each item.starDescriptions as starDescription, groupIndex}
+		{#each item.starDescriptions as starDescription, groupIndex (groupIndex)}
 			{@const starOffset = item.starDescriptions
 				.slice(0, groupIndex)
 				.reduce((acc, desc) => acc + desc.number, 0)}
 			<div class="flex">
 				<!-- eslint-disable-next-line no-unused-vars -->
-				{#each Array(starDescription.number).fill() as _, localIndex}
+				{#each Array(starDescription.number).fill() as _, localIndex (localIndex)}
 					<StarSolid size="xs" class={getStarColor(starOffset + localIndex)} />
 				{/each}
 				{#if detail}
@@ -39,7 +39,7 @@
 	{:else if item.stars > 0}
 		<div class="flex">
 			<!-- eslint-disable-next-line no-unused-vars -->
-			{#each Array(item.stars).fill() as _, starIndex}
+			{#each Array(item.stars).fill() as _, starIndex (starIndex)}
 				<StarSolid size="xs" class={getStarColor(starIndex)} />
 			{/each}
 			{#if detail}

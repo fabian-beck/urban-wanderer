@@ -60,3 +60,16 @@ export const OSM_ACTIVITY_FOOD_AMENITY_TYPES =
 	'restaurant|fast_food|cafe|pub|bar|biergarten|food_court|ice_cream';
 export const OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES =
 	'nightclub|casino|cinema|theatre|arts_centre|community_centre';
+
+// Walk session
+export const WALK_STOP_MERGE_DISTANCE = 30;
+export const WALK_RESUME_DISTANCE = 10000;
+export const WALK_MAX_AGE_MS = 2 * 24 * 60 * 60 * 1000;
+export const WALK_VISITED_CONTEXT_LIMIT = 20;
+export const WALK_STORY_CONTEXT_LIMIT = 8;
+export const WALK_STORY_EXCERPT_LENGTH = 300;
+export const WALK_RECAP_STORY_EXCERPT_LENGTH = 600;
+export const WALK_SNAPSHOT_TEXT_LENGTH = 700;
+export const WALK_PASSED_PLACES_PER_STOP = 6;
+export const WALK_EVENTS_PER_STOP = 8;
+export const WALK_RECAP_MISSED_PLACES_LIMIT = 12;

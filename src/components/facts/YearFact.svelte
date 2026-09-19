@@ -97,15 +97,10 @@
 			}
 
 			// Calculate score based on distance and place label matching
-			let score = 0;
 			const eventLabels = event.labels || [];
 			const matchesPlace = eventLabels.some((label) => placeLabels.includes(label));
-
-			if (matchesPlace) {
-				score = 3; // Highest priority for place-matching events
-			} else {
-				score = 1; // Lower priority for non-matching events
-			}
+			// Place-matching events take priority over non-matching ones
+			const score = matchesPlace ? 3 : 1;
 
 			// Consider this event if it has a better score, or same score but closer distance
 			if (score > bestScore || (score === bestScore && distance < minDistance)) {
