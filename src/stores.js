@@ -15,7 +15,7 @@ import {
 import { CLASSES } from './constants/place-classes.js';
 import { AI_MODELS, LABELS } from './constants/ui-config.js';
 import { analyzePlaces, getLastAnalysisCacheStats } from './util/ai-analysis.js';
-import { groupDuplicatePlaces } from './util/ai-translation.js';
+import { groupDuplicatePlaces, translatePlaceTitles } from './util/ai-translation.js';
 import { generateStory } from './util/ai-story.js';
 import {
 	extractHistoricEvents,
@@ -338,6 +338,28 @@ function createPlaces() {
 				perf.checkpoint('rating complete', {
 					visibleCandidates: get(places).filter((place) => place.stars > 1).length
 				});
+				loadingMessage.set('Translating place names ...');
+				const addressPlaceParts = getAddressPlaceParts(currentCoordinates);
+				const isVisibleCandidate = (place) =>
+					place.stars >= PLACE_VISIBLE_MIN_STARS ||
+					placeMatchesAddressPart(place, addressPlaceParts);
+				const { result: translatedPlaces, durationMs: translationDurationMs } = await measure(
+					'places.translatePlaceTitles',
+					() =>
+						translatePlaceTitles(
+							get(places),
+							currentCoordinates,
+							currentPreferences,
+							isVisibleCandidate
+						),
+					{ candidates: get(places).filter(isVisibleCandidate).length }
+				);
+				stageDurations.translationMs = translationDurationMs;
+				set(translatedPlaces);
+				rate();
+				perf.checkpoint('translation complete', {
+					places: translatedPlaces.length
+				});
 				const totalMs = getPerformanceNow() - placesUpdateStartedAt;
 				const analysisCacheStats = getLastAnalysisCacheStats();
 				logPerformanceSummary('places.update.summary', {
@@ -346,6 +368,7 @@ function createPlaces() {
 					grouping: formatDuration(stageDurations.groupingMs),
 					extracts: formatDuration(stageDurations.extractsMs),
 					analysis: formatDuration(stageDurations.analysisMs),
+					translation: formatDuration(stageDurations.translationMs),
 					wikipediaPlaces: placesTmp.length,
 					osmPlaces: placesOsm.length,
 					mergedPlaces: mergedPlaces.length,

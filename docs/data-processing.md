@@ -21,6 +21,7 @@ updateLocation(coords?)
     ├── loadWikipediaExtracts()                                # Stage 5
     ├── analyzePlaces()                                        # Stage 6
     ├── rate()                                                 # Stage 7
+    ├── translatePlaceTitles()                                 # Stage 7b
     └── [background] pregenerateStoryInBackground()
             ├── loadMetadata()                                 # Stage 8
             └── generateStory()                                # Stage 9
@@ -163,32 +164,19 @@ OSM places that have no matching title in the Wikipedia set are appended to the 
 
 ---
 
-## Stage 4 — Translation and Deduplication
+## Stage 4 — Deduplication
 
 **Source:** [src/util/ai-translation.js](../src/util/ai-translation.js) `groupDuplicatePlaces()`
 
-This stage runs in two sub-steps.
+This stage is purely local (no AI calls) and runs in two sub-steps.
 
-### 4a. AI Translation
+### 4a. Identity Grouping
 
-For each place, `translatePlaceName()` is called concurrently via `Promise.all()`. Translation is skipped if:
-
-- Only one source language is configured (`!hasMultipleSourceLanguages`), AND
-- The place's language already matches the target language
-
-When translation is triggered, the model is prompted to translate only place names that can be rendered in the target language, with a strong bias toward returning the original. Uses `json_schema` structured output:
-
-```json
-{ "title": "original", "translation": "translated" }
-```
-
-**Model:** simple (default: gpt-5.6-luna), **reasoning effort:** low
-
-If the translation differs from the original title, the place title is rewritten to `"{translation} ({original})"`.
+Places sharing a stable identity (Wikidata ID, `lang:pageid`, or a normalized `lang:title` Wikipedia reference) are merged via `mergeDuplicatePlace()`. The place in the preferred language wins, then the one with an article, then the nearest; missing fields are filled from the other place and all titles are kept in `alternateTitles`.
 
 ### 4b. Deduplication via Levenshtein Distance
 
-Places are iterated sequentially. For each place, all previously accepted places are checked for name similarity using `placesNameIsSimilar()`:
+Places are iterated sequentially. For each place, all previously accepted places are checked for shared identity or name similarity using `placesNameIsSimilar()`:
 
 **Pre-processing steps:**
 
@@ -203,12 +191,7 @@ Places are iterated sequentially. For each place, all previously accepted places
 - If one cleaned name is a substring of the other (**substring-like**): `allowedDistance = max(3, lengthDiff + floor(minLength × 0.1))`
 - Otherwise (**non-substring**): `allowedDistance = max(2, floor(minLength × 0.15))`
 
-Levenshtein distance is computed via standard DP. A match occurs when `name1 === name2 || distance < allowedDistance`.
-
-When a duplicate is found:
-
-- If the _previous_ (already-accepted) place has `lang === preferences.lang`, the new place is skipped
-- Otherwise, the previous place is replaced by the new one
+Levenshtein distance is computed via standard DP. A match occurs when `name1 === name2 || distance < allowedDistance`. Duplicates are merged with `mergeDuplicatePlace()` as in 4a.
 
 ---
 
@@ -318,6 +301,24 @@ Three derived Svelte stores filter and sort the rated place list:
 
 ---
 
+## Stage 7b — Title Translation
+
+**Source:** [src/util/ai-translation.js](../src/util/ai-translation.js) `translatePlaceTitles()`
+
+Runs after rating so that only places that can become visible are translated: places with `stars >= PLACE_VISIBLE_MIN_STARS` or whose title matches an address part (surrounding places). A place needs translation if its `lang` differs from `preferences.lang`, or if it has no `lang` (OSM places) and more than one source language is configured.
+
+Candidate titles are sent in batches of `AI_TRANSLATION_BATCH_SIZE` (25) as one request per batch, using `json_schema` structured output:
+
+```json
+{ "results": [{ "id": "0", "translation": "translated or original" }] }
+```
+
+**Model:** simple (default: gpt-5.6-luna), **reasoning effort:** low. The prompt biases strongly toward returning the original name. A failed batch keeps the original titles.
+
+If the translation differs from the original title, the place title is rewritten to `"{translation} ({original})"` and the translation is added to `alternateTitles`. Afterwards the Levenshtein merge from Stage 4b runs once more, because a translated title can reveal a duplicate; `rate()` is re-run for merged places.
+
+---
+
 ## Stage 8 — Background Metadata Loading
 
 **Source:** [src/stores.js](../src/stores.js) `loadMetadata()`
@@ -373,23 +374,17 @@ For places without an image that have a `wikidata` ID:
 
 ### Article Text Loading
 
-Full Wikipedia wikitext is fetched for all `placesHere`, `placesSurrounding`, and `placesNearby` concurrently (three separate `Promise.all()` calls for the three groups). The `revisions` API is used:
+Full Wikipedia article plain text is fetched for all `placesHere` and `placesSurrounding` concurrently. The TextExtracts API is used, which strips markup, references, templates, and tables server-side:
 
 ```
 GET https://{lang}.wikipedia.org/w/api.php
     ?action=query&format=json&pageids={pageid}
-    &prop=revisions|pageprops
-    &rvprop=content&rvslots=main
+    &prop=extracts|pageprops
+    &explaintext=1
     &ppprop=wikibase_item
 ```
 
-Post-processing removes:
-
-- Wiki tables (`/\{\|[\s\S]*?\|\}/g`)
-- Templates (`/\{\{[\s\S]*?\}\}/g`)
-- External links (`/\[http[^\]]*\]/g`)
-- File/category/namespace links (`/\[\[[^\]]*:[^\]]*\]\]/g`)
-- Text beyond 30,000 characters (truncated with `...`)
+Section headings are kept in `== Heading ==` form. Text beyond 30,000 characters is truncated with `...`.
 
 If the page has a `wikibase_item` property, `place.wikidata` is set from it.
 
@@ -627,7 +622,7 @@ OSM caches are evicted when writing if total OSM entries exceed 50 (oldest first
 | Function                     | Format                                         |
 | ---------------------------- | ---------------------------------------------- |
 | `analyzeSinglePlace`         | `json_object`                                  |
-| `translatePlaceName`         | `json_schema` (strict)                         |
+| `translatePlaceTitles`       | `json_schema` (strict, batched)                |
 | `extractPlaceFacts`          | `json_schema` (dynamic, from class properties) |
 | `extractInsightsFromArticle` | free text                                      |
 | `summarizeArticle`           | free text                                      |
@@ -664,5 +659,5 @@ After full pipeline processing, a place object carries:
 | `imageLicense`     | Image license short name                               |
 | `imageLicenseUrl`  | Image license URL                                      |
 | `imageArtist`      | Image artist/credit                                    |
-| `article`          | Full cleaned Wikipedia wikitext (max 30,000 chars)     |
+| `article`          | Full Wikipedia article plain text (max 30,000 chars)   |
 | `insights`         | AI bullet-point insights from article                  |

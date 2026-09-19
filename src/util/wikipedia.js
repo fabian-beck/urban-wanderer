@@ -168,12 +168,16 @@ export async function loadWikipediaArticleTexts(places, lang) {
 			if (!place.pageid) {
 				return;
 			}
-			const response = await fetch(
-				`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=revisions|pageprops&rvprop=content&rvslots=main&ppprop=wikibase_item`
+			const data = await fetchWikiJson(
+				`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts|pageprops&explaintext=1&ppprop=wikibase_item`,
+				`article text ${place.title}`
 			);
-			const data = await response.json();
-			const pageData = data.query.pages[place.pageid];
-			place.article = pageData.revisions[0].slots.main['*'];
+			const pageData = data?.query?.pages?.[place.pageid];
+			if (!pageData || pageData.missing) {
+				logger.warn('Article text not found', { title: place.title });
+				return;
+			}
+			place.article = pageData.extract || '';
 
 			// Extract WikiData ID if available
 			if (pageData.pageprops?.wikibase_item) {
@@ -183,14 +187,6 @@ export async function loadWikipediaArticleTexts(places, lang) {
 					wikidata: place.wikidata
 				});
 			}
-			// delete all wiki tables
-			place.article = place.article.replace(/\{\|[\s\S]*?\|\}/g, '');
-			place.article = place.article.replace(/\{\{[\s\S]*?\}\}/g, '');
-			// delete all URLs
-			place.article = place.article.replace(/\[http[^\]]*\]/g, '');
-			// delete all references like: "[[File|Datei|Kategorie|...:...]]"
-			place.article = place.article.replace(/\[\[[^\]]*:[^\]]*\]\]/g, '');
-			// article still too long?
 			if (place.article.length > MAX_ARTICLE_LENGTH) {
 				place.article = place.article.substring(0, MAX_ARTICLE_LENGTH) + '...';
 			}
