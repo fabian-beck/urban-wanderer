@@ -95,7 +95,7 @@ function getStopDistance(stop, coordinates) {
 	);
 }
 
-function truncate(text, maxLength) {
+export function truncate(text, maxLength) {
 	const normalized = String(text || '')
 		.replace(/\s+/g, ' ')
 		.trim();
