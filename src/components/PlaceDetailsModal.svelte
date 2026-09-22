@@ -8,6 +8,7 @@
 		DatabaseOutline
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai-facts.js';
+	import { loadWikipediaArticleText } from '../util/wikipedia.js';
 	import { get } from 'svelte/store';
 	import {
 		coordinates,
@@ -44,11 +45,11 @@
 	$: visitedPlace = $visitedPlaceIdentities.has(getPlaceIdentity(place))
 		? getVisitedPlace($walk, place)
 		: null;
-	let summary = '';
+	let summary = null;
 	let placeFactListComponent;
 	let imageElement;
 	let isPortrait = false;
-	let isExpanded = false;
+	let summaryExpanded = false;
 	let imageLoading = false;
 	let summaryLoading = false;
 
@@ -105,27 +106,16 @@
 		}
 		summaryLoading = true;
 		try {
-			if (
-				currentPlace.pageid ||
-				(currentPlace.wikipedia && !currentPlace.wikipedia.includes('#'))
-			) {
-				const url = currentPlace.pageid
-					? `https://${currentPlace.lang || $preferences.lang}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&pageids=${currentPlace.pageid}&origin=*`
-					: `https://${currentPlace.wikipedia.split(':')[0]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&exintro&explaintext&redirects=1&titles=${currentPlace.wikipedia.split(':')[1]}&origin=*`;
-				const response = await fetch(url);
-				const data = await response.json();
-				summary = await summarizeArticle(
-					Object.values(data.query.pages)[0].extract,
-					get(preferences)
-				);
-			} else if (currentPlace.description) {
-				summary = await summarizeArticle(
-					`${currentPlace.title}. ${currentPlace.description} (${currentPlace.type})`,
-					get(preferences)
-				);
+			const article =
+				currentPlace.article ||
+				(await loadWikipediaArticleText(currentPlace, $preferences.lang)) ||
+				(currentPlace.description &&
+					`${currentPlace.title}. ${currentPlace.description} (${currentPlace.type})`);
+			if (article) {
+				summary = await summarizeArticle(article, get(preferences));
 			}
 		} catch {
-			summary = '';
+			summary = null;
 		} finally {
 			summaryLoading = false;
 		}
@@ -194,22 +184,24 @@
 			</div>
 		{/if}
 		<div class="p-4">
-			{#if place.pageid || place.wikipedia || place.description}
-				<div class="flex flex-auto">
-					{#if summary}
-						<div
-							on:click={() => (isExpanded = !isExpanded)}
-							on:keydown={(e) => e.key === 'Enter' && (isExpanded = !isExpanded)}
-							role="button"
-							tabindex="0"
-							class={`cursor-pointer ${isExpanded ? '' : 'line-clamp-3'}`}
+			{#if summary?.short}
+				<div>
+					<p>{summary.short}</p>
+					{#if summary.long}
+						{#if summaryExpanded}
+							<p class="mt-2 whitespace-pre-line">{summary.long}</p>
+						{/if}
+						<button
+							type="button"
+							class="mt-1 text-sm text-primary-800 hover:underline"
+							on:click={() => (summaryExpanded = !summaryExpanded)}
 						>
-							{summary}
-						</div>
-					{:else}
-						...
+							{summaryExpanded ? 'Show less' : 'Show more'}
+						</button>
 					{/if}
 				</div>
+			{:else if summaryLoading}
+				<div class="text-gray-500">...</div>
 			{/if}
 			{#if visitedPlace}
 				<div class="mt-3 flex items-center text-sm text-green-800">

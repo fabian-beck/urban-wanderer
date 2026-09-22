@@ -9,6 +9,7 @@ import {
 	WALK_SNAPSHOT_TEXT_LENGTH,
 	WALK_STOP_MERGE_DISTANCE,
 	WALK_STORY_CONTEXT_LIMIT,
+	WALK_STORY_CONTEXT_MAX_CHARS,
 	WALK_STORY_EXCERPT_LENGTH,
 	WALK_VISITED_CONTEXT_LIMIT
 } from '../constants/core.js';
@@ -60,7 +61,7 @@ function getStopDistance(stop, coordinates) {
 	);
 }
 
-function truncate(text, maxLength) {
+export function truncate(text, maxLength) {
 	const normalized = String(text || '')
 		.replace(/\s+/g, ' ')
 		.trim();
@@ -388,9 +389,42 @@ function formatVisitedPlaceLine(place, walk) {
 	return `- ${place.title}${labels}${where}`;
 }
 
-// Prompt context describing the walk so far; empty when there is nothing from earlier stops yet
-export function buildWalkPromptContext(walk) {
-	if (!isWalkActive(walk) || walk.stops.length < 2) {
+// Earlier stories in chronological order; with fullText, the most recent ones are given verbatim
+// within WALK_STORY_CONTEXT_MAX_CHARS and only older ones fall back to an excerpt
+function selectContextStories(walk, fullText) {
+	let budget = WALK_STORY_CONTEXT_MAX_CHARS;
+	return walk.stories
+		.slice(-WALK_STORY_CONTEXT_LIMIT)
+		.reverse()
+		.map((story) => {
+			const text = String(story.text || '').trim();
+			if (fullText && text.length <= budget) {
+				budget -= text.length;
+				return { ...story, full: true, contextText: text };
+			}
+			return {
+				...story,
+				full: false,
+				contextText: getStoryExcerpt(text, WALK_STORY_EXCERPT_LENGTH)
+			};
+		})
+		.reverse();
+}
+
+function formatStoryContext(story, currentStopIndex, fullText) {
+	const where = `stop ${story.stopIndex + 1}${story.stopIndex === currentStopIndex ? ', the current stop' : ''}${story.address ? `, ${story.address}` : ''}`;
+	if (fullText) {
+		return `## Story told at ${where}${story.full ? '' : ' (excerpt only)'}
+
+${story.contextText}`;
+	}
+	return `- ${story.headline ? `"${story.headline}"` : 'Untitled'} (told at ${where}): ${story.contextText}`;
+}
+
+// Prompt context describing the walk so far; empty when nothing has been recorded before yet.
+// With fullStories, the earlier stories are quoted verbatim so the model can avoid repeating them.
+export function buildWalkPromptContext(walk, { fullStories = false } = {}) {
+	if (!isWalkActive(walk) || (walk.stops.length < 2 && walk.stories.length === 0)) {
 		return '';
 	}
 	const stats = getWalkStats(walk);
@@ -398,7 +432,7 @@ export function buildWalkPromptContext(walk) {
 	const earlierPlaces = walk.visitedPlaces
 		.filter((place) => place.firstStopIndex < currentStopIndex)
 		.slice(-WALK_VISITED_CONTEXT_LIMIT);
-	const earlierStories = walk.stories.slice(-WALK_STORY_CONTEXT_LIMIT);
+	const stories = selectContextStories(walk, fullStories);
 	const sections = [
 		`# The user's walk so far:
 
@@ -410,15 +444,21 @@ The user is on a walk that started ${formatWalkDuration(stats.durationMs)} ago, 
 ${earlierPlaces.map((place) => formatVisitedPlaceLine(place, walk)).join('\n')}`
 		);
 	}
-	if (earlierStories.length > 0) {
+	if (stories.length > 0) {
+		const storyLines = stories
+			.map((story) => formatStoryContext(story, currentStopIndex, fullStories))
+			.join(fullStories ? '\n\n' : '\n');
 		sections.push(
-			`Stories the user has already read on this walk (do not repeat their content):
-${earlierStories
-	.map(
-		(story) =>
-			`- ${story.headline ? `"${story.headline}"` : 'Untitled'}${story.address ? ` (told at ${story.address})` : ''}: ${getStoryExcerpt(story.text, WALK_STORY_EXCERPT_LENGTH)}`
-	)
-	.join('\n')}`
+			fullStories
+				? `# Stories the user has already heard on this walk
+
+The user knows every fact in the following ${stories.length === 1 ? 'story' : 'stories'} and must not hear it again.
+
+${storyLines}
+
+# End of the stories already heard`
+				: `Stories the user has already heard on this walk (do not repeat their content):
+${storyLines}`
 		);
 	}
 	return sections.join('\n\n');

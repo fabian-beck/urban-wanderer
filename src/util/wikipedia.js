@@ -162,35 +162,60 @@ async function loadWikipediaPlaceWikidataIds(places, fallbackLang) {
 	await Promise.all(requests);
 }
 
+function getWikipediaArticleQuery(place, lang) {
+	if (place.pageid) {
+		return {
+			lang: place.lang || lang,
+			query: `pageids=${place.pageid}`
+		};
+	}
+	if (!place.wikipedia || place.wikipedia.includes('#')) {
+		return null;
+	}
+	const separatorIndex = place.wikipedia.indexOf(':');
+	if (separatorIndex === -1) {
+		return null;
+	}
+	return {
+		lang: place.wikipedia.slice(0, separatorIndex),
+		query: `titles=${encodeURIComponent(place.wikipedia.slice(separatorIndex + 1))}`
+	};
+}
+
+// Loads the plain-text article for a place referenced by Wikipedia page ID or
+// "lang:title" and stores it as `place.article` (capped at MAX_ARTICLE_LENGTH).
+export async function loadWikipediaArticleText(place, lang) {
+	const articleQuery = getWikipediaArticleQuery(place, lang);
+	if (!articleQuery) {
+		return '';
+	}
+	const data = await fetchWikiJson(
+		`https://${articleQuery.lang}.wikipedia.org/w/api.php?action=query&format=json&${articleQuery.query}&origin=*&prop=extracts|pageprops&explaintext=1&redirects=1&ppprop=wikibase_item`,
+		`article text ${place.title}`
+	);
+	const pageData = data?.query?.pages ? Object.values(data.query.pages)[0] : null;
+	if (!pageData || pageData.missing) {
+		logger.warn('Article text not found', { title: place.title });
+		return '';
+	}
+	place.article = pageData.extract || '';
+
+	if (pageData.pageprops?.wikibase_item) {
+		place.wikidata = pageData.pageprops.wikibase_item;
+		logger.debug('Wikidata ID found from Wikipedia', {
+			title: place.title,
+			wikidata: place.wikidata
+		});
+	}
+	if (place.article.length > MAX_ARTICLE_LENGTH) {
+		place.article = place.article.substring(0, MAX_ARTICLE_LENGTH) + '...';
+	}
+	return place.article;
+}
+
 export async function loadWikipediaArticleTexts(places, lang) {
 	await Promise.all(
-		places.map(async (place) => {
-			if (!place.pageid) {
-				return;
-			}
-			const data = await fetchWikiJson(
-				`https://${place.lang || lang}.wikipedia.org/w/api.php?action=query&format=json&pageids=${place.pageid}&origin=*&prop=extracts|pageprops&explaintext=1&ppprop=wikibase_item`,
-				`article text ${place.title}`
-			);
-			const pageData = data?.query?.pages?.[place.pageid];
-			if (!pageData || pageData.missing) {
-				logger.warn('Article text not found', { title: place.title });
-				return;
-			}
-			place.article = pageData.extract || '';
-
-			// Extract WikiData ID if available
-			if (pageData.pageprops?.wikibase_item) {
-				place.wikidata = pageData.pageprops.wikibase_item;
-				logger.debug('Wikidata ID found from Wikipedia', {
-					title: place.title,
-					wikidata: place.wikidata
-				});
-			}
-			if (place.article.length > MAX_ARTICLE_LENGTH) {
-				place.article = place.article.substring(0, MAX_ARTICLE_LENGTH) + '...';
-			}
-		})
+		places.filter((place) => place.pageid).map((place) => loadWikipediaArticleText(place, lang))
 	);
 }
 

@@ -22,7 +22,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **Wikidata Integration**: Structured data enrichment and image fallback
 - **Multi-language Support**: German and English presentation languages (`LANGUAGES`) with AI translation; Wikipedia source languages (`SOURCE_LANGUAGES`: English, German, Czech) are selectable independently
 - **Offline-first Architecture**: Multi-level caching (OSM, AI analysis, user preferences)
-- **Walk Sessions**: Every location update belongs to a walk that records stops, visited places, and read stories; the guide avoids repetition and marks places already visited
+- **Walk Sessions**: Every location update belongs to a walk that records stops, visited places, and read stories; the story prompt receives the earlier stories verbatim so nothing is told twice within a walk (links back to earlier stops are allowed), and places already visited are marked
 - **Responsive Design**: Works across mobile and desktop
 
 ## Core Components
@@ -54,7 +54,7 @@ Comprehensive classification system with 25+ place types:
 - **ai-analysis.js**: Place classification, labeling, and importance rating
 - **ai-translation.js**: Identity-first and name-similarity deduplication (local), plus batched AI title translation of visible places after rating
 - **ai-story.js**: AI-powered location storytelling; paragraph budget from `STORY_LENGTH` in `src/constants/ui-config.js`
-- **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment
+- **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment; `summarizeArticle` returns a two-part place summary (`short`: always shown, `long`: expanded on demand, both empty without meaningful source data), lengths from `SUMMARY_LENGTH` in `src/constants/ui-config.js`
 - **ai-history.js**: Historical content generation
 - **ai-comment.js**: Place commentary generation
 - **ai-speech.js**: Text-to-speech integration; a single utterance at a time, a newer `speak()` or `stopSpeech()` discards any request still loading (story and comment prompts receive the walk context from `walk.js`; `generateWalkRecap` sums up a finished walk)
@@ -64,16 +64,18 @@ Comprehensive classification system with 25+ place types:
 - **wikipedia.js**: Wikipedia API integration (plain-text articles via TextExtracts, intro extracts, images, metadata)
 - **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
-- **text.js**: Text processing utilities
-- **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context)
+- **text.js**: Place mentions in generated texts (`findPlaceMentions`/`markPlacesInText`): first mention of each visible place (here, surrounding, nearby; title and alternate titles, optional leading article, Unicode word boundaries, short inflection suffixes) becomes a markdown link with a `#place:` href; limits in `src/constants/core.js` (`PLACE_MENTION_*`)
+- **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context); `buildWalkPromptContext(walk, { fullStories })` quotes read stories in full for the story prompt (newest first within `WALK_STORY_CONTEXT_MAX_CHARS`, older ones as excerpts) and as excerpts for the comment prompt
 - **place-identity.js**: Stable place identity (Wikidata ID → Wikipedia page ID → title) shared by walk and history code
 
 ### UI Components (`src/components/`)
 
 - **Map.svelte**: Interactive map centered on the current stop; shows the stops of the active walk as green check markers and the live position marker (pinned to the map edge when out of range)
-- **PlaceDetailsModal.svelte**: Detailed place information
-- **StoryModal.svelte**: AI-generated stories about places
-- **HistoryModal.svelte**: Historical information display
+- **PlaceDetailsModal.svelte**: Detailed place information; summarizes the full article (`place.article`, else fetched via `loadWikipediaArticleText`, else the OSM description)
+- **StoryModal.svelte**: AI-generated stories about places; a tapped place mention opens `PlacePopup` (thumbnail, rating, short description, "Details" button) instead of the place details so audio playback continues
+- **PlaceMentions.svelte**: Renders a markdown text with clickable place mentions (emoji prefix, `onSelect(place, link)` callback), used by story and history
+- **PlacePopup.svelte**: Compact place preview positioned below a mention
+- **HistoryModal.svelte**: Historical information display (place mentions open the place details directly)
 - **WalkModal.svelte**: Walk summary from the header menu (stats, timeline of stops with visited places and read stories, structured AI recap with highlights/connections/timeline/missed places/open threads, start new walk)
 - **WalkResumeModal.svelte**: Continue-or-new decision shown after the front-page "Start walk" tap when a recent walk is nearby
 - **UserPreferences.svelte**: Settings and customization
