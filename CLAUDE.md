@@ -63,7 +63,7 @@ Comprehensive classification system with 25+ place types:
 - **wikipedia.js**: Wikipedia API integration (plain-text articles via TextExtracts, intro extracts, images, metadata)
 - **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
-- **text.js**: Text processing utilities
+- **text.js**: Place mentions in generated texts (`findPlaceMentions`/`markPlacesInText`): first mention of each visible place (here, surrounding, nearby; title and alternate titles, optional leading article, Unicode word boundaries, short inflection suffixes) becomes a markdown link with a `#place:` href; limits in `src/constants/core.js` (`PLACE_MENTION_*`)
 - **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context)
 - **place-identity.js**: Stable place identity (Wikidata ID → Wikipedia page ID → title) shared by walk and history code
 
@@ -71,8 +71,10 @@ Comprehensive classification system with 25+ place types:
 
 - **Map.svelte**: Interactive map display
 - **PlaceDetailsModal.svelte**: Detailed place information
-- **StoryModal.svelte**: AI-generated stories about places
-- **HistoryModal.svelte**: Historical information display
+- **StoryModal.svelte**: AI-generated stories about places; a tapped place mention opens `PlacePopup` (thumbnail, rating, short description, "Details" button) instead of the place details so audio playback continues
+- **PlaceMentions.svelte**: Renders a markdown text with clickable place mentions (emoji prefix, `onSelect(place, link)` callback), used by story and history
+- **PlacePopup.svelte**: Compact place preview positioned below a mention
+- **HistoryModal.svelte**: Historical information display (place mentions open the place details directly)
 - **WalkModal.svelte**: Walk summary from the header menu (stats, timeline of stops with visited places and read stories, structured AI recap with highlights/connections/timeline/missed places/open threads, start new walk)
 - **WalkResumeModal.svelte**: Continue-or-new decision shown after the front-page "Start walk" tap when a recent walk is nearby
 - **UserPreferences.svelte**: Settings and customization
