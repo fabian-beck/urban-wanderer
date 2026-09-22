@@ -30,6 +30,7 @@ import {
 	isWalkActive
 } from './util/walk.js';
 import { WALK_STORAGE_KEY } from './constants/cache-config.js';
+import { LIVE_POSITION_INTERVAL_MS } from './constants/core.js';
 import {
 	extractHistoricEvents,
 	getHistoricEventKey,
@@ -147,13 +148,9 @@ function createCoordinates() {
 						{ lang: get(preferences).lang }
 					);
 				} else if (!coords) {
-					coords = (
-						await withPerformance(
-							'coordinates.geolocation',
-							() => Geolocation.getCurrentPosition({ enableHighAccuracy: true }),
-							{ enableHighAccuracy: true }
-						)
-					).coords;
+					coords = await withPerformance('coordinates.geolocation', getCurrentPosition, {
+						enableHighAccuracy: true
+					});
 					logger.info('Coordinates received', {
 						latitude: coords.latitude,
 						longitude: coords.longitude
@@ -501,6 +498,51 @@ export const placesNearby = derived(
 			.sort((a, b) => (a.dist || Infinity) - (b.dist || Infinity));
 	}
 );
+
+// Current GPS position, polled while the map is shown; not recorded as a stop
+export const livePosition = writable(null);
+let livePositionTimer = null;
+
+async function getCurrentPosition() {
+	const { coords } = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+	const position = { latitude: coords.latitude, longitude: coords.longitude, at: Date.now() };
+	livePosition.set(position);
+	return position;
+}
+
+async function refreshLivePosition() {
+	if (typeof document !== 'undefined' && document.hidden) {
+		return;
+	}
+	try {
+		await getCurrentPosition();
+	} catch (error) {
+		logger.debug('Live position unavailable', error);
+	}
+}
+
+function handleVisibilityChange() {
+	if (!document.hidden) {
+		refreshLivePosition();
+	}
+}
+
+export function startLivePositionTracking() {
+	stopLivePositionTracking();
+	refreshLivePosition();
+	livePositionTimer = setInterval(refreshLivePosition, LIVE_POSITION_INTERVAL_MS);
+	document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+export function stopLivePositionTracking() {
+	if (livePositionTimer) {
+		clearInterval(livePositionTimer);
+		livePositionTimer = null;
+	}
+	if (typeof document !== 'undefined') {
+		document.removeEventListener('visibilitychange', handleVisibilityChange);
+	}
+}
 
 // walk session (persisted so an active walk survives app restarts)
 function loadStoredWalk() {
@@ -1143,10 +1185,8 @@ export async function updateLocation(coords) {
 
 async function locate() {
 	try {
-		const { coords } = await withPerformance('walk.locate', () =>
-			Geolocation.getCurrentPosition({ enableHighAccuracy: true })
-		);
-		return { latitude: coords.latitude, longitude: coords.longitude };
+		const { latitude, longitude } = await withPerformance('walk.locate', getCurrentPosition);
+		return { latitude, longitude };
 	} catch (error) {
 		logger.error('Locating failed', error);
 		errorMessage.set('Could not determine your location: ' + error);
