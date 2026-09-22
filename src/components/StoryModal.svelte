@@ -4,12 +4,12 @@
 	import CloseButton from 'flowbite-svelte/CloseButton.svelte';
 	import Modal from 'flowbite-svelte/Modal.svelte';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
-	import { marked } from 'marked';
 	import { speak, stopSpeech } from '../util/ai-speech.js';
 	import { get } from 'svelte/store';
-	import { markPlacesInText } from '../util/text.js';
 	import { createLogger } from '../util/logger.js';
-	import { CLASSES } from '../constants/place-classes.js';
+	import { PLACE_MENTION_HREF_PREFIX } from '../constants/core.js';
+	import PlaceMentions from './PlaceMentions.svelte';
+	import PlacePopup from './PlacePopup.svelte';
 	import {
 		errorMessage,
 		storyTexts,
@@ -19,7 +19,6 @@
 		preferences,
 		preloadingStory,
 		continueStory,
-		places,
 		placeDetailsVisible,
 		walk,
 		walkActive
@@ -28,52 +27,42 @@
 
 	const logger = createLogger('story.modal');
 
-	// Function to make marked places clickable
-	const makeClickablePlaces = (htmlContent) => {
-		let result = htmlContent;
-		const $places = get(places);
-
-		// Sort places by length of title in descending order to handle longer names first
-		const sortedPlaces = [...$places].sort((a, b) => b.title.length - a.title.length);
-
-		sortedPlaces.forEach((place) => {
-			let placeName = place.title.replace(/\s*\(.*?\)\s*/g, '');
-			// Create a regex to find bold marked places
-			let regEx = new RegExp(
-				`<strong>${placeName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\w*</strong>`,
-				'gi'
-			);
-			result = result.replace(regEx, (match) => {
-				const placeText = match.replace(/<\/?strong>/g, '');
-				const placeEmoji = place.cls && CLASSES[place.cls]?.emoji ? CLASSES[place.cls].emoji : '';
-				return `<strong class="cursor-pointer text-primary-800 hover:text-primary-900" data-place-title="${place.title}">${placeEmoji}${placeEmoji ? ' ' : ''}${placeText}</strong>`;
-			});
-		});
-		return result;
-	};
-
-	// Function to handle place clicks
-	const openPlaceDetails = (placeTitle) => {
-		placeDetailsVisible.set(placeTitle);
-	};
-
-	// Add event listener for place clicks after the content is rendered
-	const handleStoryClick = (event) => {
-		const target = event.target;
-		if (target.tagName === 'STRONG' && target.dataset.placeTitle) {
-			openPlaceDetails(target.dataset.placeTitle);
-		}
-	};
-
-	// Handle keyboard events for accessibility
-	const handleStoryKeydown = (event) => {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			handleStoryClick(event);
-		}
-	};
-
 	export let visible = false;
+
+	// A tapped place mention opens a preview popup below the mention instead of the place
+	// details, so reading and audio playback continue uninterrupted
+	let storyContainer;
+	let popupContainer;
+	let popup = null;
+
+	const showPlacePopup = (place, link) => {
+		const top =
+			link.getBoundingClientRect().bottom - storyContainer.getBoundingClientRect().top + 4;
+		popup = { place, top };
+	};
+
+	const closePlacePopup = () => {
+		popup = null;
+	};
+
+	const openPlaceDetails = () => {
+		placeDetailsVisible.set(popup.place.title);
+		closePlacePopup();
+	};
+
+	const handleWindowPointerDown = (event) => {
+		if (
+			popup &&
+			!popupContainer?.contains(event.target) &&
+			!event.target.closest?.(`a[href^="${PLACE_MENTION_HREF_PREFIX}"]`)
+		) {
+			closePlacePopup();
+		}
+	};
+
+	$: if (!visible || $storyTexts.length === 0) {
+		popup = null;
+	}
 
 	// Story generation and speech exclude each other: no speech while a part is generated,
 	// no new part while speech is loading or playing
@@ -106,6 +95,8 @@
 		stopSpeech();
 	};
 </script>
+
+<svelte:window on:pointerdown={handleWindowPointerDown} />
 
 <Modal classBody="p-0 overscroll-none" classDialog="" open={visible} on:close={close}>
 	<!-- header with audio state -->
@@ -142,20 +133,20 @@
 		</div>
 	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
-		<div class="p-4">
+		<div class="relative p-4" bind:this={storyContainer}>
+			{#if popup}
+				<div bind:this={popupContainer}>
+					<PlacePopup
+						place={popup.place}
+						top={popup.top}
+						onClose={closePlacePopup}
+						onDetails={openPlaceDetails}
+					/>
+				</div>
+			{/if}
 			{#if $storyTexts.length > 0}
 				{#each $storyTexts as storyText, index (index)}
-					<div
-						on:click={handleStoryClick}
-						on:keydown={handleStoryKeydown}
-						role="button"
-						tabindex="0"
-					>
-						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-						{@html makeClickablePlaces(
-							marked(markPlacesInText(storyText)).replaceAll('<p>', '<p class="mt-2">')
-						)}
-					</div>
+					<PlaceMentions text={storyText} onSelect={showPlacePopup} paragraphClass="mt-2" />
 					<div class="mb-2 flex justify-end">
 						<Button
 							on:click={() => playStory(storyText)}

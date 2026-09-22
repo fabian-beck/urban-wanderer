@@ -39,6 +39,18 @@ export const HISTORY_MAX_CONTEXT_PLACES = 14;
 export const HISTORY_LOCAL_ADDRESS_PART_KEYS = ['road', 'suburb', 'village'];
 export const HISTORY_BROAD_ADDRESS_PART_KEYS = ['town', 'county', 'state', 'country'];
 
+// Place mentions in generated texts (stories, historic events): a place name must be
+// at least this long to be marked, each word of the name may carry a short inflection
+// suffix (e.g. "Alten Hofhaltung" for "Alte Hofhaltung"), longer words may also change
+// their last letter (e.g. "Österreichische" for "Österreichisches"), and a leading
+// article is optional.
+export const PLACE_MENTION_MIN_LENGTH = 4;
+export const PLACE_MENTION_MAX_SUFFIX_LETTERS = 2;
+export const PLACE_MENTION_INFLECTED_WORD_MIN_LENGTH = 6;
+export const PLACE_MENTION_LEADING_ARTICLES = ['the', 'der', 'die', 'das', 'le', 'la', 'les', 'el'];
+export const PLACE_MENTION_HREF_PREFIX = '#place:';
+export const PLACE_POPUP_TEXT_LENGTH = 220;
+
 // OSM search radius for Overpass API queries
 export const OSM_SEARCH_RADIUS = 500;
 export const OSM_ACTIVITY_RADIUS = 600;

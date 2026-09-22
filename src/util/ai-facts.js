@@ -1,6 +1,6 @@
 import { openai, getAiModel } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
-import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
+import { AI_REASONING_EFFORT, SUMMARY_LENGTH } from '../constants/ui-config.js';
 import { INSIGHTS_CACHE_KEY, FACTS_CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
 import { createLogger } from './logger.js';
 
@@ -90,11 +90,14 @@ export function clearFactsCache() {
 	logger.info('Facts cache cleared');
 }
 
-// summarize article
+// Summarize a place description into a short form (always shown) and an
+// optional long form (shown on demand). Both are empty when the source holds
+// no meaningful information about the place.
 const summaryCache = {};
 export async function summarizeArticle(article, preferences) {
-	if (summaryCache[article]) {
-		return summaryCache[article];
+	const cacheKey = `${preferences.lang}|${article}`;
+	if (summaryCache[cacheKey]) {
+		return summaryCache[cacheKey];
 	}
 	const response = await openai.responses.create({
 		model: getAiModel('simple', preferences),
@@ -104,15 +107,41 @@ export async function summarizeArticle(article, preferences) {
 		input: [
 			{
 				role: 'system',
-				content: `You are a chat assistant providing a summary description for a place.
+				content: `You are a chat assistant providing a description of a place for a visitor standing in front of it. Answer in language '${preferences.lang}'.
 
-                Describe the following place in a short paragraph. Answer in language '${preferences.lang}'.
-${article} `
+Return two parts:
+- "short": ${SUMMARY_LENGTH.SHORT_MIN_SENTENCES} to ${SUMMARY_LENGTH.SHORT_MAX_SENTENCES} sentences capturing what the place is and why it matters. This part is always shown.
+- "long": ${SUMMARY_LENGTH.LONG_MIN_PARAGRAPHS} to ${SUMMARY_LENGTH.LONG_MAX_PARAGRAPHS} paragraphs with further details (history, architecture, use, notable events), separated by blank lines. It is shown on demand and must not repeat the short part. Scale its length to the information available; use an empty string when the source offers nothing substantial beyond the short part.
+
+If the source contains no meaningful information about the place itself, return empty strings for both parts. Do not invent facts. Plain text without markup.`
+			},
+			{
+				role: 'user',
+				content: article
 			}
-		]
+		],
+		text: {
+			format: {
+				type: 'json_schema',
+				name: 'place_summary',
+				schema: {
+					type: 'object',
+					properties: {
+						short: { type: 'string' },
+						long: { type: 'string' }
+					},
+					required: ['short', 'long'],
+					additionalProperties: false
+				}
+			}
+		}
 	});
-	const summary = response.output_text;
-	summaryCache[article] = summary;
+	const parsed = JSON.parse(response.output_text);
+	const summary = {
+		short: (parsed.short || '').trim(),
+		long: (parsed.long || '').trim()
+	};
+	summaryCache[cacheKey] = summary;
 	return summary;
 }
 
