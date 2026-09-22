@@ -46,7 +46,13 @@ import {
 	searchWikipediaPlaceCoordinates
 } from './util/wikipedia.js';
 import { loadWikidataImages } from './util/wikidata.js';
-import { loadOsmPlaces, loadOsmAddressData, loadOsmMapLayers } from './util/osm.js';
+import {
+	loadOsmPlaces,
+	loadOsmAddressData,
+	loadOsmMapLayers,
+	loadOsmMapExcerpt
+} from './util/osm.js';
+import { buildMapExcerpt } from './util/map-excerpt.js';
 import { setDebugConsoleEnabled } from './util/debug-console.js';
 import { createLogger, setDebugLoggingEnabled } from './util/logger.js';
 import {
@@ -65,6 +71,8 @@ const storyLogger = createLogger('story');
 const historyLogger = createLogger('history');
 const walkLogger = createLogger('walk');
 let mapLayerLoadSequence = 0;
+let mapExcerptLoadSequence = 0;
+let mapExcerptPromise = Promise.resolve(null);
 let metadataLoadSequence = 0;
 let historyLoadSequence = 0;
 const placeImageRequests = new Map();
@@ -284,9 +292,33 @@ function createPlaces() {
 						mapLayersLoading.set(false);
 					});
 			};
+			// map excerpt for the story prompt; queued on the Overpass queue right behind the places request
+			const startMapExcerptLoad = () => {
+				const loadSequence = ++mapExcerptLoadSequence;
+				mapExcerpt.set(null);
+				mapExcerptPromise = withPerformance('OSM map excerpt', () =>
+					loadOsmMapExcerpt(currentCoordinates)
+				)
+					.then((elements) => {
+						if (loadSequence !== mapExcerptLoadSequence) {
+							return null;
+						}
+						const excerpt = buildMapExcerpt(elements, currentCoordinates, currentPreferences.lang);
+						mapExcerpt.set(excerpt);
+						placesLogger.info('Map excerpt built', {
+							features: excerpt.features.length,
+							unnamedBuildings: excerpt.unnamedBuildings.length
+						});
+						return excerpt;
+					})
+					.catch((error) => {
+						placesLogger.error('Map excerpt load failed', error);
+						return null;
+					});
+			};
 			try {
 				loadingMessage.set('Loading places ...');
-				let { result: sourcePlaces, durationMs: sourceFetchDurationMs } = await measure(
+				const sourceFetch = measure(
 					'places.sourceFetch',
 					() =>
 						Promise.allSettled([
@@ -298,6 +330,8 @@ function createPlaces() {
 						]),
 					{ nArticles }
 				);
+				startMapExcerptLoad();
+				let { result: sourcePlaces, durationMs: sourceFetchDurationMs } = await sourceFetch;
 				stageDurations.sourceFetchMs = sourceFetchDurationMs;
 				let [placesTmp, placesOsm] = sourcePlaces;
 				const mergedPlaces = mergePlaces(placesTmp, placesOsm);
@@ -939,6 +973,8 @@ async function pregenerateStoryInBackground(currentCoordinates = get(coordinates
 	storyLoading.set(true);
 
 	try {
+		const currentMapExcerpt = await mapExcerptPromise;
+		perf.checkpoint('map excerpt ready', { available: Boolean(currentMapExcerpt) });
 		const firstStoryResult = await withPerformance(
 			'story.generateFirstPart',
 			() =>
@@ -950,12 +986,14 @@ async function pregenerateStoryInBackground(currentCoordinates = get(coordinates
 					currentCoordinates,
 					get(preferences),
 					null,
-					get(walk)
+					get(walk),
+					currentMapExcerpt
 				),
 			{
 				here: get(placesHere).length,
 				nearby: get(placesNearby).length,
-				surrounding: get(placesSurrounding).length
+				surrounding: get(placesSurrounding).length,
+				mapFeatures: currentMapExcerpt?.features?.length ?? null
 			}
 		);
 		storyTexts.set([firstStoryResult.text]);
@@ -1075,7 +1113,8 @@ export async function continueStory() {
 				get(coordinates),
 				get(preferences),
 				lastResponseId,
-				get(walk)
+				get(walk),
+				get(mapExcerpt)
 			);
 		}
 		const newStoryTexts = [...get(storyTexts), nextStoryResult.text];
@@ -1110,7 +1149,8 @@ export async function preloadNextStoryPart(currentStories) {
 					get(coordinates),
 					get(preferences),
 					lastResponseId,
-					get(walk)
+					get(walk),
+					get(mapExcerpt)
 				),
 			{ previousResponseId: Boolean(lastResponseId), existingStories: currentStories.length }
 		);
@@ -1139,6 +1179,9 @@ export const activityMap = writable([]);
 
 export const mapLayersLoading = writable(false);
 
+// OSM map excerpt around the exact position, fed into story generation
+export const mapExcerpt = writable(null);
+
 // Update location function - orchestrates all store updates
 export async function updateLocation(coords) {
 	const perf = createPerformanceRun('updateLocation', {
@@ -1148,6 +1191,9 @@ export async function updateLocation(coords) {
 		loading.set(true);
 		errorMessage.set(null);
 		mapLayerLoadSequence += 1;
+		mapExcerptLoadSequence += 1;
+		mapExcerptPromise = Promise.resolve(null);
+		mapExcerpt.set(null);
 		metadataLoadSequence += 1;
 		historyLoadSequence += 1;
 		mapLayersLoading.set(false);

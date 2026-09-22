@@ -11,7 +11,14 @@ import {
 	OSM_SEARCH_RADIUS,
 	OSM_STALE_CACHE_DURATION,
 	OSM_TREE_RADIUS,
-	OSM_WATERWAY_TYPES
+	OSM_WATERWAY_TYPES,
+	STORY_MAP_CACHE_PRECISION,
+	STORY_MAP_IMMEDIATE_RADIUS,
+	STORY_MAP_LINE_HIGHWAY_TYPES,
+	STORY_MAP_PLACE_TYPES,
+	STORY_MAP_POINT_NATURAL_TYPES,
+	STORY_MAP_RADIUS,
+	STORY_MAP_STOP_RAILWAY_TYPES
 } from '../constants/core.js';
 import {
 	REVERSE_GEOCODE_CACHE_KEY,
@@ -34,9 +41,9 @@ let overpassCooldownUntil = 0;
 const overpassRequestsInFlight = new Map();
 const logger = createLogger('osm');
 
-function getCacheKey(coordinates, queryType, radius) {
-	const lat = coordinates.latitude.toFixed(3);
-	const lon = coordinates.longitude.toFixed(3);
+function getCacheKey(coordinates, queryType, radius, precision = 3) {
+	const lat = coordinates.latitude.toFixed(precision);
+	const lon = coordinates.longitude.toFixed(precision);
 	return `${CACHE_PREFIX}${queryType}_${lat}_${lon}_${radius}`;
 }
 
@@ -1311,6 +1318,175 @@ out geom;
 					maxAge: OSM_STALE_CACHE_DURATION
 				}) || []
 		};
+	}
+}
+
+// Overpass area ids encode the underlying way or relation id
+const OVERPASS_AREA_WAY_OFFSET = 2400000000;
+const OVERPASS_AREA_RELATION_OFFSET = 3600000000;
+const MAP_EXCERPT_TAG_PATTERN =
+	/^(name|name:[a-z]{2,3}|old_name|amenity|shop|tourism|historic|leisure|landuse|natural|building|man_made|railway|public_transport|highway|place|waterway|barrier|area|addr:street|addr:housenumber|artwork_type|memorial|castle_type|tower:type|denomination|religion|cuisine|start_date|architect|heritage:description|inscription|description|height|ele|wikidata|wikipedia|boundary|admin_level|postal_code)$/;
+const MAP_EXCERPT_COORDINATE_DECIMALS = 6;
+
+function roundCoordinate(value) {
+	return Number(value.toFixed(MAP_EXCERPT_COORDINATE_DECIMALS));
+}
+
+// geometry as [lat, lon] pairs; nodes clipped by the bbox stay null so lines break there
+function compactGeometry(geometry) {
+	return (
+		geometry?.map((node) =>
+			Number.isFinite(node?.lat) && Number.isFinite(node?.lon)
+				? [roundCoordinate(node.lat), roundCoordinate(node.lon)]
+				: null
+		) || []
+	);
+}
+
+function compactTags(tags) {
+	return Object.fromEntries(
+		Object.entries(tags || {}).filter(([key]) => MAP_EXCERPT_TAG_PATTERN.test(key))
+	);
+}
+
+function compactMapExcerptElement(element) {
+	const compact = {
+		type: element.type,
+		id: element.id,
+		tags: compactTags(element.tags)
+	};
+	if (element.type === 'area') {
+		const id = element.id;
+		compact.type = id >= OVERPASS_AREA_RELATION_OFFSET ? 'relation' : 'way';
+		compact.id =
+			id -
+			(id >= OVERPASS_AREA_RELATION_OFFSET
+				? OVERPASS_AREA_RELATION_OFFSET
+				: OVERPASS_AREA_WAY_OFFSET);
+		compact.inside = true;
+		return compact;
+	}
+	if (element.type === 'node') {
+		compact.point = [roundCoordinate(element.lat), roundCoordinate(element.lon)];
+	} else if (element.type === 'way') {
+		if (element.geometry) {
+			compact.geometry = compactGeometry(element.geometry);
+			compact.closed =
+				Array.isArray(element.nodes) &&
+				element.nodes.length > 2 &&
+				element.nodes[0] === element.nodes[element.nodes.length - 1];
+		} else if (element.center) {
+			compact.point = [roundCoordinate(element.center.lat), roundCoordinate(element.center.lon)];
+		}
+	} else if (element.type === 'relation') {
+		compact.lines =
+			element.members
+				?.filter((member) => member.type === 'way' && member.geometry)
+				.map((member) => compactGeometry(member.geometry))
+				.filter((line) => line.some(Boolean)) || [];
+	}
+	return compact;
+}
+
+// merge duplicate elements (an is_in area and its way/relation, a building listed twice)
+function mergeMapExcerptElements(elements) {
+	const merged = new Map();
+	for (const element of elements) {
+		const key = `${element.type}/${element.id}`;
+		const existing = merged.get(key);
+		if (!existing) {
+			merged.set(key, element);
+			continue;
+		}
+		merged.set(key, {
+			...existing,
+			...element,
+			tags: { ...existing.tags, ...element.tags },
+			inside: existing.inside || element.inside,
+			geometry: existing.geometry || element.geometry,
+			lines: existing.lines || element.lines,
+			point: existing.point || element.point,
+			closed: existing.closed ?? element.closed
+		});
+	}
+	return [...merged.values()];
+}
+
+// Map excerpt around the exact position for story generation: named streets and
+// paths, buildings, points of interest, land use, water, rail, plus the areas
+// containing the position (Overpass is_in). Returns compact elements with
+// geometry relative to nothing yet; distances are computed by map-excerpt.js
+export async function loadOsmMapExcerpt(coordinates) {
+	const radius = STORY_MAP_RADIUS;
+	const cacheKey = getCacheKey(coordinates, 'mapexcerpt', radius, STORY_MAP_CACHE_PRECISION);
+	try {
+		const cached = getCachedData(cacheKey);
+		if (cached) {
+			logger.info('Map excerpt loaded from cache', { elements: cached.length });
+			return cached;
+		}
+		logger.info('Loading map excerpt from Overpass', { radius });
+		const { latitude, longitude } = coordinates;
+		const bboxRadius = radius * 1.5;
+		const latDelta = bboxRadius / 111320;
+		const lonDelta = bboxRadius / (111320 * Math.cos((latitude * Math.PI) / 180));
+		const bbox = `${latitude - latDelta},${longitude - lonDelta},${latitude + latDelta},${longitude + lonDelta}`;
+		const around = `(around:${radius},${latitude},${longitude})`;
+		const overpassQuery = `
+[out:json][timeout:25];
+is_in(${latitude},${longitude})->.inside;
+.inside out tags;
+(
+    way[highway][name]${around};
+    way[highway~"^(${STORY_MAP_LINE_HIGHWAY_TYPES})$"](around:${STORY_MAP_IMMEDIATE_RADIUS},${latitude},${longitude});
+    way[place="square"]${around};
+    relation[place="square"]${around};
+    node[place~"^(${STORY_MAP_PLACE_TYPES})$"]${around};
+    way[building][name]${around};
+    relation[building][name]${around};
+    node[amenity]${around};
+    way[amenity]${around};
+    relation[amenity]${around};
+    node[shop]${around};
+    way[shop]${around};
+    node[tourism]${around};
+    way[tourism]${around};
+    relation[tourism]${around};
+    node[historic]${around};
+    way[historic]${around};
+    relation[historic]${around};
+    node[leisure]${around};
+    way[leisure]${around};
+    relation[leisure]${around};
+    way[landuse]${around};
+    relation[landuse]${around};
+    way[natural]${around};
+    relation[natural]${around};
+    node[natural~"^(${STORY_MAP_POINT_NATURAL_TYPES})$"]${around};
+    way[waterway]${around};
+    relation[waterway]${around};
+    way[railway~"^(rail|tram|light_rail|subway|narrow_gauge|funicular)$"]${around};
+    node[railway~"^(${STORY_MAP_STOP_RAILWAY_TYPES})$"]${around};
+    node[highway="bus_stop"]${around};
+    node[man_made][name]${around};
+    way[man_made][name]${around};
+    way[barrier="city_wall"]${around};
+);
+out geom(${bbox});
+way[building][!name]${around};
+out center;
+`;
+		const data = await loadOverpassJson(overpassQuery, 'map-excerpt');
+		const elements = mergeMapExcerptElements((data.elements || []).map(compactMapExcerptElement));
+		logger.info('Map excerpt loaded', {
+			elements: elements.length,
+			inside: elements.filter((element) => element.inside).length
+		});
+		setCachedData(cacheKey, elements);
+		return elements;
+	} catch (error) {
+		const cached = getCachedDataAfterFailure(cacheKey, 'Map excerpt', error);
+		return cached || [];
 	}
 }
 

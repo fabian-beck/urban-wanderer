@@ -35,6 +35,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **walk**: Current walk (stops, visited places, read stories, recap), persisted in localStorage; `recordStop()` runs after rating in `places.update()` and creates a walk if none is active (expiry: last stop older than `WALK_MAX_AGE_MS`). `beginWalk()` is the front-page entry (GPS fix, then continue-or-new choice via `walkResumeCandidate` when the last stop is within `WALK_RESUME_DISTANCE`); `startNewWalk()` replaces the walk from the walk modal
 - **livePosition**: Latest GPS fix (`latitude`, `longitude`, `at`), refreshed by every GPS lookup and polled every `LIVE_POSITION_INTERVAL_MS` while `Map.svelte` is mounted and the document is visible (`startLivePositionTracking()`/`stopLivePositionTracking()`); never persisted and never recorded as a stop
 - **story**: `storyTexts`/`storyResponseIds`, `storyLoading` (first part and continuations alike), `preloadedStory`/`preloadingStory`, `storyPartsShown` (parts already displayed in the modal, so autoplay reads each part once); `continueStory()` appends the next part, `resetStory()` clears everything on location change
+- **mapExcerpt**: OpenStreetMap excerpt of the here area plus buffer around the exact position, loaded right behind the places request and awaited by the first story part
 - **audioState**: `'paused' | 'loading' | 'playing'`, owned by `ai-speech.js` (`speak()`/`stopSpeech()`); `StoryModal` disables speech while a story part is generated and "Tell me more" while audio is loading or playing
 - **Derived stores**: Categorized places (here, nearby, surrounding), `walkActive`, `visitedPlaceIdentities` (places that were "here" at an earlier stop)
 
@@ -53,7 +54,7 @@ Comprehensive classification system with 25+ place types:
 - **ai-core.js**: OpenAI client configuration and model tier selection (`getAiModel`); model IDs (`AI_MODELS`), the TTS model (`AI_SPEECH_MODEL`) and per-task reasoning effort (`AI_REASONING_EFFORT`) are defined in `src/constants/ui-config.js`
 - **ai-analysis.js**: Place classification, labeling, and importance rating
 - **ai-translation.js**: Identity-first and name-similarity deduplication (local), plus batched AI title translation of visible places after rating
-- **ai-story.js**: AI-powered location storytelling; paragraph budget from `STORY_LENGTH` in `src/constants/ui-config.js`
+- **ai-story.js**: AI-powered location storytelling; paragraph budget from `STORY_LENGTH` in `src/constants/ui-config.js`; the prompt lists here/nearby places with distance and compass direction and embeds the map excerpt with instructions to interpret the surroundings concretely
 - **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment; `summarizeArticle` returns a two-part place summary (`short`: always shown, `long`: expanded on demand, both empty without meaningful source data), lengths from `SUMMARY_LENGTH` in `src/constants/ui-config.js`
 - **ai-history.js**: Historical content generation
 - **ai-comment.js**: Place commentary generation
@@ -62,7 +63,8 @@ Comprehensive classification system with 25+ place types:
 **Data Integration:**
 
 - **wikipedia.js**: Wikipedia API integration (plain-text articles via TextExtracts, intro extracts, images, metadata)
-- **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
+- **osm.js**: OpenStreetMap integration (POI data, map overlays, map excerpt for the story prompt via `loadOsmMapExcerpt`, 15-min caching)
+- **map-excerpt.js**: Positions the OSM excerpt relative to the exact user position (distance, compass direction, line orientation, containment) and formats it as the prompt section with the position marked ⌖ (`STORY_MAP_*` constants in `src/constants/core.js`)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
 - **text.js**: Place mentions in generated texts (`findPlaceMentions`/`markPlacesInText`): first mention of each visible place (here, surrounding, nearby; title and alternate titles, optional leading article, Unicode word boundaries, short inflection suffixes) becomes a markdown link with a `#place:` href; limits in `src/constants/core.js` (`PLACE_MENTION_*`)
 - **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context); `buildWalkPromptContext(walk, { fullStories })` quotes read stories in full for the story prompt (newest first within `WALK_STORY_CONTEXT_MAX_CHARS`, older ones as excerpts) and as excerpts for the comment prompt
@@ -188,7 +190,7 @@ The application processes location data through 9 distinct stages:
 6. **AI Analysis**: Classification, labeling, and importance rating
 7. **Rating & Translation**: Star-based rating, then batched AI translation of visible place titles only, and filtering into here/nearby/surrounding
 8. **Metadata Loading**: Images (Wikipedia → Wikidata fallback), articles, AI insights
-9. **Story Generation**: Background pregeneration with Wikidata-enhanced context
+9. **Story Generation**: Background pregeneration with Wikidata-enhanced context and the OSM map excerpt of the immediate surroundings
 
 ## Performance Considerations
 

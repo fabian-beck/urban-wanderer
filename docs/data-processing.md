@@ -417,13 +417,27 @@ The system prompt includes:
 - **Guide character** from preferences (e.g., "friendly and helpful", "funny and witty")
 - **Target language** from preferences
 - **Current address** from coordinates
-- **Places here** — with title, labels, star rating, and `insights || article || description || snippet || type`
-- **Nearby places** — with title, distance, labels, star rating, and `description || snippet || type`
+- **Places here** — with title, distance and compass direction from the user, labels, star rating, and `insights || article || description || snippet || type`
+- **Nearby places** — with title, distance and compass direction, labels, star rating, and `description || snippet || type`
 - **Surrounding places** — with title and `insights || article || description || snippet || type`
+- **Map excerpt** — an OpenStreetMap excerpt of the here area plus buffer (`STORY_MAP_RADIUS` = `PLACE_HERE_DEFAULT_RADIUS` + `STORY_MAP_BUFFER`), see below
 - **User interest labels** from preferences
 - **Paragraph length constraint**: `min(round(0.5 + (placesHere.length + placesSurrounding.length) / 3), 4)` paragraphs
 
-Behavioral constraints in the prompt: no directions, no distances, no welcome/farewell, no generic superlatives, no exact address. Guide character and user familiarity level are applied.
+Behavioral constraints in the prompt: no numeric distances or navigation instructions, no welcome/farewell, no generic superlatives, no exact address. Guide character and user familiarity level are applied.
+
+### Map Excerpt
+
+**Source:** [src/util/osm.js](../src/util/osm.js) `loadOsmMapExcerpt()`, [src/util/map-excerpt.js](../src/util/map-excerpt.js) `buildMapExcerpt()` / `formatMapExcerpt()`
+
+The excerpt is requested from Overpass right behind the places request (`startMapExcerptLoad()` in `places.update()`), so it is ready before story generation, which awaits it. One query returns:
+
+- the areas containing the exact position (`is_in`: square, park, building, land use; administrative boundaries are dropped)
+- named streets, plus unnamed paths and steps within `STORY_MAP_IMMEDIATE_RADIUS`
+- named buildings, amenities, shops, tourism/historic/leisure features, land use, water, rail lines and stops, city walls (`out geom` clipped to a bounding box)
+- unnamed buildings as centre points (`out center`)
+
+Elements are stored compactly (tag allowlist, `[lat, lon]` geometry) in the OSM cache with 4-decimal coordinate precision. `buildMapExcerpt()` projects every element relative to the exact position and derives distance, 8-point compass direction, line orientation (N–S, NE–SW, …) at the nearest segment, and containment (ray casting for closed ways, `is_in` otherwise). `formatMapExcerpt()` renders the prompt section: the position marker ⌖ with coordinates, the areas ⌖ is inside, the nearest streets (deduplicated by name), then distance rings (0–50 m, 50–150 m, 150–250 m) with per-ring limits that prefer named and notable features, plus a summary of unnamed buildings within the immediate ring. Features that match a listed place (Wikidata ID or normalized name) are annotated `[= listed place "…"]`. The prompt instructs the model to interpret the excerpt before writing, to open with what is right at ⌖, and to translate distances and bearings into natural description.
 
 ### First vs. Continuation Requests
 
@@ -594,6 +608,7 @@ Fetches shops, food and drink venues, entertainment amenities, and commercial la
 | OSM water map     | localStorage   | 15 min  | `osm_cache_watermap_{lat3dp}_{lon3dp}_500`                                     | (shared 50 limit)    |
 | OSM green map     | localStorage   | 15 min  | `osm_cache_greenmap_{lat3dp}_{lon3dp}_500`                                     | (shared 50 limit)    |
 | OSM activity map  | localStorage   | 15 min  | `osm_cache_activitymap_{lat3dp}_{lon3dp}_600`                                  | (shared 50 limit)    |
+| OSM map excerpt   | localStorage   | 15 min  | `osm_cache_mapexcerpt_{lat4dp}_{lon4dp}_250`                                   | (shared 50 limit)    |
 | Place analysis    | localStorage   | 7 days  | `place.title` (within `urban-wanderer-analysis-cache`)                         | unbounded            |
 | Insights          | localStorage   | 7 days  | `{article[0:100]}\|{lang}` (within `urban-wanderer-insights-cache`)            | unbounded            |
 | Facts             | localStorage   | 7 days  | `{title}\|{sortedPropertyNames}\|{lang}` (within `urban-wanderer-facts-cache`) | unbounded            |
