@@ -12,6 +12,7 @@
 	import {
 		LABELS,
 		LANGUAGES,
+		SOURCE_LANGUAGES,
 		GUIDE_CHARACTERS,
 		FAMILIARITY,
 		AI_MODELS
@@ -22,10 +23,6 @@
 	import { clearDebugConsole, debugLogs } from '../util/debug-console.js';
 
 	export let visible = false;
-	const langOptions = [
-		{ value: 'en', name: 'English' },
-		{ value: 'de', name: 'German' }
-	];
 	const characterOptions = GUIDE_CHARACTERS.map((character) => ({
 		value: character,
 		name: character
@@ -92,9 +89,9 @@
 
 	<h3 class="mb-4 mt-8 border-b pb-2 text-lg font-semibold">Language</h3>
 	<Label>Content presentation language</Label>
-	<Select bind:value={$preferences.lang} items={langOptions} />
+	<Select bind:value={$preferences.lang} items={LANGUAGES} />
 	<Label>Content source languages</Label>
-	{#each LANGUAGES as lang (lang.value)}
+	{#each SOURCE_LANGUAGES as lang (lang.value)}
 		<Checkbox
 			id={lang.value}
 			checked={$preferences.sourceLanguages?.includes(lang.value)}

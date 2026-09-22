@@ -20,7 +20,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **Wikipedia Integration**: Fetches articles and metadata for nearby places
 - **OpenStreetMap Integration**: POI data, map overlays, and caching
 - **Wikidata Integration**: Structured data enrichment and image fallback
-- **Multi-language Support**: German and English interfaces with AI translation
+- **Multi-language Support**: German and English presentation languages (`LANGUAGES`) with AI translation; Wikipedia source languages (`SOURCE_LANGUAGES`: English, German, Czech) are selectable independently
 - **Offline-first Architecture**: Multi-level caching (OSM, AI analysis, user preferences)
 - **Walk Sessions**: Every location update belongs to a walk that records stops, visited places, and read stories; the guide avoids repetition and marks places already visited
 - **Responsive Design**: Works across mobile and desktop
@@ -50,7 +50,7 @@ Comprehensive classification system with 25+ place types:
 - **ai-core.js**: OpenAI client configuration and model tier selection (`getAiModel`); model IDs (`AI_MODELS`), the TTS model (`AI_SPEECH_MODEL`) and per-task reasoning effort (`AI_REASONING_EFFORT`) are defined in `src/constants/ui-config.js`
 - **ai-analysis.js**: Place classification, labeling, and importance rating
 - **ai-translation.js**: Identity-first and name-similarity deduplication (local), plus batched AI title translation of visible places after rating
-- **ai-story.js**: AI-powered location storytelling
+- **ai-story.js**: AI-powered location storytelling; paragraph budget from `STORY_LENGTH` in `src/constants/ui-config.js`
 - **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment
 - **ai-history.js**: Historical content generation
 - **ai-comment.js**: Place commentary generation

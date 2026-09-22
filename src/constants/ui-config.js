@@ -3,6 +3,23 @@ export const LANGUAGES = [
 	{ value: 'de', name: 'German' }
 ];
 
+// Wikipedia editions used as content sources (values are Wikipedia language codes)
+export const SOURCE_LANGUAGES = [
+	{ value: 'en', name: 'English' },
+	{ value: 'de', name: 'German' },
+	{ value: 'cs', name: 'Czech' }
+];
+
+// Paragraph budget of a story: the first story scales with the number of
+// places here and surrounding, continuations use a fixed range.
+export const STORY_LENGTH = {
+	MIN_PARAGRAPHS: 2,
+	MAX_PARAGRAPHS: 6,
+	PLACES_PER_PARAGRAPH: 2,
+	CONTINUATION_MIN_PARAGRAPHS: 2,
+	CONTINUATION_MAX_PARAGRAPHS: 4
+};
+
 export const LABELS = [
 	{
 		value: 'ACTIVITIES',

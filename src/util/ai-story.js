@@ -1,5 +1,5 @@
 import { openai, getAiModel } from './ai-core.js';
-import { AI_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
+import { AI_REASONING_EFFORT, LABELS, STORY_LENGTH } from '../constants/ui-config.js';
 import { createLogger } from './logger.js';
 import {
 	buildWalkPromptContext,
@@ -9,6 +9,16 @@ import {
 import { getPlaceIdentity } from './place-identity.js';
 
 const logger = createLogger('ai.story');
+
+function storyParagraphs(placeCount) {
+	return Math.min(
+		Math.max(
+			STORY_LENGTH.MIN_PARAGRAPHS,
+			Math.ceil(placeCount / STORY_LENGTH.PLACES_PER_PARAGRAPH) + 1
+		),
+		STORY_LENGTH.MAX_PARAGRAPHS
+	);
+}
 
 // generate story about the user position
 export async function generateStory(
@@ -49,7 +59,7 @@ export async function generateStory(
 	const initialMessage = {
 		role: 'system',
 		content: `
-You are a city guide: ${preferences.guideCharacter}, and always concise and factual.
+You are a city guide: ${preferences.guideCharacter}, and always factual and specific.
 
 Tell something interesting about the user's current position. Answer in language '${preferences.lang}'.
 
@@ -107,7 +117,8 @@ ${preferenceLabels}
 User did NOT select the following topics (treat them as negative topics and avoid them unless necessary for local context):
 ${negativePreferenceLabels}
 
-The story should be up to ${Math.min(Math.round(0.5 + (placesHere.length + placesSurrounding.length) / 3), 4)} paragraphs long and focus on the user's immediate surroundings and the closest places.
+The story should be ${STORY_LENGTH.MIN_PARAGRAPHS} to ${storyParagraphs(placesHere.length + placesSurrounding.length)} paragraphs long and focus on the user's immediate surroundings and the closest places.
+Use the full paragraph budget when the places offer enough substance; each paragraph should develop one aspect in depth instead of listing many.
 Prioritize in this strict order: (1) current position and places listed as "close to /in", (2) surrounding context, (3) the nearby places list only if needed.
 Nearby places are optional context only. Mention at most one nearby place in detail, and only if it is among the closest provided options.
 Personalization is mandatory: focus on details that match the listed user preferences.
@@ -123,7 +134,7 @@ You may draw one short connection between the current position and an earlier st
 `
 		: ''
 }
-Keep the language as concise as possible and factual. 
+Keep the language factual and free of filler, but do not cut the story short: give each place room for concrete details.
 You may use an informal tone, but use a moderate language.
 Try to realisticially describe the relevance of places, but do not exaggerate; not all places are "famous" or "important".
 Avoid generic claims like "this is a famous place" or "the place has a rich history".
@@ -159,7 +170,7 @@ ${placesHere.map((place) => `* ${place.title}${visitedNote(place)}: ${place.labe
 
 Strictly stick to the initially provided instructions and facts about the places.
 Avoid generic conclusion statements and end with a concrete place-specific detail.
-Write one to three paragraphs of text. 
+Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
 Give the text a headline marked in bold font.`
 		});
 	} else if (storyTexts.length === 0) {
@@ -173,7 +184,7 @@ Give the text a headline marked in bold font.`
 			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself.
 
 Avoid generic conclusion statements and end with a concrete place-specific detail.
-Write one to three paragraphs of text. 
+Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
 Give the text a headline marked in bold font.`
 		});
 	}
