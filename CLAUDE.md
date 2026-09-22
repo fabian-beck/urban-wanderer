@@ -53,7 +53,7 @@ Comprehensive classification system with 25+ place types:
 - **ai-analysis.js**: Place classification, labeling, and importance rating
 - **ai-translation.js**: Identity-first and name-similarity deduplication (local), plus batched AI title translation of visible places after rating
 - **ai-story.js**: AI-powered location storytelling; paragraph budget from `STORY_LENGTH` in `src/constants/ui-config.js`
-- **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment
+- **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment; `summarizeArticle` returns a two-part place summary (`short`: always shown, `long`: expanded on demand, both empty without meaningful source data), lengths from `SUMMARY_LENGTH` in `src/constants/ui-config.js`
 - **ai-history.js**: Historical content generation
 - **ai-comment.js**: Place commentary generation
 - **ai-speech.js**: Text-to-speech integration; a single utterance at a time, a newer `speak()` or `stopSpeech()` discards any request still loading (story and comment prompts receive the walk context from `walk.js`; `generateWalkRecap` sums up a finished walk)
@@ -70,7 +70,7 @@ Comprehensive classification system with 25+ place types:
 ### UI Components (`src/components/`)
 
 - **Map.svelte**: Interactive map display
-- **PlaceDetailsModal.svelte**: Detailed place information
+- **PlaceDetailsModal.svelte**: Detailed place information; summarizes the full article (`place.article`, else fetched via `loadWikipediaArticleText`, else the OSM description)
 - **StoryModal.svelte**: AI-generated stories about places; a tapped place mention opens `PlacePopup` (thumbnail, rating, short description, "Details" button) instead of the place details so audio playback continues
 - **PlaceMentions.svelte**: Renders a markdown text with clickable place mentions (emoji prefix, `onSelect(place, link)` callback), used by story and history
 - **PlacePopup.svelte**: Compact place preview positioned below a mention
