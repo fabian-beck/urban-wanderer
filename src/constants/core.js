@@ -61,6 +61,60 @@ export const OSM_ACTIVITY_FOOD_AMENITY_TYPES =
 export const OSM_ACTIVITY_ENTERTAINMENT_AMENITY_TYPES =
 	'nightclub|casino|cinema|theatre|arts_centre|community_centre';
 
+// Map excerpt fed to story generation: the "here" area plus a buffer, described
+// relative to the exact user position in distance rings
+export const STORY_MAP_BUFFER = 100;
+export const STORY_MAP_RADIUS = PLACE_HERE_DEFAULT_RADIUS + STORY_MAP_BUFFER;
+export const STORY_MAP_IMMEDIATE_RADIUS = 50;
+export const STORY_MAP_ON_STREET_DISTANCE = 8;
+export const STORY_MAP_RING_LIMITS = { immediate: 25, here: 30, buffer: 15 };
+export const STORY_MAP_STREET_LIMIT = 12;
+export const STORY_MAP_DETAIL_TEXT_LENGTH = 160;
+export const STORY_MAP_CACHE_PRECISION = 4;
+export const STORY_MAP_LINE_HIGHWAY_TYPES =
+	'pedestrian|footway|steps|path|cycleway|living_street|track|service';
+export const STORY_MAP_POINT_NATURAL_TYPES = 'peak|spring|cave_entrance|rock|stone|tree_row';
+export const STORY_MAP_STOP_RAILWAY_TYPES = 'station|halt|tram_stop|subway_entrance';
+export const STORY_MAP_PLACE_TYPES = 'square|locality|neighbourhood|quarter|islet|island';
+export const STORY_MAP_EXCLUDED_AMENITY_TYPES = [
+	'bench',
+	'waste_basket',
+	'waste_disposal',
+	'recycling',
+	'bicycle_parking',
+	'motorcycle_parking',
+	'parking',
+	'parking_space',
+	'parking_entrance',
+	'vending_machine',
+	'post_box',
+	'telephone',
+	'atm',
+	'grit_bin',
+	'charging_station',
+	'bicycle_rental',
+	'car_sharing',
+	'toilets',
+	'shelter',
+	'loading_dock',
+	'hunting_stand',
+	'letter_box'
+];
+export const STORY_MAP_EXCLUDED_AREA_TAGS = ['boundary', 'postal_code', 'admin_level'];
+export const STORY_MAP_DETAIL_TAGS = [
+	'start_date',
+	'architect',
+	'heritage:description',
+	'inscription',
+	'description',
+	'denomination',
+	'religion',
+	'cuisine',
+	'height',
+	'ele',
+	'old_name'
+];
+
 // Walk session
 export const WALK_STOP_MERGE_DISTANCE = 30;
 export const WALK_RESUME_DISTANCE = 10000;

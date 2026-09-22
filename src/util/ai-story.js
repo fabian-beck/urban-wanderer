@@ -7,6 +7,7 @@ import {
 	getPreviouslyVisitedIdentities
 } from './walk.js';
 import { getPlaceIdentity } from './place-identity.js';
+import { formatMapExcerpt, formatRelativePosition } from './map-excerpt.js';
 
 const logger = createLogger('ai.story');
 
@@ -29,12 +30,18 @@ export async function generateStory(
 	coordinates,
 	preferences,
 	previousResponseId = null,
-	walk = null
+	walk = null,
+	mapExcerpt = null
 ) {
 	if (!storyTexts) {
 		storyTexts = [];
 	}
 	const walkContext = buildWalkPromptContext(walk);
+	const mapExcerptText = formatMapExcerpt(mapExcerpt, [...placesHere, ...placesNearby]);
+	const relativePosition = (place) => {
+		const position = formatRelativePosition(place, coordinates);
+		return position ? ` (${position})` : '';
+	};
 	const visitedIdentities = getPreviouslyVisitedIdentities(walk);
 	const visitedNote = (place) =>
 		visitedIdentities.has(getPlaceIdentity(place)) ? ' [already visited earlier on this walk]' : '';
@@ -72,7 +79,7 @@ ${coordinates.address}
 ${placesHere
 	.map(
 		(place) =>
-			`## ${place.title}${visitedNote(place)}: ${place.labels?.join(', ')}
+			`## ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}
 Rating: ${place.stars}
 
 ${place.insights || place.article || place.description || place.snippet || place.type || ''}
@@ -86,7 +93,7 @@ ${relevantNearbyPlaces
 	.map(
 		(place) =>
 			`
-## ${place.title}${visitedNote(place)} (${place.dist}m): ${place.labels?.join(', ')}
+## ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}
 Rating: ${place.stars}
     
 ${place.description || place.snippet || place.type || ''}
@@ -105,6 +112,14 @@ ${place.insights || place.article || place.description || place.snippet || place
 	)
 	.join('\n')}
 
+${
+	mapExcerptText
+		? `# Map excerpt of the immediate surroundings (OpenStreetMap):
+
+${mapExcerptText}
+`
+		: ''
+}
 ${walkContext}
 
 ----------------------------------------------
@@ -121,10 +136,20 @@ The story should be ${STORY_LENGTH.MIN_PARAGRAPHS} to ${storyParagraphs(placesHe
 Use the full paragraph budget when the places offer enough substance; each paragraph should develop one aspect in depth instead of listing many.
 Prioritize in this strict order: (1) current position and places listed as "close to /in", (2) surrounding context, (3) the nearby places list only if needed.
 Nearby places are optional context only. Mention at most one nearby place in detail, and only if it is among the closest provided options.
-Personalization is mandatory: focus on details that match the listed user preferences.
+${
+	mapExcerptText
+		? `Spatial grounding is mandatory. The map excerpt is the ground truth for what is physically around the user; the position ⌖ is exact (up to GPS error of a few metres).
+Before writing, read the map excerpt like a local: which street or square ⌖ is on, which named buildings and features stand within a few dozen metres, what lies in which direction, what kind of neighbourhood the unnamed buildings and land use indicate.
+Open the story with what is right at ⌖ (the smallest distances in the excerpt) and move outwards from there; never lead with something 100 m away while closer named features are listed.
+A place from the lists above that is marked in the excerpt as "listed place" is confirmed to stand right here; give such places priority. A listed place that the excerpt does not show within the here radius is not immediate and gets less weight.
+Details from the map (building types, construction dates, architects, inscriptions, street names) are facts you may use.
+Never quote the distances, bearings or coordinates verbatim; turn them into natural description ("across the street", "at the corner of X and Y", "a few steps to the north", "behind you").
+`
+		: ''
+}Personalization is mandatory: focus on details that match the listed user preferences.
 Do not focus on topics that are not listed in the user's preferences (for example, do not go deep into religious aspects unless religion is explicitly listed).
 If no matching preference detail is available, prioritize neutral local facts about the immediate area.
-Avoid giving directions or distances.
+Do not give numeric distances or navigation instructions.
 ${
 	walkContext
 		? `
@@ -149,6 +174,10 @@ Remember that you enact a ${preferences.guideCharacter} guide and take this role
 Consider that the user is ${preferences.familiarity} with the area; select the facts and adapt the explanations accordingly.
 `
 	};
+	const mapContinuationNote = mapExcerptText
+		? `
+Consult the map excerpt again: pick a building, street or feature close to ⌖ that the story has not covered yet, and stay spatially precise about where it is relative to the user.`
+		: '';
 	let messages = [initialMessage];
 
 	if (storyTexts.length > 0 && !previousResponseId) {
@@ -166,9 +195,9 @@ Remember, I am at this position:
 ${coordinates.address}
 
 The position is close to /in:
-${placesHere.map((place) => `* ${place.title}${visitedNote(place)}: ${place.labels?.join(', ')}`).join('\n')}
+${placesHere.map((place) => `* ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}`).join('\n')}
 
-Strictly stick to the initially provided instructions and facts about the places.
+Strictly stick to the initially provided instructions and facts about the places.${mapContinuationNote}
 Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
 Give the text a headline marked in bold font.`
@@ -181,7 +210,7 @@ Give the text a headline marked in bold font.`
 	} else {
 		messages.push({
 			role: 'user',
-			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself.
+			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself.${mapContinuationNote}
 
 Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
@@ -194,7 +223,8 @@ Give the text a headline marked in bold font.`
 		nearby: placesNearby.length,
 		surrounding: placesSurrounding.length,
 		usesPreviousResponse: Boolean(previousResponseId),
-		walkStops: walk?.stops?.length || 0
+		walkStops: walk?.stops?.length || 0,
+		mapFeatures: mapExcerpt?.features?.length ?? null
 	});
 	logger.debug('Story prompt', { messages });
 	const requestConfig = {
