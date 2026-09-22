@@ -20,6 +20,15 @@ export const STORY_LENGTH = {
 	CONTINUATION_MAX_PARAGRAPHS: 4
 };
 
+// Place description in the details modal: a short form that is always shown
+// and an optional long form that expands on demand.
+export const SUMMARY_LENGTH = {
+	SHORT_MIN_SENTENCES: 2,
+	SHORT_MAX_SENTENCES: 3,
+	LONG_MIN_PARAGRAPHS: 1,
+	LONG_MAX_PARAGRAPHS: 3
+};
+
 export const LABELS = [
 	{
 		value: 'ACTIVITIES',
