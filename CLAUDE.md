@@ -33,6 +33,8 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **places**: Nearby places with Wikipedia and OSM data
 - **preferences**: User settings (radius, interests, language)
 - **walk**: Current walk (stops, visited places, read stories, recap), persisted in localStorage; `recordStop()` runs after rating in `places.update()` and creates a walk if none is active (expiry: last stop older than `WALK_MAX_AGE_MS`). `beginWalk()` is the front-page entry (GPS fix, then continue-or-new choice via `walkResumeCandidate` when the last stop is within `WALK_RESUME_DISTANCE`); `startNewWalk()` replaces the walk from the walk modal
+- **story**: `storyTexts`/`storyResponseIds`, `storyLoading` (first part and continuations alike), `preloadedStory`/`preloadingStory`, `storyPartsShown` (parts already displayed in the modal, so autoplay reads each part once); `continueStory()` appends the next part, `resetStory()` clears everything on location change
+- **audioState**: `'paused' | 'loading' | 'playing'`, owned by `ai-speech.js` (`speak()`/`stopSpeech()`); `StoryModal` disables speech while a story part is generated and "Tell me more" while audio is loading or playing
 - **Derived stores**: Categorized places (here, nearby, surrounding), `walkActive`, `visitedPlaceIdentities` (places that were "here" at an earlier stop)
 
 ### Place Classification (`src/constants/place-classes.js`)
@@ -54,7 +56,7 @@ Comprehensive classification system with 25+ place types:
 - **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment
 - **ai-history.js**: Historical content generation
 - **ai-comment.js**: Place commentary generation
-- **ai-speech.js**: Text-to-speech integration (story and comment prompts receive the walk context from `walk.js`; `generateWalkRecap` sums up a finished walk)
+- **ai-speech.js**: Text-to-speech integration; a single utterance at a time, a newer `speak()` or `stopSpeech()` discards any request still loading (story and comment prompts receive the walk context from `walk.js`; `generateWalkRecap` sums up a finished walk)
 
 **Data Integration:**
 

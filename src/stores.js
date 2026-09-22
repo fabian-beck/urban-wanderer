@@ -582,12 +582,22 @@ export const visitedPlaceIdentities = derived(walk, ($walk) =>
 	getPreviouslyVisitedIdentities($walk)
 );
 
-// story
+// story: storyLoading covers both the first part and continuations; storyPartsShown counts the
+// leading parts already displayed in the story modal so each new part is auto-played only once
 export const storyTexts = writable([]);
 export const storyResponseIds = writable([]);
 export const storyLoading = writable(false);
 export const preloadedStory = writable(null);
 export const preloadingStory = writable(false);
+export const storyPartsShown = writable(0);
+
+function resetStory() {
+	storyTexts.set([]);
+	storyResponseIds.set([]);
+	preloadedStory.set(null);
+	preloadingStory.set(false);
+	storyPartsShown.set(0);
+}
 
 // events
 export const events = writable([]);
@@ -883,12 +893,8 @@ async function pregenerateStoryInBackground(currentCoordinates = get(coordinates
 	}
 	const perf = createPerformanceRun('story.pregenerate');
 
-	// Clear previous stories and preloaded content
-	storyTexts.set([]);
-	storyResponseIds.set([]);
-	preloadedStory.set(null);
+	resetStory();
 	storyLoading.set(true);
-	preloadingStory.set(false);
 
 	try {
 		const firstStoryResult = await withPerformance(
@@ -1005,6 +1011,43 @@ export async function loadHistoricEvents() {
 	}
 }
 
+// Appends the next story part, taking the preloaded one when available
+export async function continueStory() {
+	if (get(storyLoading) || get(preloadingStory)) {
+		return;
+	}
+	storyLoading.set(true);
+	try {
+		let nextStoryResult = get(preloadedStory);
+		if (nextStoryResult) {
+			preloadedStory.set(null);
+		} else {
+			const currentResponseIds = get(storyResponseIds);
+			const lastResponseId =
+				currentResponseIds.length > 0 ? currentResponseIds[currentResponseIds.length - 1] : null;
+			nextStoryResult = await generateStory(
+				get(storyTexts),
+				get(placesHere),
+				get(placesNearby),
+				get(placesSurrounding),
+				get(coordinates),
+				get(preferences),
+				lastResponseId,
+				get(walk)
+			);
+		}
+		const newStoryTexts = [...get(storyTexts), nextStoryResult.text];
+		storyTexts.set(newStoryTexts);
+		storyResponseIds.set([...get(storyResponseIds), nextStoryResult.responseId]);
+		preloadNextStoryPart(newStoryTexts);
+	} catch (error) {
+		storyLogger.error('Story continuation failed', error);
+		errorMessage.set('Error generating story: ' + error);
+	} finally {
+		storyLoading.set(false);
+	}
+}
+
 export async function preloadNextStoryPart(currentStories) {
 	if (get(preloadingStory)) return; // Already preloading
 
@@ -1071,7 +1114,7 @@ export async function updateLocation(coords) {
 		activityMap.set([]);
 		places.reset();
 		coordinates.reset();
-		storyTexts.set([]);
+		resetStory();
 		events.set([]);
 		eventsLoading.set(false);
 		eventsLoadedKey.set('');
