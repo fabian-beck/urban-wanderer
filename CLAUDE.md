@@ -22,7 +22,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **Wikidata Integration**: Structured data enrichment and image fallback
 - **Multi-language Support**: German and English presentation languages (`LANGUAGES`) with AI translation; Wikipedia source languages (`SOURCE_LANGUAGES`: English, German, Czech) are selectable independently
 - **Offline-first Architecture**: Multi-level caching (OSM, AI analysis, user preferences)
-- **Walk Sessions**: Every location update belongs to a walk that records stops, visited places, and read stories; the guide avoids repetition and marks places already visited
+- **Walk Sessions**: Every location update belongs to a walk that records stops, visited places, and read stories; the story prompt receives the earlier stories verbatim so nothing is told twice within a walk (links back to earlier stops are allowed), and places already visited are marked
 - **Responsive Design**: Works across mobile and desktop
 
 ## Core Components
@@ -33,6 +33,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **places**: Nearby places with Wikipedia and OSM data
 - **preferences**: User settings (radius, interests, language)
 - **walk**: Current walk (stops, visited places, read stories, recap), persisted in localStorage; `recordStop()` runs after rating in `places.update()` and creates a walk if none is active (expiry: last stop older than `WALK_MAX_AGE_MS`). `beginWalk()` is the front-page entry (GPS fix, then continue-or-new choice via `walkResumeCandidate` when the last stop is within `WALK_RESUME_DISTANCE`); `startNewWalk()` replaces the walk from the walk modal
+- **livePosition**: Latest GPS fix (`latitude`, `longitude`, `at`), refreshed by every GPS lookup and polled every `LIVE_POSITION_INTERVAL_MS` while `Map.svelte` is mounted and the document is visible (`startLivePositionTracking()`/`stopLivePositionTracking()`); never persisted and never recorded as a stop
 - **story**: `storyTexts`/`storyResponseIds`, `storyLoading` (first part and continuations alike), `preloadedStory`/`preloadingStory`, `storyPartsShown` (parts already displayed in the modal, so autoplay reads each part once); `continueStory()` appends the next part, `resetStory()` clears everything on location change
 - **mapExcerpt**: OpenStreetMap excerpt of the here area plus buffer around the exact position, loaded right behind the places request and awaited by the first story part
 - **audioState**: `'paused' | 'loading' | 'playing'`, owned by `ai-speech.js` (`speak()`/`stopSpeech()`); `StoryModal` disables speech while a story part is generated and "Tell me more" while audio is loading or playing
@@ -66,12 +67,12 @@ Comprehensive classification system with 25+ place types:
 - **map-excerpt.js**: Positions the OSM excerpt relative to the exact user position (distance, compass direction, line orientation, containment) and formats it as the prompt section with the position marked ⌖ (`STORY_MAP_*` constants in `src/constants/core.js`)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
 - **text.js**: Place mentions in generated texts (`findPlaceMentions`/`markPlacesInText`): first mention of each visible place (here, surrounding, nearby; title and alternate titles, optional leading article, Unicode word boundaries, short inflection suffixes) becomes a markdown link with a `#place:` href; limits in `src/constants/core.js` (`PLACE_MENTION_*`)
-- **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context)
+- **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context); `buildWalkPromptContext(walk, { fullStories })` quotes read stories in full for the story prompt (newest first within `WALK_STORY_CONTEXT_MAX_CHARS`, older ones as excerpts) and as excerpts for the comment prompt
 - **place-identity.js**: Stable place identity (Wikidata ID → Wikipedia page ID → title) shared by walk and history code
 
 ### UI Components (`src/components/`)
 
-- **Map.svelte**: Interactive map display
+- **Map.svelte**: Interactive map centered on the current stop; shows the stops of the active walk as green check markers and the live position marker (pinned to the map edge when out of range)
 - **PlaceDetailsModal.svelte**: Detailed place information; summarizes the full article (`place.article`, else fetched via `loadWikipediaArticleText`, else the OSM description)
 - **StoryModal.svelte**: AI-generated stories about places; a tapped place mention opens `PlacePopup` (thumbnail, rating, short description, "Details" button) instead of the place details so audio playback continues
 - **PlaceMentions.svelte**: Renders a markdown text with clickable place mentions (emoji prefix, `onSelect(place, link)` callback), used by story and history

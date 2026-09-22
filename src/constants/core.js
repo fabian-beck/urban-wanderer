@@ -132,10 +132,13 @@ export const WALK_STOP_MERGE_DISTANCE = 30;
 export const WALK_RESUME_DISTANCE = 10000;
 export const WALK_MAX_AGE_MS = 2 * 24 * 60 * 60 * 1000;
 export const WALK_VISITED_CONTEXT_LIMIT = 20;
-export const WALK_STORY_CONTEXT_LIMIT = 8;
+export const WALK_STORY_CONTEXT_LIMIT = 12;
+export const WALK_STORY_CONTEXT_MAX_CHARS = 40000;
 export const WALK_STORY_EXCERPT_LENGTH = 300;
 export const WALK_RECAP_STORY_EXCERPT_LENGTH = 600;
 export const WALK_SNAPSHOT_TEXT_LENGTH = 700;
 export const WALK_PASSED_PLACES_PER_STOP = 6;
 export const WALK_EVENTS_PER_STOP = 8;
 export const WALK_RECAP_MISSED_PLACES_LIMIT = 12;
+// Live position polling while the map is shown (independent of recorded stops)
+export const LIVE_POSITION_INTERVAL_MS = 60 * 1000;

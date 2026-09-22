@@ -12,10 +12,16 @@
 		activityMap,
 		mapLayersLoading,
 		preferences,
-		visitedPlaceIdentities
+		visitedPlaceIdentities,
+		walk,
+		walkActive,
+		livePosition,
+		startLivePositionTracking,
+		stopLivePositionTracking
 	} from '../stores.js';
 	import { getPlaceIdentity } from '../util/place-identity.js';
 
+	import { onDestroy, onMount } from 'svelte';
 	import { derived } from 'svelte/store';
 	import { haversineDistance, latLonToX, latLonToY } from '../util/osm.js';
 	import {
@@ -38,9 +44,31 @@
 	const GRID_OFFSET_X = SVG_CENTER;
 	const GRID_OFFSET_Y = SVG_CENTER;
 	const GRID_HEX_OFFSET = GRID_CELL_SIZE / 2;
+	const POSITION_MARKER_MAX_RADIUS = SVG_CENTER - 14;
 	const isMapLocationPlace = (place) =>
 		!MAP_LOCATION_EXCLUDED_PLACE_CLASSES.includes(place.cls) &&
 		!MAP_LOCATION_EXCLUDED_PLACE_TYPES.includes(place.type);
+
+	onMount(startLivePositionTracking);
+	onDestroy(stopLivePositionTracking);
+
+	$: walkStops = $walkActive ? $walk.stops : [];
+
+	// The live position relative to the map center (the current stop); a position outside the map is pinned to its edge
+	const getPositionMarker = (position, center) => {
+		if (!position || !center) {
+			return { x: 0, y: 0, beyondMap: false };
+		}
+		const x = latLonToX(position.latitude, position.longitude, center.latitude, center.longitude);
+		const y = latLonToY(position.latitude, position.longitude, center.latitude, center.longitude);
+		const distance = Math.hypot(x, y);
+		if (distance <= POSITION_MARKER_MAX_RADIUS) {
+			return { x, y, beyondMap: false };
+		}
+		const scale = POSITION_MARKER_MAX_RADIUS / distance;
+		return { x: x * scale, y: y * scale, beyondMap: true };
+	};
+	$: positionMarker = getPositionMarker($livePosition, $coordinates);
 
 	const placesToHighlight = derived(
 		[places, placesSurrounding],
@@ -567,8 +595,48 @@
 						</g>
 					{/each}
 				</g>
+				<!-- walk stops -->
+				<g class="walk-stops">
+					{#each walkStops as stop, index (index)}
+						<g
+							transform="translate({latLonToX(
+								stop.latitude,
+								stop.longitude,
+								$coordinates.latitude,
+								$coordinates.longitude
+							)}, {latLonToY(
+								stop.latitude,
+								stop.longitude,
+								$coordinates.latitude,
+								$coordinates.longitude
+							)})"
+						>
+							<circle
+								cx="0"
+								cy="0"
+								r="8"
+								fill="#16A34A"
+								stroke="white"
+								stroke-width="2"
+								style="filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));"
+							/>
+							<path
+								d="M -4 0 L -1.5 2.5 L 4 -3"
+								stroke="white"
+								stroke-width="2"
+								fill="none"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</g>
+					{/each}
+				</g>
 				<!-- markers -->
-				<g class="markers">
+				<g
+					class="markers"
+					transform="translate({positionMarker.x}, {positionMarker.y})"
+					opacity={positionMarker.beyondMap ? 0.5 : 1}
+				>
 					<!-- heading direction maker (line) -->
 					<line
 						x1="0"
@@ -579,7 +647,15 @@
 						transform="rotate(-{$heading})"
 						stroke-width="4"
 					/>
-					<circle cx="0" cy="0" r="10" class="position-circle" stroke-width="2">
+					<circle
+						cx="0"
+						cy="0"
+						r="10"
+						class="position-circle"
+						stroke-width="2"
+						stroke={positionMarker.beyondMap ? 'white' : 'none'}
+						stroke-dasharray={positionMarker.beyondMap ? '3 3' : 'none'}
+					>
 						<animate attributeName="r" values="10;12;10" dur="2s" repeatCount="indefinite" />
 					</circle>
 				</g>
@@ -611,20 +687,32 @@
 					>
 				</g>
 				<!-- legend left - locations and places -->
-				<g class="legend-left" transform="translate(-{SVG_CENTER},300)">
+				<g class="legend-left" transform="translate(-{SVG_CENTER},288)">
 					<!-- Position marker -->
 					<circle cx="15" cy="0" r="6" class="position-circle" stroke-width="2" />
 					<text x="25" y="5" class="text-lg" text-anchor="start">Your location</text>
 
+					<!-- Walk stops -->
+					<circle cx="15" cy="20" r="6" fill="#16A34A" stroke="white" stroke-width="1.5" />
+					<path
+						d="M 12 20 L 14 22 L 18 18"
+						stroke="white"
+						stroke-width="1.5"
+						fill="none"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+					<text x="25" y="25" class="text-lg" text-anchor="start">Walk stops</text>
+
 					<!-- Places by star rating -->
-					<circle cx="15" cy="25" r="7.5" fill="#FFD5CC" stroke="black" />
-					<text x="25" y="30" class="text-lg" text-anchor="start">1-2 star places</text>
+					<circle cx="15" cy="44" r="7.5" fill="#FFD5CC" stroke="black" />
+					<text x="25" y="49" class="text-lg" text-anchor="start">1-2 star places</text>
 
-					<circle cx="15" cy="55" r="10.5" fill="#FE795D" stroke="black" />
-					<text x="30" y="60" class="text-lg" text-anchor="start">3-4 star places</text>
+					<circle cx="15" cy="71" r="10.5" fill="#FE795D" stroke="black" />
+					<text x="30" y="76" class="text-lg" text-anchor="start">3-4 star places</text>
 
-					<circle cx="15" cy="85" r="13.5" fill="#CC4522" stroke="black" />
-					<text x="35" y="90" class="text-lg" text-anchor="start">5 star places</text>
+					<circle cx="15" cy="99" r="13.5" fill="#CC4522" stroke="black" />
+					<text x="35" y="104" class="text-lg" text-anchor="start">5 star places</text>
 				</g>
 
 				<!-- legend right - activity, green, water areas -->
