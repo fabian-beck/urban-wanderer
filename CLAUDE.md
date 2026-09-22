@@ -22,7 +22,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **Wikidata Integration**: Structured data enrichment and image fallback
 - **Multi-language Support**: German and English presentation languages (`LANGUAGES`) with AI translation; Wikipedia source languages (`SOURCE_LANGUAGES`: English, German, Czech) are selectable independently
 - **Offline-first Architecture**: Multi-level caching (OSM, AI analysis, user preferences)
-- **Walk Sessions**: Every location update belongs to a walk that records stops, visited places, and read stories; the guide avoids repetition and marks places already visited
+- **Walk Sessions**: Every location update belongs to a walk that records stops, visited places, and read stories; the guide avoids repetition and marks places already visited. A walk may carry a user-written motto (free-text instruction, e.g. "explain in depth" or "tell me about the people behind the places") that steers the story, comment, and recap prompts
 - **Responsive Design**: Works across mobile and desktop
 
 ## Core Components
@@ -32,7 +32,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **coordinates**: User location and address data
 - **places**: Nearby places with Wikipedia and OSM data
 - **preferences**: User settings (radius, interests, language)
-- **walk**: Current walk (stops, visited places, read stories, recap), persisted in localStorage; `recordStop()` runs after rating in `places.update()` and creates a walk if none is active (expiry: last stop older than `WALK_MAX_AGE_MS`). `beginWalk()` is the front-page entry (GPS fix, then continue-or-new choice via `walkResumeCandidate` when the last stop is within `WALK_RESUME_DISTANCE`); `startNewWalk()` replaces the walk from the walk modal
+- **walk**: Current walk (motto, stops, visited places, read stories, recap), persisted in localStorage; `recordStop()` runs after rating in `places.update()` and creates a walk if none is active (expiry: last stop older than `WALK_MAX_AGE_MS`). `beginWalk(motto)` is the front-page entry (GPS fix, then continue-or-new choice via `walkResumeCandidate` when the last stop is within `WALK_RESUME_DISTANCE`; a motto typed before continuing is applied to the continued walk); `startNewWalk(motto)` replaces the walk from the walk modal; `setMotto()` edits the motto mid-walk and discards the preloaded story part
 - **story**: `storyTexts`/`storyResponseIds`, `storyLoading` (first part and continuations alike), `preloadedStory`/`preloadingStory`, `storyPartsShown` (parts already displayed in the modal, so autoplay reads each part once); `continueStory()` appends the next part, `resetStory()` clears everything on location change
 - **audioState**: `'paused' | 'loading' | 'playing'`, owned by `ai-speech.js` (`speak()`/`stopSpeech()`); `StoryModal` disables speech while a story part is generated and "Tell me more" while audio is loading or playing
 - **Derived stores**: Categorized places (here, nearby, surrounding), `walkActive`, `visitedPlaceIdentities` (places that were "here" at an earlier stop)
@@ -64,7 +64,7 @@ Comprehensive classification system with 25+ place types:
 - **osm.js**: OpenStreetMap integration (POI data, map overlays, 15-min caching)
 - **wikidata.js**: Wikidata integration (structured data, image fallback)
 - **text.js**: Text processing utilities
-- **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context)
+- **walk.js**: Pure walk-session helpers (stop merging, visited place snapshots with later enrichment, per-stop comment/events/passed-by places, stats, prompt/recap context, motto normalization limited to `WALK_MOTTO_MAX_LENGTH` and `buildWalkMottoPromptContext()` shared by story, comment, and recap prompts)
 - **place-identity.js**: Stable place identity (Wikidata ID → Wikipedia page ID → title) shared by walk and history code
 
 ### UI Components (`src/components/`)
@@ -73,7 +73,8 @@ Comprehensive classification system with 25+ place types:
 - **PlaceDetailsModal.svelte**: Detailed place information
 - **StoryModal.svelte**: AI-generated stories about places
 - **HistoryModal.svelte**: Historical information display
-- **WalkModal.svelte**: Walk summary from the header menu (stats, timeline of stops with visited places and read stories, structured AI recap with highlights/connections/timeline/missed places/open threads, start new walk)
+- **WalkModal.svelte**: Walk summary from the header menu (motto display and editing, stats, timeline of stops with visited places and read stories, structured AI recap with highlights/connections/timeline/missed places/open threads, start new walk with its own motto)
+- **WalkMottoInput.svelte**: Textarea for the walk motto, used on the front page, in `WalkModal`, and for the new-walk confirmation
 - **WalkResumeModal.svelte**: Continue-or-new decision shown after the front-page "Start walk" tap when a recent walk is nearby
 - **UserPreferences.svelte**: Settings and customization
 

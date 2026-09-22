@@ -25,9 +25,12 @@ import {
 	createWalk,
 	enrichWalkPlaces,
 	getPreviouslyVisitedIdentities,
+	getWalkMotto,
 	getWalkRecapKey,
 	getWalkResumeDistance,
-	isWalkActive
+	isWalkActive,
+	normalizeWalkMotto,
+	setWalkMotto
 } from './util/walk.js';
 import { WALK_STORAGE_KEY } from './constants/cache-config.js';
 import {
@@ -537,9 +540,18 @@ function createWalkStore() {
 			commit(updatedWalk);
 		}
 	};
-	const start = () => {
-		commit(createWalk());
-		walkLogger.info('Walk started');
+	const start = (motto = '') => {
+		commit(createWalk(motto));
+		walkLogger.info('Walk started', { motto: Boolean(get(walk).motto) });
+	};
+	// A changed motto invalidates the story part preloaded under the old one
+	const setMotto = (motto) => {
+		const updatedWalk = setWalkMotto(get(walk), motto);
+		if (updatedWalk !== get(walk)) {
+			commit(updatedWalk);
+			preloadedStory.set(null);
+			walkLogger.info('Walk motto updated', { motto: updatedWalk.motto });
+		}
 	};
 	// Every location update belongs to a walk; an expired or missing walk is replaced
 	const recordStop = () => {
@@ -561,6 +573,7 @@ function createWalkStore() {
 	return {
 		subscribe,
 		start,
+		setMotto,
 		recordStop,
 		recordStory: (text) => commitIfChanged(addWalkStory(get(walk), text)),
 		recordComment: (text) => commitIfChanged(addWalkComment(get(walk), text)),
@@ -1052,6 +1065,7 @@ export async function preloadNextStoryPart(currentStories) {
 	if (get(preloadingStory)) return; // Already preloading
 
 	preloadingStory.set(true);
+	const mottoAtStart = getWalkMotto(get(walk));
 	try {
 		const currentResponseIds = get(storyResponseIds);
 		const lastResponseId =
@@ -1072,6 +1086,10 @@ export async function preloadNextStoryPart(currentStories) {
 				),
 			{ previousResponseId: Boolean(lastResponseId), existingStories: currentStories.length }
 		);
+		if (mottoAtStart !== getWalkMotto(get(walk))) {
+			storyLogger.info('Preloaded story part discarded after motto change');
+			return;
+		}
 		preloadedStory.set(nextStoryResult);
 	} catch (error) {
 		storyLogger.error('Next story preload failed', error);
@@ -1155,7 +1173,7 @@ async function locate() {
 }
 
 // Front page entry point: locate the user, then continue a nearby recent walk or start a new one
-export async function beginWalk() {
+export async function beginWalk(motto = '') {
 	loading.set(true);
 	errorMessage.set(null);
 	loadingMessage.set('Locating ...');
@@ -1167,10 +1185,14 @@ export async function beginWalk() {
 	}
 	const resumeDistance = getWalkResumeDistance(get(walk), position);
 	if (resumeDistance !== null) {
-		walkResumeCandidate.set({ position, distance: resumeDistance });
+		walkResumeCandidate.set({
+			position,
+			distance: resumeDistance,
+			motto: normalizeWalkMotto(motto)
+		});
 		return;
 	}
-	walk.start();
+	walk.start(motto);
 	await updateLocation(position);
 }
 
@@ -1181,13 +1203,15 @@ export async function resolveWalkResume(continueWalk) {
 		return;
 	}
 	if (!continueWalk) {
-		walk.start();
+		walk.start(candidate.motto);
+	} else if (candidate.motto) {
+		walk.setMotto(candidate.motto);
 	}
 	await updateLocation(candidate.position);
 }
 
-export async function startNewWalk() {
-	walk.start();
+export async function startNewWalk(motto = '') {
+	walk.start(motto);
 	await updateLocation(false);
 }
 

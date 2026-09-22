@@ -26,6 +26,7 @@
 	import Comment from '../components/Comment.svelte';
 	import UserPreferences from '../components/UserPreferences.svelte';
 	import WalkResumeModal from '../components/WalkResumeModal.svelte';
+	import WalkMottoInput from '../components/WalkMottoInput.svelte';
 	import { TrackingOutline } from 'flowbite-svelte-icons';
 	import { preferences } from '../stores.js';
 	import { LABELS, FAMILIARITY, LANGUAGES } from '../constants/ui-config.js';
@@ -36,6 +37,7 @@
 		LANGUAGES.find((l) => l.value === $preferences.lang)?.name || $preferences.lang;
 
 	let preferencesVisible = false;
+	let walkMotto = '';
 
 	let urlCoordinates = null;
 	let urlUpdateTimeout = null;
@@ -130,11 +132,16 @@
 					Start a walk to discover the places around you. Your guide keeps track of your stops and
 					the stories you read.
 				</p>
+				<div class="mb-4">
+					<WalkMottoInput bind:value={walkMotto} />
+				</div>
 				<div class="flex justify-center gap-2">
 					<Button color="alternative" on:click={() => (preferencesVisible = true)}>
 						Preferences
 					</Button>
-					<Button on:click={beginWalk}><TrackingOutline class="mr-2" />Start walk</Button>
+					<Button on:click={() => beginWalk(walkMotto)}>
+						<TrackingOutline class="mr-2" />Start walk
+					</Button>
 				</div>
 				<p class="mt-4 text-xs text-gray-500">
 					Interests: {LABELS.filter((label) => $preferences.labels.includes(label.value))

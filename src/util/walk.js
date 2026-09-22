@@ -2,6 +2,7 @@ import {
 	PLACE_HIGH_RATED_MIN_STARS,
 	WALK_EVENTS_PER_STOP,
 	WALK_MAX_AGE_MS,
+	WALK_MOTTO_MAX_LENGTH,
 	WALK_PASSED_PLACES_PER_STOP,
 	WALK_RECAP_MISSED_PLACES_LIMIT,
 	WALK_RECAP_STORY_EXCERPT_LENGTH,
@@ -16,15 +17,49 @@ import { LABELS } from '../constants/ui-config.js';
 import { haversineDistance } from './osm.js';
 import { getPlaceIdentity } from './place-identity.js';
 
-export function createWalk() {
+export function createWalk(motto = '') {
 	return {
 		id: `walk-${Date.now()}`,
 		startedAt: Date.now(),
+		motto: normalizeWalkMotto(motto),
 		stops: [],
 		visitedPlaces: [],
 		stories: [],
 		recap: null
 	};
+}
+
+export function normalizeWalkMotto(motto) {
+	return String(motto || '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, WALK_MOTTO_MAX_LENGTH);
+}
+
+export function setWalkMotto(walk, motto) {
+	const normalized = normalizeWalkMotto(motto);
+	if (!walk || (walk.motto || '') === normalized) {
+		return walk;
+	}
+	return { ...walk, motto: normalized };
+}
+
+// The user's own instruction for the current walk; unlike the walk history it applies from the first stop on
+export function getWalkMotto(walk) {
+	return isWalkActive(walk) ? walk.motto || '' : '';
+}
+
+// Prompt section that turns the motto into a guide instruction; empty without a motto
+export function buildWalkMottoPromptContext(walk) {
+	const motto = getWalkMotto(walk);
+	if (!motto) {
+		return '';
+	}
+	return `# The user's motto for this walk:
+
+"${motto}"
+
+The motto is the user's explicit wish for this walk. Follow it closely in what you choose to tell and how you tell it (depth, tone, focus, kind of facts); where it conflicts with the general style instructions, the motto wins, except that you must stay factual, keep the requested language, and only use the material given about the places.`;
 }
 
 export function getWalkLastActivity(walk) {

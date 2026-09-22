@@ -2,9 +2,11 @@ import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT, LABELS, STORY_LENGTH } from '../constants/ui-config.js';
 import { createLogger } from './logger.js';
 import {
+	buildWalkMottoPromptContext,
 	buildWalkPromptContext,
 	buildWalkRecapContext,
-	getPreviouslyVisitedIdentities
+	getPreviouslyVisitedIdentities,
+	getWalkMotto
 } from './walk.js';
 import { getPlaceIdentity } from './place-identity.js';
 
@@ -35,6 +37,11 @@ export async function generateStory(
 		storyTexts = [];
 	}
 	const walkContext = buildWalkPromptContext(walk);
+	const walkMotto = getWalkMotto(walk);
+	const mottoContext = buildWalkMottoPromptContext(walk);
+	const mottoReminder = walkMotto
+		? `\nKeep to my motto for this walk: "${walkMotto}". It takes precedence over the general style instructions, as long as you stay factual.\n`
+		: '';
 	const visitedIdentities = getPreviouslyVisitedIdentities(walk);
 	const visitedNote = (place) =>
 		visitedIdentities.has(getPlaceIdentity(place)) ? ' [already visited earlier on this walk]' : '';
@@ -110,7 +117,7 @@ ${walkContext}
 ----------------------------------------------
 
 # IMPORTANT INSTUCTIONS:
-
+${mottoContext ? `\n${mottoContext}\nThe motto also governs the length: if it asks for depth or detail, you may exceed the paragraph budget below by up to half; if it asks for brevity, you may stay below it.\n` : ''}
 User's preferences are the following topics:
 ${preferenceLabels}
 
@@ -147,7 +154,7 @@ Do not mention the exact address and consider that GPS coordinates are not alway
 
 Remember that you enact a ${preferences.guideCharacter} guide and take this role seriously towards exaggeration and over-enthusiasm.
 Consider that the user is ${preferences.familiarity} with the area; select the facts and adapt the explanations accordingly.
-`
+${walkMotto ? `Above all, honor the user's motto for this walk: "${walkMotto}".\n` : ''}`
 	};
 	let messages = [initialMessage];
 
@@ -169,7 +176,7 @@ The position is close to /in:
 ${placesHere.map((place) => `* ${place.title}${visitedNote(place)}: ${place.labels?.join(', ')}`).join('\n')}
 
 Strictly stick to the initially provided instructions and facts about the places.
-Avoid generic conclusion statements and end with a concrete place-specific detail.
+${mottoReminder}Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
 Give the text a headline marked in bold font.`
 		});
@@ -182,7 +189,7 @@ Give the text a headline marked in bold font.`
 		messages.push({
 			role: 'user',
 			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself.
-
+${mottoReminder}
 Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
 Give the text a headline marked in bold font.`
@@ -194,7 +201,8 @@ Give the text a headline marked in bold font.`
 		nearby: placesNearby.length,
 		surrounding: placesSurrounding.length,
 		usesPreviousResponse: Boolean(previousResponseId),
-		walkStops: walk?.stops?.length || 0
+		walkStops: walk?.stops?.length || 0,
+		walkMotto: Boolean(walkMotto)
 	});
 	logger.debug('Story prompt', { messages });
 	const requestConfig = {
@@ -226,6 +234,7 @@ Give the text a headline marked in bold font.`
 
 // synthesize the walk so far: highlights, cross-stop connections, timeline, missed places, open threads
 export async function generateWalkRecap(walk, preferences) {
+	const mottoContext = buildWalkMottoPromptContext(walk);
 	const instructions = `
 You are a city guide: ${preferences.guideCharacter}, and always concise and factual.
 
@@ -237,7 +246,7 @@ ${buildWalkRecapContext(walk, preferences)}
 ----------------------------------------------
 
 # IMPORTANT INSTRUCTIONS:
-
+${mottoContext ? `\n${mottoContext}\nWeigh highlights, connections, and open threads by what the motto asks for.\n` : ''}
 Fill the JSON fields as follows; use only the material given above and never invent facts.
 - headline: a short, specific title for this walk (no markdown).
 - highlights: two to four visited places that matter most for the user's interests, ordered by relevance. "title" must be the exact title of a visited place; "text" gives one or two sentences with a concrete detail why this place stood out for this user.

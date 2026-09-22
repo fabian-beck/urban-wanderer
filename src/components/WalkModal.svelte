@@ -12,7 +12,9 @@
 		CalendarMonthOutline,
 		MapPinAltOutline,
 		QuestionCircleOutline,
-		StarSolid
+		StarSolid,
+		EditOutline,
+		QuoteSolid
 	} from 'flowbite-svelte-icons';
 	import {
 		walk,
@@ -30,6 +32,7 @@
 		getWalkStats
 	} from '../util/walk.js';
 	import { generateWalkRecap } from '../util/ai-story.js';
+	import WalkMottoInput from './WalkMottoInput.svelte';
 	import { CLASSES } from '../constants/place-classes.js';
 	import { createLogger } from '../util/logger.js';
 
@@ -38,6 +41,9 @@
 	const logger = createLogger('walk.modal');
 	let recapLoading = false;
 	let confirmNewWalk = false;
+	let newWalkMotto = '';
+	let editingMotto = false;
+	let mottoDraft = '';
 	let tick = 0;
 	let tickInterval;
 
@@ -48,6 +54,7 @@
 
 	$: if (!visible) {
 		confirmNewWalk = false;
+		editingMotto = false;
 	}
 	$: stats = $walkActive && tick >= 0 ? getWalkStats($walk) : null;
 	$: recapCurrent = $walk?.recap?.headline && $walk.recap.key === getWalkRecapKey($walk);
@@ -88,12 +95,22 @@
 
 	const handleStartWalk = () => {
 		visible = false;
-		beginWalk();
+		beginWalk(newWalkMotto);
 	};
 
 	const handleNewWalk = () => {
 		visible = false;
-		startNewWalk();
+		startNewWalk(newWalkMotto);
+	};
+
+	const editMotto = () => {
+		mottoDraft = $walk?.motto || '';
+		editingMotto = true;
+	};
+
+	const saveMotto = () => {
+		walk.setMotto(mottoDraft);
+		editingMotto = false;
 	};
 </script>
 
@@ -120,7 +137,10 @@
 						the route, avoids repeating itself, and marks places you have already seen.
 					</i>
 				</Alert>
-				<div class="mt-4 flex justify-end">
+				<div class="mt-4">
+					<WalkMottoInput bind:value={newWalkMotto} id="walk-motto-start" />
+				</div>
+				<div class="mt-2 flex justify-end">
 					<Button on:click={handleStartWalk}>
 						<TrackingOutline class="mr-2" />Start walk
 					</Button>
@@ -149,6 +169,38 @@
 							{stats.visitedPlaces === 1 ? 'place' : 'places'}
 						</div>
 					</div>
+				</div>
+
+				<div class="mt-4">
+					{#if editingMotto}
+						<WalkMottoInput
+							bind:value={mottoDraft}
+							id="walk-motto-edit"
+							label="Motto for this walk"
+						/>
+						<div class="mt-1 flex justify-end gap-2">
+							<Button color="alternative" size="xs" on:click={() => (editingMotto = false)}>
+								Cancel
+							</Button>
+							<Button size="xs" on:click={saveMotto}>Save motto</Button>
+						</div>
+					{:else}
+						<button
+							type="button"
+							class="flex w-full items-start rounded-lg bg-primary-50 p-2 text-left text-sm hover:bg-primary-100"
+							on:click={editMotto}
+						>
+							<QuoteSolid size="sm" class="mr-2 mt-0.5 shrink-0 text-primary-800" />
+							{#if $walk.motto}
+								<i class="flex-auto text-gray-700">{$walk.motto}</i>
+							{:else}
+								<span class="flex-auto text-gray-500">
+									No motto. Tap to tell your guide what this walk is about.
+								</span>
+							{/if}
+							<EditOutline size="sm" class="ml-2 shrink-0 text-gray-500" />
+						</button>
+					{/if}
 				</div>
 
 				{#if $walk.stops.length > 0}
@@ -290,6 +342,14 @@
 				{#if confirmNewWalk}
 					<Alert color="yellow" class="text-sm">
 						<div>Starting a new walk discards this walk and locates you again.</div>
+						<div class="mt-2">
+							<WalkMottoInput
+								bind:value={newWalkMotto}
+								id="walk-motto-new"
+								label="Motto for the new walk (optional)"
+								compact
+							/>
+						</div>
 						<div class="mt-2 flex justify-end gap-2">
 							<Button color="alternative" size="xs" on:click={() => (confirmNewWalk = false)}>
 								Cancel
