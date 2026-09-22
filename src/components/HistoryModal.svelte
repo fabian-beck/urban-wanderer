@@ -3,14 +3,12 @@
 	import Button from 'flowbite-svelte/Button.svelte';
 	import Modal from 'flowbite-svelte/Modal.svelte';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
-	import { marked } from 'marked';
 	import {
 		placesHere,
 		placesNearby,
 		placesSurrounding,
 		coordinates,
 		preferences,
-		places,
 		placeDetailsVisible,
 		errorMessage,
 		events,
@@ -19,9 +17,7 @@
 		eventsStatus,
 		loadHistoricEvents
 	} from '../stores.js';
-	import { get } from 'svelte/store';
-	import { markPlacesInText } from '../util/text.js';
-	import { CLASSES } from '../constants/place-classes.js';
+	import PlaceMentions from './PlaceMentions.svelte';
 	import { getHistoricEventKey } from '../util/ai-history.js';
 	import { CalendarMonthOutline } from 'flowbite-svelte-icons';
 
@@ -29,47 +25,7 @@
 
 	let currentHistoryKey;
 
-	// Function to make place names clickable with icons
-	const makeClickablePlaces = (htmlContent) => {
-		let result = htmlContent;
-		const $places = get(places);
-		// Sort places by length of title in descending order to handle longer names first
-		const sortedPlaces = [...$places].sort((a, b) => b.title.length - a.title.length);
-
-		sortedPlaces.forEach((place) => {
-			let placeName = place.title.replace(/\s*\(.*?\)\s*/g, '');
-			// Create a regex to find bold marked places
-			let regEx = new RegExp(
-				`<strong>${placeName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\w*</strong>`,
-				'gi'
-			);
-			result = result.replace(regEx, (match) => {
-				const placeText = match.replace(/<\/?strong>/g, '');
-				const placeEmoji = place.cls && CLASSES[place.cls]?.emoji ? CLASSES[place.cls].emoji : '';
-				return `<strong class="cursor-pointer text-primary-800 hover:text-primary-900" data-place-title="${place.title}">${placeEmoji}${placeEmoji ? ' ' : ''}${placeText}</strong>`;
-			});
-		});
-		return result;
-	};
-
-	// Handle click events on place names
-	const handlePlaceClick = (event) => {
-		const target = event.target;
-		if (target.dataset.placeTitle) {
-			placeDetailsVisible.set(target.dataset.placeTitle);
-		}
-	};
-
-	// Handle keyboard events for accessibility
-	const handleKeydown = (event) => {
-		if (event.key === 'Enter' || event.key === ' ') {
-			const target = event.target;
-			if (target.dataset.placeTitle) {
-				event.preventDefault();
-				placeDetailsVisible.set(target.dataset.placeTitle);
-			}
-		}
-	};
+	const openPlaceDetails = (place) => placeDetailsVisible.set(place.title);
 
 	$: currentHistoryKey = getHistoricEventKey(
 		$coordinates,
@@ -143,15 +99,7 @@
 						{#each $events as event, index (index)}
 							<li class="mt-2">
 								<span class="text-sm font-bold text-primary-800">{event.date_string}</span>
-								<div
-									on:click={handlePlaceClick}
-									on:keydown={handleKeydown}
-									role="button"
-									tabindex="0"
-								>
-									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-									{@html makeClickablePlaces(marked(markPlacesInText(event.text)))}
-								</div>
+								<PlaceMentions text={event.text} onSelect={openPlaceDetails} />
 								<div
 									class="line mt-2"
 									style="height: {Math.round(event.yearDiff / 8 + 0.25) * 4}px"
