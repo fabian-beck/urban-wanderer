@@ -140,5 +140,6 @@ export const WALK_SNAPSHOT_TEXT_LENGTH = 700;
 export const WALK_PASSED_PLACES_PER_STOP = 6;
 export const WALK_EVENTS_PER_STOP = 8;
 export const WALK_RECAP_MISSED_PLACES_LIMIT = 12;
+export const WALK_MOTTO_MAX_LENGTH = 300;
 // Live position polling while the map is shown (independent of recorded stops)
 export const LIVE_POSITION_INTERVAL_MS = 60 * 1000;

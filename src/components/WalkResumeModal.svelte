@@ -12,6 +12,8 @@
 	} from '../util/walk.js';
 
 	$: stats = $walkResumeCandidate && $walk ? getWalkStats($walk) : null;
+	$: newMotto = $walkResumeCandidate?.motto || '';
+	$: currentMotto = $walk?.motto || '';
 	$: lastStop = $walk ? getWalkLastActivity($walk) : 0;
 	$: lastStopLabel =
 		new Date(lastStop).toDateString() === new Date().toDateString()
@@ -36,6 +38,15 @@
 			{stats.visitedPlaces === 1 ? 'place' : 'places'}, {stats.stories}
 			{stats.stories === 1 ? 'story' : 'stories'} read, {formatWalkDuration(stats.durationMs)} of walking.
 		</p>
+		{#if newMotto && newMotto !== currentMotto}
+			<p class="mt-2 text-xs text-gray-500">
+				Continuing sets the motto to <i>"{newMotto}"</i>{currentMotto
+					? ` (currently "${currentMotto}")`
+					: ''}.
+			</p>
+		{:else if currentMotto}
+			<p class="mt-2 text-xs text-gray-500">Motto: <i>"{currentMotto}"</i></p>
+		{/if}
 	{/if}
 	<svelte:fragment slot="footer">
 		<div class="flex w-full justify-end gap-2">
