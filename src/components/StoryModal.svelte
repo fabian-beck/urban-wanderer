@@ -5,8 +5,7 @@
 	import Modal from 'flowbite-svelte/Modal.svelte';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import { marked } from 'marked';
-	import { generateStory } from '../util/ai-story.js';
-	import { textToSpeech } from '../util/ai-speech.js';
+	import { speak, stopSpeech } from '../util/ai-speech.js';
 	import { get } from 'svelte/store';
 	import { markPlacesInText } from '../util/text.js';
 	import { createLogger } from '../util/logger.js';
@@ -14,17 +13,12 @@
 	import {
 		errorMessage,
 		storyTexts,
-		storyResponseIds,
 		storyLoading,
+		storyPartsShown,
 		audioState,
 		preferences,
-		preloadedStory,
 		preloadingStory,
-		preloadNextStoryPart,
-		placesHere,
-		placesNearby,
-		placesSurrounding,
-		coordinates,
+		continueStory,
 		places,
 		placeDetailsVisible,
 		walk,
@@ -32,7 +26,6 @@
 	} from '../stores.js';
 	import { ArrowRightOutline, VolumeUpSolid, MessageDotsOutline } from 'flowbite-svelte-icons';
 
-	let loading = false;
 	const logger = createLogger('story.modal');
 
 	// Function to make marked places clickable
@@ -80,66 +73,41 @@
 		}
 	};
 
-	const updateStory = async () => {
-		loading = true;
-		audioState.set('paused');
-		try {
-			let nextStoryResult;
-			// Use preloaded story if available
-			if ($preloadedStory) {
-				nextStoryResult = $preloadedStory;
-				preloadedStory.set(null);
-			} else {
-				// Generate new story if no preloaded version
-				const lastResponseId =
-					$storyResponseIds.length > 0 ? $storyResponseIds[$storyResponseIds.length - 1] : null;
-				nextStoryResult = await generateStory(
-					$storyTexts,
-					get(placesHere),
-					get(placesNearby),
-					get(placesSurrounding),
-					get(coordinates),
-					get(preferences),
-					lastResponseId,
-					get(walk)
-				);
-			}
+	export let visible = false;
 
-			const newStoryTexts = [...$storyTexts, nextStoryResult.text];
-			const newResponseIds = [...$storyResponseIds, nextStoryResult.responseId];
-			$storyTexts = newStoryTexts;
-			$storyResponseIds = newResponseIds;
+	// Story generation and speech exclude each other: no speech while a part is generated,
+	// no new part while speech is loading or playing
+	$: audioBusy = $audioState !== 'paused';
 
-			if (visible && $preferences.audio) {
-				textToSpeech(nextStoryResult.text, audioState, get(preferences));
-			}
-
-			// Start preloading the next story part
-			preloadNextStoryPart(newStoryTexts);
-		} catch (error) {
-			logger.error('Story generation failed', error);
-			errorMessage.set('Error generating story: ' + error);
-		}
-		loading = false;
+	const playStory = (storyText) => {
+		speak(storyText, get(preferences)).catch((error) => {
+			logger.error('Story playback failed', error);
+			errorMessage.set('Error playing audio: ' + error);
+		});
 	};
 
-	export let visible = false;
+	// A story part that appears while the modal is open is shown once and, with autoplay on,
+	// read aloud once; reopening the modal does not replay it
+	$: if (visible && $storyTexts.length > $storyPartsShown) {
+		const latestStoryText = $storyTexts[$storyTexts.length - 1];
+		storyPartsShown.set($storyTexts.length);
+		if ($preferences.audio) {
+			playStory(latestStoryText);
+		}
+	}
 
 	// Story parts shown while a walk is active count as read on the walk
 	$: if (visible && $walkActive) {
 		$storyTexts.forEach((storyText) => walk.recordStory(storyText));
 	}
+
+	const close = () => {
+		visible = false;
+		stopSpeech();
+	};
 </script>
 
-<Modal
-	classBody="p-0 overscroll-none"
-	classDialog=""
-	open={visible}
-	on:close={() => {
-		visible = false;
-		audioState.set('paused');
-	}}
->
+<Modal classBody="p-0 overscroll-none" classDialog="" open={visible} on:close={close}>
 	<!-- header with audio state -->
 	<svelte:fragment slot="header">
 		<div class="flex items-center">
@@ -148,7 +116,7 @@
 			</div>
 			<div class="ml-1 flex-auto text-xl">Story</div>
 			<div class="ml-4 flex-none text-sm">
-				{#if loading || $storyLoading}
+				{#if $storyLoading}
 					<Alert type="info" class="flex p-2 text-xs">
 						<svelte:fragment slot="icon">
 							<Spinner size="4" />
@@ -167,7 +135,7 @@
 							{/if}
 						</svelte:fragment>
 						Audio {$audioState}
-						<CloseButton on:click={() => audioState.set('paused')} class="flex-none" size="xs" />
+						<CloseButton on:click={stopSpeech} class="flex-none" size="xs" />
 					</Alert>
 				{/if}
 			</div>
@@ -190,30 +158,30 @@
 					</div>
 					<div class="mb-2 flex justify-end">
 						<Button
-							on:click={() => textToSpeech(storyText, audioState, get(preferences))}
+							on:click={() => playStory(storyText)}
 							pill
 							size="sm"
 							outline
 							class="mt-2 !p-2"
-							disabled={$audioState === 'loading' || $audioState === 'playing' || loading}
+							disabled={audioBusy || $storyLoading}
 						>
 							<VolumeUpSolid size="sm" />
 						</Button>
 					</div>
 					<hr class="my-4" />
 				{/each}
-				{#if !loading}
+				{#if !$storyLoading}
 					<div class="mb-2 flex justify-end">
 						<Button
-							on:click={updateStory}
+							on:click={continueStory}
 							pill
 							size="xs"
 							outline
 							class="mt-2"
-							disabled={$preloadingStory}
+							disabled={$preloadingStory || audioBusy}
 						>
 							<ArrowRightOutline />
-							{$preloadedStory ? 'Tell me more' : $preloadingStory ? 'Loading...' : 'Tell me more'}
+							{$preloadingStory ? 'Loading...' : 'Tell me more'}
 						</Button>
 					</div>
 				{/if}
