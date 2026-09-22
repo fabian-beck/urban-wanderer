@@ -36,7 +36,11 @@ export async function generateStory(
 	if (!storyTexts) {
 		storyTexts = [];
 	}
-	const walkContext = buildWalkPromptContext(walk);
+	// Parts of the current story are already in the conversation; only stories outside it are quoted
+	const walkContext = buildWalkPromptContext(
+		walk && { ...walk, stories: walk.stories.filter((story) => !storyTexts.includes(story.text)) },
+		{ fullStories: true }
+	);
 	const walkMotto = getWalkMotto(walk);
 	const mottoContext = buildWalkMottoPromptContext(walk);
 	const mottoReminder = walkMotto
@@ -135,9 +139,12 @@ Avoid giving directions or distances.
 ${
 	walkContext
 		? `
-The user is on a walk: treat the stops as one continuous narrative. Never repeat facts already told in the earlier stories of this walk.
+The user is on a walk and has already heard the stories quoted verbatim above: treat the stops as one continuous narrative in which nothing is told twice.
+Before writing, check every fact, date, name, anecdote, and description you plan to use against those stories; drop whatever they already contain, even if it concerns a different place, and do not paraphrase or summarize them.
+Tell only what is new at this position. Where an earlier story touches on a place or theme relevant here, do not retell it: refer back in half a sentence at most and continue with what was not told yet.
 Prefer places the user has not visited yet; mention a place marked as already visited only briefly and acknowledge that the user has been there.
-You may draw one short connection between the current position and an earlier stop of the walk when it adds insight.
+You may draw one or two short connections between the current position and an earlier stop of the walk when they add insight (a shared person, era, style, or event).
+If little new material is left for a place, say less about it rather than repeating known facts.
 `
 		: ''
 }
@@ -167,7 +174,7 @@ ${walkMotto ? `Above all, honor the user's motto for this walk: "${walkMotto}".\
 		}
 		messages.push({
 			role: 'user',
-			content: `Tell me more about something different at this location. You may focus on something specific, but never repeat yourself.
+			content: `Tell me more about something different at this location. You may focus on something specific, but never repeat yourself${walkContext ? ', neither from this story nor from the earlier stories of my walk' : ''}.
 
 Remember, I am at this position:
 ${coordinates.address}
@@ -188,7 +195,7 @@ Give the text a headline marked in bold font.`
 	} else {
 		messages.push({
 			role: 'user',
-			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself.
+			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself${walkContext ? ', neither from this story nor from the earlier stories of my walk' : ''}.
 ${mottoReminder}
 Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
