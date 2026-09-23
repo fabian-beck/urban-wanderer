@@ -88,6 +88,13 @@ export const STORY_MAP_LINE_HIGHWAY_TYPES =
 export const STORY_MAP_POINT_NATURAL_TYPES = 'peak|spring|cave_entrance|rock|stone|tree_row';
 export const STORY_MAP_STOP_RAILWAY_TYPES = 'station|halt|tram_stop|subway_entrance';
 export const STORY_MAP_PLACE_TYPES = 'square|locality|neighbourhood|quarter|islet|island';
+
+// Story place selection: "here" places are tiered relative to the best available rating
+export const STORY_PLACE_MAX_STARS = 5;
+export const STORY_SECONDARY_STAR_GAP = 1;
+export const STORY_NEARBY_MAX_DISTANCE = 500;
+export const STORY_NEARBY_LIMIT = 5;
+export const STORY_NEARBY_FALLBACK_LIMIT = 2;
 export const STORY_MAP_EXCLUDED_AMENITY_TYPES = [
 	'bench',
 	'waste_basket',

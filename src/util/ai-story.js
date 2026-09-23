@@ -10,6 +10,13 @@ import {
 } from './walk.js';
 import { getPlaceIdentity } from './place-identity.js';
 import { formatMapExcerpt, formatRelativePosition } from './map-excerpt.js';
+import {
+	STORY_NEARBY_FALLBACK_LIMIT,
+	STORY_NEARBY_LIMIT,
+	STORY_NEARBY_MAX_DISTANCE,
+	STORY_PLACE_MAX_STARS,
+	STORY_SECONDARY_STAR_GAP
+} from '../constants/core.js';
 
 const logger = createLogger('ai.story');
 
@@ -22,6 +29,25 @@ function storyParagraphs(placeCount) {
 		STORY_LENGTH.MAX_PARAGRAPHS
 	);
 }
+
+const byRatingThenDistance = (a, b) =>
+	(b.stars || 0) - (a.stars || 0) || (a.dist || Infinity) - (b.dist || Infinity);
+
+// Tiers are relative to the best rating available here, so a 4-star place leads when no 5-star place exists
+function tierPlacesByRating(places) {
+	const sorted = [...places].sort(byRatingThenDistance);
+	const bestStars = sorted[0]?.stars || 0;
+	return {
+		main: sorted.filter((place) => (place.stars || 0) >= bestStars),
+		secondary: sorted.filter(
+			(place) =>
+				(place.stars || 0) < bestStars && (place.stars || 0) >= bestStars - STORY_SECONDARY_STAR_GAP
+		),
+		minor: sorted.filter((place) => (place.stars || 0) < bestStars - STORY_SECONDARY_STAR_GAP)
+	};
+}
+
+const formatRating = (place) => `${place.stars || 0}/${STORY_PLACE_MAX_STARS} stars`;
 
 // generate story about the user position
 export async function generateStory(
@@ -56,14 +82,43 @@ export async function generateStory(
 	const visitedIdentities = getPreviouslyVisitedIdentities(walk);
 	const visitedNote = (place) =>
 		visitedIdentities.has(getPlaceIdentity(place)) ? ' [already visited earlier on this walk]' : '';
-	const prioritizedNearbyPlaces = [...placesNearby]
-		.sort((a, b) => (a.dist || Infinity) - (b.dist || Infinity))
-		.slice(0, 5);
-	const immediateNearbyPlaces = prioritizedNearbyPlaces.filter(
-		(place) => (place.dist || Infinity) <= 500
-	);
+	const hereTiers = tierPlacesByRating(placesHere);
+	const immediateNearbyPlaces = placesNearby
+		.filter((place) => (place.dist || Infinity) <= STORY_NEARBY_MAX_DISTANCE)
+		.sort(byRatingThenDistance)
+		.slice(0, STORY_NEARBY_LIMIT);
 	const relevantNearbyPlaces =
-		immediateNearbyPlaces.length > 0 ? immediateNearbyPlaces : prioritizedNearbyPlaces.slice(0, 2);
+		immediateNearbyPlaces.length > 0
+			? immediateNearbyPlaces
+			: [...placesNearby]
+					.sort((a, b) => (a.dist || Infinity) - (b.dist || Infinity))
+					.slice(0, STORY_NEARBY_FALLBACK_LIMIT)
+					.sort(byRatingThenDistance);
+	const formatHerePlace = (place, { brief = false } = {}) =>
+		`### ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}
+Rating: ${formatRating(place)}
+
+${(brief ? null : place.insights || place.article) || place.description || place.snippet || place.type || ''}
+`;
+	const hereTierSection = (heading, places, options) =>
+		places.length
+			? `## ${heading}\n\n${places.map((place) => formatHerePlace(place, options)).join('\n')}`
+			: '';
+	const mainPlaceTitles = hereTiers.main.map((place) => `"${place.title}"`).join(', ');
+	const herePlacesText = [
+		hereTierSection('MAIN places (highest rating, must be the core of the story)', hereTiers.main),
+		hereTierSection(
+			'Secondary places (lower rating, cover after the main places)',
+			hereTiers.secondary
+		),
+		hereTierSection(
+			'Minor places (clearly lower rating, mention briefly at most)',
+			hereTiers.minor,
+			{ brief: true }
+		)
+	]
+		.filter(Boolean)
+		.join('\n');
 	const selectedLabels = preferences.labels || [];
 	const preferenceLabels = selectedLabels.length
 		? selectedLabels.map((label) => `- ${label}`).join('\n')
@@ -85,18 +140,9 @@ Tell something interesting about the user's current position. Answer in language
 
 ${coordinates.address}
 
-# The position is close to /in:
+# The position is close to /in (grouped by rating, highest first):
 
-${placesHere
-	.map(
-		(place) =>
-			`## ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}
-Rating: ${place.stars}
-
-${place.insights || place.article || place.description || place.snippet || place.type || ''}
-`
-	)
-	.join('\n')}
+${herePlacesText}
 
 # Nearby places are:
 
@@ -105,7 +151,7 @@ ${relevantNearbyPlaces
 		(place) =>
 			`
 ## ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}
-Rating: ${place.stars}
+Rating: ${formatRating(place)}
     
 ${place.description || place.snippet || place.type || ''}
 `
@@ -143,16 +189,27 @@ ${preferenceLabels}
 User did NOT select the following topics (treat them as negative topics and avoid them unless necessary for local context):
 ${negativePreferenceLabels}
 
-The story should be ${STORY_LENGTH.MIN_PARAGRAPHS} to ${storyParagraphs(placesHere.length + placesSurrounding.length)} paragraphs long and focus on the user's immediate surroundings and the closest places.
+The story should be ${STORY_LENGTH.MIN_PARAGRAPHS} to ${storyParagraphs(placesHere.length + placesSurrounding.length)} paragraphs long and focus on the highest-rated places at the user's immediate position.
 Use the full paragraph budget when the places offer enough substance; each paragraph should develop one aspect in depth instead of listing many.
-Prioritize in this strict order: (1) current position and places listed as "close to /in", (2) surrounding context, (3) the nearby places list only if needed.
-Nearby places are optional context only. Mention at most one nearby place in detail, and only if it is among the closest provided options.
+${
+	mainPlaceTitles
+		? `
+Place selection follows the ratings (0 to ${STORY_PLACE_MAX_STARS} stars). The ratings combine the importance of a place with the user's interests, so they decide what the story is about:
+- The MAIN places (${mainPlaceTitles}) must be the core of the story: discuss each of them in depth, before any lower-rated place gets more than a sentence. Never skip a MAIN place in favour of a lower-rated one, even if the lower-rated place is closer, better documented, or easier to tell.
+- Secondary places come next, only once the MAIN places are covered and budget is left.
+- Minor places may appear at most in a short side remark, e.g. to locate a MAIN place.
+- Distance decides the order in which you walk the user through the places and how you frame them spatially, never which places get attention.
+`
+		: ''
+}
+Prioritize in this strict order: (1) the rated places listed as "close to /in", highest rating first, (2) the current position and surrounding context, (3) the nearby places list only if needed.
+Nearby places are optional context only. Mention at most one nearby place in detail, and prefer the highest-rated one.
 ${
 	mapExcerptText
 		? `Spatial grounding is mandatory. The map excerpt is the ground truth for what is physically around the user; the position ⌖ is exact (up to GPS error of a few metres).
 Before writing, read the map excerpt like a local: which street or square ⌖ is on, which named buildings and features stand within a few dozen metres, what lies in which direction, what kind of neighbourhood the unnamed buildings and land use indicate.
-Open the story with what is right at ⌖ (the smallest distances in the excerpt) and move outwards from there; never lead with something 100 m away while closer named features are listed.
-A place from the lists above that is marked in the excerpt as "listed place" is confirmed to stand right here; give such places priority. A listed place that the excerpt does not show within the here radius is not immediate and gets less weight.
+Use the map to anchor the story in space: set the scene briefly with what is right at ⌖, then turn to the MAIN places and locate each of them relative to the user. The map never replaces the rating-based selection: an unrated map feature or a lower-rated place close to ⌖ may frame the story in a sentence, but must not push a MAIN place aside.
+A place from the lists above that is marked in the excerpt as "listed place" is confirmed to stand right here; among places of the same rating, prefer such places.
 Details from the map (building types, construction dates, architects, inscriptions, street names) are facts you may use.
 Never quote the distances, bearings or coordinates verbatim; turn them into natural description ("across the street", "at the corner of X and Y", "a few steps to the north", "behind you").
 `
@@ -190,7 +247,11 @@ ${walkMotto ? `Above all, honor the user's motto for this walk: "${walkMotto}".\
 	};
 	const mapContinuationNote = mapExcerptText
 		? `
-Consult the map excerpt again: pick a building, street or feature close to ⌖ that the story has not covered yet, and stay spatially precise about where it is relative to the user.`
+Consult the map excerpt again to stay spatially precise about where the chosen place is relative to the user; once the rated places are exhausted, pick a building, street or feature close to ⌖ that the story has not covered yet.`
+		: '';
+	const continuationRatingNote = mainPlaceTitles
+		? `Keep to the rating priority: if a MAIN place (${mainPlaceTitles}) has not been covered in depth yet, turn to it first; otherwise continue with the highest-rated place that still offers new material.
+`
 		: '';
 	let messages = [initialMessage];
 
@@ -208,9 +269,15 @@ Consult the map excerpt again: pick a building, street or feature close to ⌖ t
 Remember, I am at this position:
 ${coordinates.address}
 
-The position is close to /in:
-${placesHere.map((place) => `* ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}`).join('\n')}
-
+The position is close to /in (highest rating first):
+${[...placesHere]
+	.sort(byRatingThenDistance)
+	.map(
+		(place) =>
+			`* ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')} (${formatRating(place)})`
+	)
+	.join('\n')}
+${continuationRatingNote}
 Strictly stick to the initially provided instructions and facts about the places.${mapContinuationNote}
 ${mottoReminder}Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
@@ -224,7 +291,8 @@ Give the text a headline marked in bold font.`
 	} else {
 		messages.push({
 			role: 'user',
-			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself${walkContext ? ', neither from this story nor from the earlier stories of my walk' : ''}.${mapContinuationNote}
+			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself${walkContext ? ', neither from this story nor from the earlier stories of my walk' : ''}.
+${continuationRatingNote}${mapContinuationNote}
 ${mottoReminder}
 Avoid generic conclusion statements and end with a concrete place-specific detail.
 Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.

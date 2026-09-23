@@ -54,7 +54,7 @@ Comprehensive classification system with 25+ place types:
 - **ai-core.js**: OpenAI client configuration and model tier selection (`getAiModel`); model IDs (`AI_MODELS`), the TTS model (`AI_SPEECH_MODEL`) and per-task reasoning effort (`AI_REASONING_EFFORT`) are defined in `src/constants/ui-config.js`
 - **ai-analysis.js**: Place classification, labeling, and importance rating
 - **ai-translation.js**: Identity-first and name-similarity deduplication (local), plus batched AI title translation of visible places after rating
-- **ai-story.js**: AI-powered location storytelling; paragraph budget from `STORY_LENGTH` in `src/constants/ui-config.js`; the prompt lists here/nearby places with distance and compass direction and embeds the map excerpt with instructions to interpret the surroundings concretely
+- **ai-story.js**: AI-powered location storytelling; paragraph budget from `STORY_LENGTH` in `src/constants/ui-config.js`; here places are grouped into rating tiers relative to the best available rating (MAIN/secondary/minor, `STORY_*` constants in `src/constants/core.js`) and the prompt makes the rating, not proximity, decide which places are covered; the prompt lists here/nearby places with rating, distance and compass direction and embeds the map excerpt with instructions to interpret the surroundings concretely
 - **ai-facts.js**: Structured fact extraction from articles with Wikidata enrichment; `summarizeArticle` returns a two-part place summary (`short`: always shown, `long`: expanded on demand, both empty without meaningful source data), lengths from `SUMMARY_LENGTH` in `src/constants/ui-config.js`
 - **ai-history.js**: Historical content generation
 - **ai-comment.js**: Place commentary generation
