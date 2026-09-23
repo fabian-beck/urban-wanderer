@@ -1,7 +1,12 @@
-import { openai, getAiModel } from './ai-core.js';
+import { openai, getAiModel, buildOutputLanguageInstruction } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT, SUMMARY_LENGTH } from '../constants/ui-config.js';
-import { INSIGHTS_CACHE_KEY, FACTS_CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
+import {
+	INSIGHTS_CACHE_KEY,
+	FACTS_CACHE_KEY,
+	FACTS_CACHE_VERSION,
+	CACHE_TTL
+} from '../constants/cache-config.js';
 import { createLogger } from './logger.js';
 
 const logger = createLogger('ai.facts');
@@ -64,7 +69,7 @@ function createInsightsCacheKey(article, preferences) {
 function createFactsCacheKey(place, factsProperties, preferences) {
 	// Create a cache key based on place title, properties schema, and language
 	const propertiesHash = Object.keys(factsProperties).sort().join(',');
-	return `${place.title}|${propertiesHash}|${preferences.lang}`;
+	return `v${FACTS_CACHE_VERSION}:${place.title}|${propertiesHash}|${preferences.lang}`;
 }
 
 let insightsCache = loadInsightsCache();
@@ -107,13 +112,15 @@ export async function summarizeArticle(article, preferences) {
 		input: [
 			{
 				role: 'system',
-				content: `You are a chat assistant providing a description of a place for a visitor standing in front of it. Answer in language '${preferences.lang}'.
+				content: `You are a chat assistant providing a description of a place for a visitor standing in front of it.
 
 Return two parts:
 - "short": ${SUMMARY_LENGTH.SHORT_MIN_SENTENCES} to ${SUMMARY_LENGTH.SHORT_MAX_SENTENCES} sentences capturing what the place is and why it matters. This part is always shown.
 - "long": ${SUMMARY_LENGTH.LONG_MIN_PARAGRAPHS} to ${SUMMARY_LENGTH.LONG_MAX_PARAGRAPHS} paragraphs with further details (history, architecture, use, notable events), separated by blank lines. It is shown on demand and must not repeat the short part. Scale its length to the information available; use an empty string when the source offers nothing substantial beyond the short part.
 
-If the source contains no meaningful information about the place itself, return empty strings for both parts. Do not invent facts. Plain text without markup.`
+If the source contains no meaningful information about the place itself, return empty strings for both parts. Do not invent facts. Plain text without markup.
+
+${buildOutputLanguageInstruction(preferences.lang)}`
 			},
 			{
 				role: 'user',
@@ -164,7 +171,7 @@ You are an assistant helping a user to find facts about a place in the provided 
 
 The place of interest is ${place.title} (${place.cls}) located near ${coordinates.address}. 
 
-Extract relevant facts and data about the place. Answer in language '${preferences.lang}'.
+Extract relevant facts and data about the place.
 
 The facts should be relevant for a current touristic visitor of the place. 
 Avoid redundancies and repetitions in all cases; do not repeat the same information in different ways in properties and other facts.
@@ -178,6 +185,8 @@ Keep list short or empty if there are no relevant facts.
 
 You may use the following sources of information about the place:
 ${place.article || place.description || place.snippet || '[no description available]'}${wikidataContext}
+
+${buildOutputLanguageInstruction(preferences.lang)}
 `;
 	logger.debug('Facts prompt', { title: place.title, prompt: initialMessage });
 	const response = await openai.responses.create({
@@ -255,8 +264,9 @@ export async function extractInsightsFromArticle(article, preferences) {
 	logger.info('Generating insights', { lang: preferences.lang });
 	const instructions = `You are a chat assistant helping a user to extract insights from an article, relevant when visiting the place.
 
-Return a list of bullet points, focusing on the most important insights. 
-Answer in language '${preferences.lang}'.    
+Return a list of bullet points, focusing on the most important insights.
+
+${buildOutputLanguageInstruction(preferences.lang)}
 `;
 	logger.debug('Insights prompt', { prompt: instructions });
 	const response = await openai.responses.create({

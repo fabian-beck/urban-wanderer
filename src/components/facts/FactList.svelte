@@ -83,11 +83,12 @@
 					properties: {
 						label: {
 							type: 'string',
-							description: 'short label for the fact'
+							description: 'short label for the fact, in the output language'
 						},
 						description: {
 							type: 'string',
-							description: 'the fact itself, described as short as possible, max 30 characters'
+							description:
+								'the fact itself in the output language, described as short as possible, max 30 characters'
 						}
 					},
 					required: ['label', 'description'],
