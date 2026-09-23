@@ -101,18 +101,16 @@ export const FAMILIARITY = [
 
 export const AI_MODELS = {
 	SIMPLE: [
-		{ value: 'gpt-5.6-luna', name: 'GPT-5.6 Luna (default, fastest)' },
-		{ value: 'gpt-5.6-terra', name: 'GPT-5.6 Terra (higher quality)' },
-		{ value: 'gpt-5.6-sol', name: 'GPT-5.6 Sol (best quality)' }
+		{ value: 'gpt-6-luna', name: 'GPT-6 Luna (default, fastest)' },
+		{ value: 'gpt-6-sol', name: 'GPT-6 Sol (higher quality)' }
 	],
 	ADVANCED: [
-		{ value: 'gpt-5.6-luna', name: 'GPT-5.6 Luna (faster)' },
-		{ value: 'gpt-5.6-terra', name: 'GPT-5.6 Terra (default)' },
-		{ value: 'gpt-5.6-sol', name: 'GPT-5.6 Sol (best quality)' },
-		{ value: 'gpt-6-astra', name: 'GPT-6 Astra (latest generation, most expensive)' }
+		{ value: 'gpt-6-luna', name: 'GPT-6 Luna (faster)' },
+		{ value: 'gpt-6-sol', name: 'GPT-6 Sol (default)' },
+		{ value: 'gpt-6-astra', name: 'GPT-6 Astra (best quality, most expensive)' }
 	],
-	DEFAULT_SIMPLE: 'gpt-5.6-luna',
-	DEFAULT_ADVANCED: 'gpt-5.6-terra'
+	DEFAULT_SIMPLE: 'gpt-6-luna',
+	DEFAULT_ADVANCED: 'gpt-6-sol'
 };
 
 export const AI_SPEECH_MODEL = 'gpt-4o-mini-tts';
