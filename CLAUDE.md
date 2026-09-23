@@ -72,7 +72,7 @@ Comprehensive classification system with 25+ place types:
 
 ### UI Components (`src/components/`)
 
-- **Map.svelte**: Interactive map centered on the current stop; shows the stops of the active walk as gray circles, visited places with green check marks, and the live position marker (pinned to the map edge when out of range)
+- **Map.svelte**: Interactive map centered on the current stop; shows the stops of the active walk as gray circles connected by a gray route line, visited places with green check marks, and the live position marker (pinned to the map edge when out of range)
 - **PlaceDetailsModal.svelte**: Detailed place information; summarizes the full article (`place.article`, else fetched via `loadWikipediaArticleText`, else the OSM description)
 - **StoryModal.svelte**: AI-generated stories about places; a tapped place mention opens `PlacePopup` (thumbnail, rating, short description, "Details" button) instead of the place details so audio playback continues
 - **PlaceMentions.svelte**: Renders a markdown text with clickable place mentions (emoji prefix, `onSelect(place, link)` callback), used by story and history

@@ -52,7 +52,11 @@
 	onMount(startLivePositionTracking);
 	onDestroy(stopLivePositionTracking);
 
-	$: walkStops = $walkActive ? $walk.stops : [];
+	$: walkStopPoints = ($walkActive ? $walk.stops : []).map((stop) => ({
+		x: latLonToX(stop.latitude, stop.longitude, $coordinates.latitude, $coordinates.longitude),
+		y: latLonToY(stop.latitude, stop.longitude, $coordinates.latitude, $coordinates.longitude)
+	}));
+	$: walkRoutePoints = walkStopPoints.map(({ x, y }) => `${x},${y}`).join(' ');
 
 	// The live position relative to the map center (the current stop); a position outside the map is pinned to its edge
 	const getPositionMarker = (position, center) => {
@@ -597,22 +601,11 @@
 				</g>
 				<!-- walk stops -->
 				<g class="walk-stops">
-					{#each walkStops as stop, index (index)}
-						<g
-							transform="translate({latLonToX(
-								stop.latitude,
-								stop.longitude,
-								$coordinates.latitude,
-								$coordinates.longitude
-							)}, {latLonToY(
-								stop.latitude,
-								stop.longitude,
-								$coordinates.latitude,
-								$coordinates.longitude
-							)})"
-						>
-							<circle cx="0" cy="0" r="8" class="walk-stop-circle" />
-						</g>
+					{#if walkStopPoints.length > 1}
+						<polyline points={walkRoutePoints} class="walk-route" />
+					{/if}
+					{#each walkStopPoints as point, index (index)}
+						<circle cx={point.x} cy={point.y} r="8" class="walk-stop-circle" />
 					{/each}
 				</g>
 				<!-- markers -->
@@ -767,6 +760,14 @@
 
 	.walk-stop-circle {
 		fill: #9ca3af;
+	}
+
+	.walk-route {
+		fill: none;
+		stroke: #9ca3af;
+		stroke-width: 3;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 
 	.water-circle.animate {
