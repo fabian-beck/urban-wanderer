@@ -192,6 +192,8 @@ ${walkMotto ? `Above all, honor the user's motto for this walk: "${walkMotto}".\
 		? `
 Consult the map excerpt again: pick a building, street or feature close to ⌖ that the story has not covered yet, and stay spatially precise about where it is relative to the user.`
 		: '';
+	const continuationLengthNote = `Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
+Scale the length with the material that is still untold: if the sources and the map offer enough substance for the chosen topic, use the full paragraph budget and go into depth (background, people, dates, concrete details); stay at the lower end only when little new material is left.`;
 	let messages = [initialMessage];
 
 	if (storyTexts.length > 0 && !previousResponseId) {
@@ -213,7 +215,7 @@ ${placesHere.map((place) => `* ${place.title}${visitedNote(place)}${relativePosi
 
 Strictly stick to the initially provided instructions and facts about the places.${mapContinuationNote}
 ${mottoReminder}Avoid generic conclusion statements and end with a concrete place-specific detail.
-Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
+${continuationLengthNote}
 Give the text a headline marked in bold font.`
 		});
 	} else if (storyTexts.length === 0) {
@@ -227,7 +229,7 @@ Give the text a headline marked in bold font.`
 			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself${walkContext ? ', neither from this story nor from the earlier stories of my walk' : ''}.${mapContinuationNote}
 ${mottoReminder}
 Avoid generic conclusion statements and end with a concrete place-specific detail.
-Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
+${continuationLengthNote}
 Give the text a headline marked in bold font.`
 		});
 	}

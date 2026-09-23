@@ -11,13 +11,14 @@ export const SOURCE_LANGUAGES = [
 ];
 
 // Paragraph budget of a story: the first story scales with the number of
-// places here and surrounding, continuations use a fixed range.
+// places here and surrounding, continuations use a fixed range that the model
+// fills depending on how much untold material is left.
 export const STORY_LENGTH = {
 	MIN_PARAGRAPHS: 2,
 	MAX_PARAGRAPHS: 6,
 	PLACES_PER_PARAGRAPH: 2,
-	CONTINUATION_MIN_PARAGRAPHS: 2,
-	CONTINUATION_MAX_PARAGRAPHS: 4
+	CONTINUATION_MIN_PARAGRAPHS: 3,
+	CONTINUATION_MAX_PARAGRAPHS: 6
 };
 
 // Place description in the details modal: a short form that is always shown
