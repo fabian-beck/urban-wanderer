@@ -1,13 +1,18 @@
 <script>
 	import Button from 'flowbite-svelte/Button.svelte';
 	import Modal from 'flowbite-svelte/Modal.svelte';
+	import Spinner from 'flowbite-svelte/Spinner.svelte';
 	import {
 		FileOutline,
 		MapPinAltOutline,
 		GlobeOutline,
-		DatabaseOutline
+		DatabaseOutline,
+		VolumeUpSolid,
+		StopSolid
 	} from 'flowbite-svelte-icons';
 	import { summarizeArticle } from '../util/ai-facts.js';
+	import { speak, stopSpeech } from '../util/ai-speech.js';
+	import { createLogger } from '../util/logger.js';
 	import { loadWikipediaArticleText } from '../util/wikipedia.js';
 	import { get } from 'svelte/store';
 	import {
@@ -19,7 +24,9 @@
 		loadPlaceImage,
 		updateLocation,
 		walk,
-		visitedPlaceIdentities
+		visitedPlaceIdentities,
+		audioState,
+		errorMessage
 	} from '../stores.js';
 	import { getPlaceIdentity } from '../util/place-identity.js';
 	import { formatWalkTime, getVisitedPlace } from '../util/walk.js';
@@ -29,6 +36,8 @@
 	import PlaceLabels from './PlaceLabels.svelte';
 	import { derived } from 'svelte/store';
 	import FactList from './facts/FactList.svelte';
+
+	const logger = createLogger('place.details');
 
 	export let place;
 	const visible = derived(
@@ -125,6 +134,42 @@
 		loadModalImage();
 		loadModalSummary();
 	}
+
+	// Speech started here belongs to this modal until it ends or is replaced; closing the
+	// modal stops it, while story audio playing underneath stays untouched
+	let speakingSummary = false;
+	$: if ($audioState === 'paused') {
+		speakingSummary = false;
+	}
+
+	const playSummary = () => {
+		const text = [summary?.short, summary?.long].filter(Boolean).join('\n\n');
+		if (!text) {
+			return;
+		}
+		speakingSummary = true;
+		speak(text, get(preferences)).catch((error) => {
+			logger.error('Place details playback failed', error);
+			errorMessage.set('Error playing audio: ' + error);
+		});
+	};
+
+	const stopSummary = () => {
+		if (speakingSummary) {
+			stopSpeech();
+		}
+	};
+
+	const toggleSummaryExpanded = () => {
+		summaryExpanded = !summaryExpanded;
+		if (summaryExpanded && $preferences.audio && !speakingSummary) {
+			playSummary();
+		}
+	};
+
+	$: if (!$visible) {
+		stopSummary();
+	}
 </script>
 
 <Modal
@@ -186,6 +231,24 @@
 		<div class="p-4">
 			{#if summary?.short}
 				<div>
+					<div class="float-right mb-1 ml-2">
+						<Button
+							on:click={speakingSummary ? stopSummary : playSummary}
+							pill
+							size="sm"
+							outline
+							class="!p-2"
+							aria-label={speakingSummary ? 'Stop reading aloud' : 'Read aloud'}
+						>
+							{#if speakingSummary && $audioState === 'loading'}
+								<Spinner size="4" />
+							{:else if speakingSummary}
+								<StopSolid size="sm" />
+							{:else}
+								<VolumeUpSolid size="sm" />
+							{/if}
+						</Button>
+					</div>
 					<p>{summary.short}</p>
 					{#if summary.long}
 						{#if summaryExpanded}
@@ -194,7 +257,7 @@
 						<button
 							type="button"
 							class="mt-1 text-sm text-primary-800 hover:underline"
-							on:click={() => (summaryExpanded = !summaryExpanded)}
+							on:click={toggleSummaryExpanded}
 						>
 							{summaryExpanded ? 'Show less' : 'Show more'}
 						</button>

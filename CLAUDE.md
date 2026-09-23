@@ -36,7 +36,7 @@ Urban Wanderer is a geo-location based mobile application that provides intellig
 - **livePosition**: Latest GPS fix (`latitude`, `longitude`, `at`), refreshed by every GPS lookup and polled every `LIVE_POSITION_INTERVAL_MS` while `Map.svelte` is mounted and the document is visible (`startLivePositionTracking()`/`stopLivePositionTracking()`); never persisted and never recorded as a stop
 - **story**: `storyTexts`/`storyResponseIds`, `storyLoading` (first part and continuations alike), `preloadedStory`/`preloadingStory`, `storyPartsShown` (parts already displayed in the modal, so autoplay reads each part once); `continueStory()` appends the next part, `resetStory()` clears everything on location change
 - **mapExcerpt**: OpenStreetMap excerpt of the here area plus buffer around the exact position, loaded right behind the places request and awaited by the first story part
-- **audioState**: `'paused' | 'loading' | 'playing'`, owned by `ai-speech.js` (`speak()`/`stopSpeech()`); `StoryModal` disables speech while a story part is generated and "Tell me more" while audio is loading or playing
+- **audioState**: `'paused' | 'loading' | 'playing'`, owned by `ai-speech.js` (`speak()`/`stopSpeech()`); `StoryModal` and `PlaceDetailsModal` read texts aloud; `StoryModal` disables speech while a story part is generated and "Tell me more" while audio is loading or playing
 - **Derived stores**: Categorized places (here, nearby, surrounding), `walkActive`, `visitedPlaceIdentities` (places that were "here" at an earlier stop)
 
 ### Place Classification (`src/constants/place-classes.js`)
@@ -73,7 +73,7 @@ Comprehensive classification system with 25+ place types:
 ### UI Components (`src/components/`)
 
 - **Map.svelte**: Interactive map centered on the current stop; shows the stops of the active walk as green check markers and the live position marker (pinned to the map edge when out of range)
-- **PlaceDetailsModal.svelte**: Detailed place information; summarizes the full article (`place.article`, else fetched via `loadWikipediaArticleText`, else the OSM description)
+- **PlaceDetailsModal.svelte**: Detailed place information; summarizes the full article (`place.article`, else fetched via `loadWikipediaArticleText`, else the OSM description); a speaker button reads the summary (short and long part) aloud, and with autoplay on, expanding the long description starts it; closing the modal stops only speech it started
 - **StoryModal.svelte**: AI-generated stories about places; a tapped place mention opens `PlacePopup` (thumbnail, rating, short description, "Details" button) instead of the place details so audio playback continues
 - **PlaceMentions.svelte**: Renders a markdown text with clickable place mentions (emoji prefix, `onSelect(place, link)` callback), used by story and history
 - **PlacePopup.svelte**: Compact place preview positioned below a mention
