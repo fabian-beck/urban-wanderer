@@ -611,23 +611,7 @@
 								$coordinates.longitude
 							)})"
 						>
-							<circle
-								cx="0"
-								cy="0"
-								r="8"
-								fill="#16A34A"
-								stroke="white"
-								stroke-width="2"
-								style="filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));"
-							/>
-							<path
-								d="M -4 0 L -1.5 2.5 L 4 -3"
-								stroke="white"
-								stroke-width="2"
-								fill="none"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
+							<circle cx="0" cy="0" r="8" class="walk-stop-circle" />
 						</g>
 					{/each}
 				</g>
@@ -693,15 +677,7 @@
 					<text x="25" y="5" class="text-lg" text-anchor="start">Your location</text>
 
 					<!-- Walk stops -->
-					<circle cx="15" cy="20" r="6" fill="#16A34A" stroke="white" stroke-width="1.5" />
-					<path
-						d="M 12 20 L 14 22 L 18 18"
-						stroke="white"
-						stroke-width="1.5"
-						fill="none"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
+					<circle cx="15" cy="20" r="6" class="walk-stop-circle" />
 					<text x="25" y="25" class="text-lg" text-anchor="start">Walk stops</text>
 
 					<!-- Places by star rating -->
@@ -787,6 +763,10 @@
 		80% {
 			opacity: 0.3;
 		}
+	}
+
+	.walk-stop-circle {
+		fill: #9ca3af;
 	}
 
 	.water-circle.animate {
