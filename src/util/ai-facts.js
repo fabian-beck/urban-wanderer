@@ -1,7 +1,12 @@
 import { openai, getAiModel } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT, SUMMARY_LENGTH } from '../constants/ui-config.js';
-import { INSIGHTS_CACHE_KEY, FACTS_CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
+import {
+	INSIGHTS_CACHE_KEY,
+	FACTS_CACHE_KEY,
+	FACTS_CACHE_VERSION,
+	CACHE_TTL
+} from '../constants/cache-config.js';
 import { createLogger } from './logger.js';
 
 const logger = createLogger('ai.facts');
@@ -64,7 +69,7 @@ function createInsightsCacheKey(article, preferences) {
 function createFactsCacheKey(place, factsProperties, preferences) {
 	// Create a cache key based on place title, properties schema, and language
 	const propertiesHash = Object.keys(factsProperties).sort().join(',');
-	return `${place.title}|${propertiesHash}|${preferences.lang}`;
+	return `v${FACTS_CACHE_VERSION}|${place.title}|${propertiesHash}|${preferences.lang}`;
 }
 
 let insightsCache = loadInsightsCache();
@@ -145,6 +150,19 @@ If the source contains no meaningful information about the place itself, return 
 	return summary;
 }
 
+// Strict structured output requires every property, so scalar properties must
+// accept null; otherwise the model fills unknown values with the schema examples.
+function toNullableSchema(factsProperties) {
+	return Object.fromEntries(
+		Object.entries(factsProperties).map(([key, schema]) => [
+			key,
+			typeof schema.type === 'string' && schema.type !== 'array' && schema.type !== 'object'
+				? { ...schema, type: [schema.type, 'null'] }
+				: schema
+		])
+	);
+}
+
 // extract facts about a place
 export async function extractPlaceFacts(place, factsProperties, coordinates, preferences) {
 	const cacheKey = createFactsCacheKey(place, factsProperties, preferences);
@@ -171,7 +189,7 @@ Avoid redundancies and repetitions in all cases; do not repeat the same informat
 If a fact is already mentioned as a required property (e.g., architectural style), do not repeat as part of the list of other facts.
 Directions, address, location are not necessary as the user is at the place already. 
 Avoid any general description of the place and do not provide general information about the city or region. 
-Use null for missing values.
+Use null for missing values. Only use values that are stated in the sources below; never estimate or guess numbers or years, and never copy the examples from the property descriptions.
 Keep the language as concise as possible and factual, do not use acronyms or abbreviations. 
 Descriptions should not be full sentences, but short phrases or single words.
 Keep list short or empty if there are no relevant facts.
@@ -195,7 +213,7 @@ ${place.article || place.description || place.snippet || '[no description availa
 					properties: {
 						facts: {
 							type: 'object',
-							properties: factsProperties,
+							properties: toNullableSchema(factsProperties),
 							required: Object.keys(factsProperties),
 							additionalProperties: false
 						}
