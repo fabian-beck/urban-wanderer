@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } fr
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const rootDir = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -21,6 +22,7 @@ const EVAL_USER_AGENT =
 // abort the run, since the app would silently continue with incomplete place data.
 const OSM_HOSTS = ['overpass-api.de', 'nominatim.openstreetmap.org'];
 const OSM_RETRY_DELAYS_MS = [5000, 15000, 30000];
+const OPENAI_HOST = 'api.openai.com';
 
 // Preference keys that only influence the story prompt. Every other key may
 // change the place context (fetching, grouping, analysis, rating, insights) and
@@ -74,8 +76,11 @@ Study design:
 Execution:
   --concurrency <n>         Parallel story chains (default 4)
   --out <dir>               Output directory (default eval-results/stories/<timestamp>)
-  --cache-dir <dir>         Persistent app cache (localStorage stand-in) shared across
-                            runs (default .eval-cache)
+  --cache-dir <dir>         Persistent cache shared across runs (default .eval-cache):
+                            the app's localStorage stand-in and an HTTP cache without
+                            expiry for source data (Wikipedia, Wikidata, OSM) and the
+                            AI calls of context building; story requests are never cached
+  --no-http-cache           Neither read nor write the HTTP cache (fresh source data)
   --context <file>          Reuse a contexts/context-*.json file from an earlier run for all
                             configurations instead of running the place pipeline. This holds
                             the place context fixed, so only the story prompt varies (labels
@@ -107,6 +112,7 @@ function parseArgs(argv) {
 		concurrency: 4,
 		out: null,
 		cacheDir: path.join(rootDir, '.eval-cache'),
+		httpCache: true,
 		context: null,
 		dryRun: false,
 		yes: false,
@@ -178,6 +184,9 @@ function parseArgs(argv) {
 				break;
 			case '--cache-dir':
 				args.cacheDir = path.resolve(next());
+				break;
+			case '--no-http-cache':
+				args.httpCache = false;
 				break;
 			case '--context':
 				args.context = path.resolve(next());
@@ -506,45 +515,101 @@ function installLocalStorage(cacheDir) {
 
 // Wraps fetch for the headless run: Node sends "node" as User-Agent, which
 // Nominatim rejects, so an identifying one is set. Failed OSM requests are
-// retried, and those that still fail are recorded in the returned list so the
-// run can abort instead of building a context without OSM data.
-function installFetchWrapper() {
+// retried, and those that still fail are recorded in osmFailures so the run
+// can abort instead of building a context without OSM data.
+// With an httpCacheDir, successful responses are stored without expiry and
+// replayed on identical requests: source data (Wikipedia, Wikidata, OSM) always,
+// OpenAI requests only while cacheAi is true (context building, not stories).
+function installFetchWrapper(httpCacheDir) {
 	const originalFetch = globalThis.fetch;
-	const osmFailures = [];
+	const state = { osmFailures: [], cacheAi: true, hits: 0, stored: 0 };
+	if (httpCacheDir) {
+		mkdirSync(httpCacheDir, { recursive: true });
+	}
 	globalThis.fetch = async (input, init = {}) => {
 		const headers = new Headers(init.headers);
 		if (!headers.has('User-Agent')) {
 			headers.set('User-Agent', EVAL_USER_AGENT);
 		}
-		const request = () => originalFetch(input, { ...init, headers });
 		const url = new URL(String(input?.url ?? input));
-		if (!OSM_HOSTS.includes(url.hostname)) {
-			return request();
-		}
-		for (let attempt = 0; ; attempt++) {
-			let failure;
-			try {
-				const response = await request();
-				if (response.ok || (response.status !== 429 && response.status < 500)) {
-					return response;
-				}
-				failure = { response, reason: `${response.status} ${response.statusText}` };
-			} catch (error) {
-				failure = { error, reason: error?.message || String(error) };
-			}
-			if (attempt >= OSM_RETRY_DELAYS_MS.length) {
-				osmFailures.push(`${url.hostname}: ${failure.reason}`);
-				if (failure.error) throw failure.error;
-				return failure.response;
-			}
-			const delay = OSM_RETRY_DELAYS_MS[attempt];
-			out(
-				`    ${url.hostname} failed (${failure.reason}), retry ${attempt + 1}/${OSM_RETRY_DELAYS_MS.length} in ${delay / 1000}s`
+		const method = (init.method || input?.method || 'GET').toUpperCase();
+		const body = init.body ?? '';
+		const cacheable =
+			httpCacheDir &&
+			typeof body === 'string' &&
+			['GET', 'POST'].includes(method) &&
+			(url.hostname !== OPENAI_HOST || state.cacheAi);
+		const cacheFile =
+			cacheable &&
+			path.join(
+				httpCacheDir,
+				`${createHash('sha256').update(`${method} ${url.href}\n${body}`).digest('hex')}.json`
 			);
-			await new Promise((resolve) => setTimeout(resolve, delay));
+		if (cacheFile && existsSync(cacheFile)) {
+			const cached = JSON.parse(readFileSync(cacheFile, 'utf8'));
+			state.hits++;
+			return new Response(Buffer.from(cached.body, 'base64'), {
+				status: cached.status,
+				statusText: cached.statusText,
+				headers: cached.headers
+			});
 		}
+		const response = await fetchWithOsmRetries(
+			() => originalFetch(input, { ...init, headers }),
+			url,
+			state
+		);
+		const streamed = response.headers.get('content-type')?.includes('text/event-stream');
+		if (cacheFile && response.ok && !streamed) {
+			const bytes = Buffer.from(await response.clone().arrayBuffer());
+			writeFileSync(
+				cacheFile,
+				JSON.stringify({
+					url: url.href,
+					status: response.status,
+					statusText: response.statusText,
+					// fetch has already decoded the body, so the encoding headers no longer apply
+					headers: Object.fromEntries(
+						[...response.headers].filter(
+							([name]) => !['content-encoding', 'content-length'].includes(name)
+						)
+					),
+					body: bytes.toString('base64')
+				})
+			);
+			state.stored++;
+		}
+		return response;
 	};
-	return osmFailures;
+	return state;
+}
+
+async function fetchWithOsmRetries(request, url, state) {
+	if (!OSM_HOSTS.includes(url.hostname)) {
+		return request();
+	}
+	for (let attempt = 0; ; attempt++) {
+		let failure;
+		try {
+			const response = await request();
+			if (response.ok || (response.status !== 429 && response.status < 500)) {
+				return response;
+			}
+			failure = { response, reason: `${response.status} ${response.statusText}` };
+		} catch (error) {
+			failure = { error, reason: error?.message || String(error) };
+		}
+		if (attempt >= OSM_RETRY_DELAYS_MS.length) {
+			state.osmFailures.push(`${url.hostname}: ${failure.reason}`);
+			if (failure.error) throw failure.error;
+			return failure.response;
+		}
+		const delay = OSM_RETRY_DELAYS_MS[attempt];
+		out(
+			`    ${url.hostname} failed (${failure.reason}), retry ${attempt + 1}/${OSM_RETRY_DELAYS_MS.length} in ${delay / 1000}s`
+		);
+		await new Promise((resolve) => setTimeout(resolve, delay));
+	}
 }
 
 // Redirects the app's console logging to a file so the progress output stays readable.
@@ -730,7 +795,8 @@ async function main() {
 
 	mkdirSync(path.join(args.out, 'contexts'), { recursive: true });
 	const cacheFile = installLocalStorage(args.cacheDir);
-	const osmFailures = installFetchWrapper();
+	const fetchState = installFetchWrapper(args.httpCache && path.join(args.cacheDir, 'http'));
+	const { osmFailures } = fetchState;
 	if (!args.verbose) {
 		redirectAppLogs(path.join(args.out, 'app.log'));
 	}
@@ -861,6 +927,12 @@ async function main() {
 	}
 	const contextById = new Map([...contexts.values()].map((context) => [context.id, context]));
 
+	const contextCache = { hits: fetchState.hits, stored: fetchState.stored };
+	if (args.httpCache) {
+		out(`  HTTP cache: ${contextCache.hits} replayed, ${contextCache.stored} stored`);
+	}
+	fetchState.cacheAi = false;
+
 	// Stage 2: generate stories in parallel. Each (config, retry) is a chain of
 	// segments, continued exactly like "Tell me more" in the app.
 	const totalRequests = configs.length * args.retries * args.segments;
@@ -936,6 +1008,7 @@ async function main() {
 	runMeta.completedRequests = records.length - failures.length;
 	runMeta.failedRequests = failures.length;
 	runMeta.usage = usageTotal;
+	runMeta.httpCache = args.httpCache ? contextCache : null;
 	runMeta.contexts = [...contexts.values()].map((context) => ({
 		id: context.id,
 		location: context.location ?? null,
