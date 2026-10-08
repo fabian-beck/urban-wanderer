@@ -1212,6 +1212,11 @@ export const mapLayersLoading = writable(false);
 // OSM map excerpt around the exact position, fed into story generation
 export const mapExcerpt = writable(null);
 
+// Resolves with the map excerpt of the latest location update (null if it failed)
+export function waitForMapExcerpt() {
+	return mapExcerptPromise;
+}
+
 // Update location function - orchestrates all store updates
 export async function updateLocation(coords, { background = true } = {}) {
 	const perf = createPerformanceRun('updateLocation', {

@@ -575,12 +575,12 @@ function fitAdditiveModel(rows, factors, levelsByFactor) {
 }
 
 function aggregate(runMeta, rows) {
-	const factors = runMeta.args?.vary || [];
+	const factors = runMeta.factors || runMeta.args?.vary || [];
 	const levelsByFactor = {};
 	for (const factor of factors) {
 		levelsByFactor[factor] = [];
 		for (const config of runMeta.configs) {
-			const level = formatValue(factor, config.overrides[factor]);
+			const level = formatValue(factor, config.varied?.[factor] ?? config.overrides[factor]);
 			if (!levelsByFactor[factor].includes(level)) levelsByFactor[factor].push(level);
 		}
 	}
@@ -864,7 +864,11 @@ function renderReport(runMeta, judgeMeta, summary, rows, units) {
 	).join(
 		', '
 	)}. Mean topic certainty max(p, 1 − p): ${summary.uncertainty.topicCertainty} (1 = always decided, 0.5 = always undecided).</p></section>`;
-	const location = runMeta.args ? `${runMeta.args.lat}, ${runMeta.args.lon}` : 'unknown';
+	const location = runMeta.args?.locations
+		? runMeta.args.locations.map((entry) => `${entry.name} (${entry.lat}, ${entry.lon})`).join('; ')
+		: runMeta.args
+			? `${runMeta.args.lat}, ${runMeta.args.lon}`
+			: 'unknown';
 	const contexts = (runMeta.contexts || [])
 		.map(
 			(context) =>

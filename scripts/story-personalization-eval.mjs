@@ -15,6 +15,12 @@ const constants = await import(pathToFileURL(path.join(rootDir, 'src/constants/u
 const { AI_MODELS, FAMILIARITY, GUIDE_CHARACTERS, LABELS, LANGUAGES } = constants;
 
 const ALL_LABELS = LABELS.map((label) => label.value);
+const EVAL_USER_AGENT =
+	'UrbanWanderer-StoryEval/1.0 (+https://github.com/fabian-beck/urban-wanderer)';
+// OSM requests (Overpass, Nominatim) that fail with these delays between attempts
+// abort the run, since the app would silently continue with incomplete place data.
+const OSM_HOSTS = ['overpass-api.de', 'nominatim.openstreetmap.org'];
+const OSM_RETRY_DELAYS_MS = [5000, 15000, 30000];
 
 // Preference keys that only influence the story prompt. Every other key may
 // change the place context (fetching, grouping, analysis, rating, insights) and
@@ -33,13 +39,17 @@ const DEFAULT_VALUE_SETS = {
 
 const HELP = `
 Usage: node scripts/story-personalization-eval.mjs --lat <lat> --lon <lon> [options]
+       node scripts/story-personalization-eval.mjs --location <name=lat,lon> ... [options]
 
-Generates stories headlessly for one location under varied personalization
-settings, running the same pipeline and story code as the app.
+Generates stories headlessly for one or more locations under varied
+personalization settings, running the same pipeline and story code as the app.
 
-Required:
-  --lat <number>            Latitude of the position
-  --lon <number>            Longitude of the position
+Location (one of):
+  --lat <number>            Latitude of a single position
+  --lon <number>            Longitude of a single position
+  --location <name=lat,lon> Named position (repeatable). With several locations,
+                            every configuration runs at each of them and location
+                            becomes a varied factor of the judgment.
 
 Study design:
   --vary <keys>             Comma-separated preference keys to vary (full factorial).
@@ -85,6 +95,7 @@ Output (in --out):
 
 function parseArgs(argv) {
 	const args = {
+		locations: [],
 		vary: ['guideCharacter', 'familiarity'],
 		values: {},
 		base: {},
@@ -121,6 +132,9 @@ function parseArgs(argv) {
 				break;
 			case '--lon':
 				args.lon = Number(next());
+				break;
+			case '--location':
+				args.locations.push(parseLocation(next()));
 				break;
 			case '--vary':
 				args.vary = next()
@@ -182,8 +196,27 @@ function parseArgs(argv) {
 				throw new Error(`Unknown argument: ${arg}`);
 		}
 	}
-	if (!Number.isFinite(args.lat) || !Number.isFinite(args.lon)) {
-		throw new Error('--lat and --lon are required (see --help)');
+	const hasLatLon = args.lat !== undefined || args.lon !== undefined;
+	if (hasLatLon && args.locations.length) {
+		throw new Error('Use either --lat/--lon or --location, not both');
+	}
+	if (hasLatLon) {
+		if (!Number.isFinite(args.lat) || !Number.isFinite(args.lon)) {
+			throw new Error('--lat and --lon expect numbers');
+		}
+		args.locations.push({ name: `${args.lat}, ${args.lon}`, lat: args.lat, lon: args.lon });
+	}
+	if (!args.locations.length) {
+		throw new Error('A position is required: --lat/--lon or --location (see --help)');
+	}
+	const names = args.locations.map((location) => location.name);
+	if (new Set(names).size !== names.length) {
+		throw new Error(`Location names must be unique: ${names.join(', ')}`);
+	}
+	if (args.context && args.locations.length > 1) {
+		throw new Error(
+			'--context holds one place context fixed and cannot be combined with several locations'
+		);
 	}
 	if (!args.out) {
 		args.out = path.join(rootDir, 'eval-results', 'stories', timestampForPath());
@@ -197,6 +230,15 @@ function splitKeyValue(text) {
 		throw new Error(`Expected key=value, got "${text}"`);
 	}
 	return [text.slice(0, index).trim(), text.slice(index + 1)];
+}
+
+function parseLocation(text) {
+	const [name, coordinates] = splitKeyValue(text);
+	const [lat, lon] = coordinates.split(',').map((part) => Number(part.trim()));
+	if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+		throw new Error(`--location expects name=lat,lon, got "${text}"`);
+	}
+	return { name, lat, lon };
 }
 
 function parsePositiveInt(value, flag) {
@@ -275,15 +317,34 @@ function buildConfigurations(args) {
 			);
 		}
 	}
-	const configs = combinations.map((varied, index) => ({
-		id: index + 1,
-		varied,
-		overrides: { ...base, ...varied },
-		label: Object.entries(varied)
-			.map(([key, value]) => `${key}=${formatPreferenceValue(key, value)}`)
-			.join(', ')
-	}));
-	return { variedValues, base, configs, fullSize };
+	// The same preference combinations run at every location, so location is
+	// fully crossed with the (possibly sampled) preference design.
+	const multipleLocations = args.locations.length > 1;
+	const configs = args.locations.flatMap((location) =>
+		combinations.map((combination) => {
+			const varied = multipleLocations ? { ...combination, location: location.name } : combination;
+			return {
+				varied,
+				location,
+				overrides: { ...base, ...combination },
+				label: Object.entries(varied)
+					.map(([key, value]) => `${key}=${formatPreferenceValue(key, value)}`)
+					.join(', ')
+			};
+		})
+	);
+	configs.forEach((config, index) => {
+		config.id = index + 1;
+	});
+	const factors = multipleLocations ? [...args.vary, 'location'] : [...args.vary];
+	return {
+		variedValues,
+		base,
+		configs,
+		fullSize,
+		factors,
+		combinationCount: combinations.length
+	};
 }
 
 // Deterministic PRNG (mulberry32) so a sample can be reproduced from its seed.
@@ -390,17 +451,21 @@ function describeDesignBalance(configs, keys, variedValues) {
 	});
 }
 
-function contextKeyOf(preferences) {
+function contextKeyOf(preferences, location) {
 	const relevant = Object.fromEntries(
 		Object.entries(preferences)
 			.filter(([key]) => !STORY_ONLY_KEYS.has(key) && key !== 'audio' && key !== 'debug')
 			.sort(([a], [b]) => a.localeCompare(b))
 	);
-	return JSON.stringify(relevant);
+	return JSON.stringify([location.lat, location.lon, relevant]);
 }
 
-function upstreamKeyOf(preferences) {
-	return JSON.stringify(UPSTREAM_AI_KEYS.map((key) => preferences[key]));
+function upstreamKeyOf(preferences, location) {
+	return JSON.stringify([
+		location.lat,
+		location.lon,
+		...UPSTREAM_AI_KEYS.map((key) => preferences[key])
+	]);
 }
 
 // File-backed stand-in for the browser's localStorage so the app's own caches
@@ -439,6 +504,49 @@ function installLocalStorage(cacheDir) {
 	return file;
 }
 
+// Wraps fetch for the headless run: Node sends "node" as User-Agent, which
+// Nominatim rejects, so an identifying one is set. Failed OSM requests are
+// retried, and those that still fail are recorded in the returned list so the
+// run can abort instead of building a context without OSM data.
+function installFetchWrapper() {
+	const originalFetch = globalThis.fetch;
+	const osmFailures = [];
+	globalThis.fetch = async (input, init = {}) => {
+		const headers = new Headers(init.headers);
+		if (!headers.has('User-Agent')) {
+			headers.set('User-Agent', EVAL_USER_AGENT);
+		}
+		const request = () => originalFetch(input, { ...init, headers });
+		const url = new URL(String(input?.url ?? input));
+		if (!OSM_HOSTS.includes(url.hostname)) {
+			return request();
+		}
+		for (let attempt = 0; ; attempt++) {
+			let failure;
+			try {
+				const response = await request();
+				if (response.ok || (response.status !== 429 && response.status < 500)) {
+					return response;
+				}
+				failure = { response, reason: `${response.status} ${response.statusText}` };
+			} catch (error) {
+				failure = { error, reason: error?.message || String(error) };
+			}
+			if (attempt >= OSM_RETRY_DELAYS_MS.length) {
+				osmFailures.push(`${url.hostname}: ${failure.reason}`);
+				if (failure.error) throw failure.error;
+				return failure.response;
+			}
+			const delay = OSM_RETRY_DELAYS_MS[attempt];
+			out(
+				`    ${url.hostname} failed (${failure.reason}), retry ${attempt + 1}/${OSM_RETRY_DELAYS_MS.length} in ${delay / 1000}s`
+			);
+			await new Promise((resolve) => setTimeout(resolve, delay));
+		}
+	};
+	return osmFailures;
+}
+
 // Redirects the app's console logging to a file so the progress output stays readable.
 function redirectAppLogs(logFile) {
 	const write =
@@ -471,11 +579,15 @@ function displayPath(target) {
 }
 
 function printEstimate(args, plan) {
-	const { configs, variedValues, base, contextCount, upstreamCount, fullSize } = plan;
+	const { configs, variedValues, base, contextCount, upstreamCount, fullSize, combinationCount } =
+		plan;
 	const storyRequests = configs.length * args.retries * args.segments;
-	const sampled = args.design === 'random' && configs.length < fullSize;
+	const sampled = args.design === 'random' && combinationCount < fullSize;
 	out('Story personalization evaluation');
-	out(`  Location:      ${args.lat}, ${args.lon}`);
+	for (const location of args.locations) {
+		const name = args.locations.length > 1 ? `${location.name}: ` : '';
+		out(`  Location:      ${name}${location.lat}, ${location.lon}`);
+	}
 	out(
 		`  Varied:        ${
 			args.vary.map((key) => `${key} (${variedValues[key].length})`).join(', ') || 'nothing'
@@ -490,13 +602,18 @@ function printEstimate(args, plan) {
 	);
 	if (sampled) {
 		out(
-			`  Design:        balanced random sample of ${configs.length} of ${fullSize} combinations (seed ${args.seed});` +
+			`  Design:        balanced random sample of ${combinationCount} of ${fullSize} combinations (seed ${args.seed});` +
 				` levels appear ${describeDesignBalance(configs, args.vary, variedValues).join(', ')}`
 		);
 	} else {
 		out(`  Design:        full factorial (${fullSize} combinations)`);
 	}
-	out(`  Configurations: ${configs.length}`);
+	out(
+		`  Configurations: ${configs.length}` +
+			(args.locations.length > 1
+				? ` (${combinationCount} at each of ${args.locations.length} locations)`
+				: '')
+	);
 	out(`  Retries:        ${args.retries} per configuration`);
 	out(`  Segments:       ${args.segments} per story`);
 	out('');
@@ -576,19 +693,25 @@ function sumUsage(total, usage) {
 
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
-	const { variedValues, base, configs, fullSize } = buildConfigurations(args);
+	const { variedValues, base, configs, fullSize, factors, combinationCount } =
+		buildConfigurations(args);
 
-	// The context grouping only depends on the overrides, so it can be estimated
-	// before loading the app (which requires the OpenAI key file).
-	const contextKeys = new Set(configs.map((config) => contextKeyOf(config.overrides)));
-	const upstreamKeys = new Set(configs.map((config) => upstreamKeyOf(config.overrides)));
+	// The context grouping only depends on the overrides and location, so it can be
+	// estimated before loading the app (which requires the OpenAI key file).
+	const contextKeys = new Set(
+		configs.map((config) => contextKeyOf(config.overrides, config.location))
+	);
+	const upstreamKeys = new Set(
+		configs.map((config) => upstreamKeyOf(config.overrides, config.location))
+	);
 	const plan = {
 		configs,
 		variedValues,
 		base,
 		contextCount: contextKeys.size,
 		upstreamCount: upstreamKeys.size,
-		fullSize
+		fullSize,
+		combinationCount
 	};
 	printEstimate(args, plan);
 
@@ -607,6 +730,7 @@ async function main() {
 
 	mkdirSync(path.join(args.out, 'contexts'), { recursive: true });
 	const cacheFile = installLocalStorage(args.cacheDir);
+	const osmFailures = installFetchWrapper();
 	if (!args.verbose) {
 		redirectAppLogs(path.join(args.out, 'app.log'));
 	}
@@ -628,9 +752,17 @@ async function main() {
 			out: displayPath(args.out),
 			context: args.context && displayPath(args.context)
 		},
-		configs: configs.map(({ id, label, overrides }) => ({ id, label, overrides })),
+		factors,
+		configs: configs.map(({ id, label, varied, overrides, location }) => ({
+			id,
+			label,
+			varied,
+			overrides,
+			location
+		})),
 		design: {
-			kind: args.design === 'random' && configs.length < fullSize ? 'random' : 'factorial',
+			kind: args.design === 'random' && combinationCount < fullSize ? 'random' : 'factorial',
+			combinations: combinationCount,
 			fullSize,
 			seed: args.seed
 		},
@@ -666,7 +798,7 @@ async function main() {
 	let contextIndex = 0;
 	for (const config of configs) {
 		const prefs = { ...defaultPreferences, ...config.overrides, audio: false };
-		const contextKey = contextKeyOf(prefs);
+		const contextKey = contextKeyOf(prefs, config.location);
 		config.preferences = prefs;
 		config.contextId = null;
 		if (fixedContext) {
@@ -681,15 +813,28 @@ async function main() {
 		const contextStartedAt = Date.now();
 		stores.preferences.set(prefs);
 		stores.errorMessage.set(null);
-		await stores.updateLocation({ latitude: args.lat, longitude: args.lon }, { background: false });
+		const osmFailureCount = osmFailures.length;
+		await stores.updateLocation(
+			{ latitude: config.location.lat, longitude: config.location.lon },
+			{ background: false }
+		);
 		const pipelineError = get(stores.errorMessage);
 		if (pipelineError) {
 			throw new Error(`Place pipeline failed: ${pipelineError}`);
 		}
 		await stores.loadMetadata({ loadImages: false });
+		const mapExcerpt = await stores.waitForMapExcerpt();
+		if (osmFailures.length > osmFailureCount) {
+			throw new Error(
+				`OSM requests failed after retries, context would be incomplete: ${osmFailures
+					.slice(osmFailureCount)
+					.join('; ')}`
+			);
+		}
 		const context = {
 			id: contextId,
 			key: contextKey,
+			location: config.location,
 			preferences: Object.fromEntries(
 				Object.entries(prefs).filter(([key]) => !STORY_ONLY_KEYS.has(key))
 			),
@@ -697,6 +842,7 @@ async function main() {
 			placesHere: snapshot(get(stores.placesHere)),
 			placesNearby: snapshot(get(stores.placesNearby)),
 			placesSurrounding: snapshot(get(stores.placesSurrounding)),
+			mapExcerpt: snapshot(mapExcerpt),
 			durationMs: Date.now() - contextStartedAt
 		};
 		contexts.set(contextKey, context);
@@ -708,6 +854,7 @@ async function main() {
 		out(
 			`  context ${contextId}: here=${context.placesHere.length}` +
 				` nearby=${context.placesNearby.length} surrounding=${context.placesSurrounding.length}` +
+				` map features=${context.mapExcerpt?.features?.length ?? 0}` +
 				` (${(context.durationMs / 1000).toFixed(1)}s) @ ${context.coordinates.address}`
 		);
 		out(`    here: ${context.placesHere.map((place) => place.title).join('; ') || '-'}`);
@@ -749,7 +896,9 @@ async function main() {
 						context.placesSurrounding,
 						context.coordinates,
 						config.preferences,
-						lastResponseId
+						lastResponseId,
+						null,
+						context.mapExcerpt ?? null
 					);
 					record.text = result.text;
 					record.responseId = result.responseId;
@@ -789,8 +938,10 @@ async function main() {
 	runMeta.usage = usageTotal;
 	runMeta.contexts = [...contexts.values()].map((context) => ({
 		id: context.id,
+		location: context.location ?? null,
 		preferences: context.preferences,
 		address: context.coordinates.address,
+		mapFeatures: context.mapExcerpt?.features?.length ?? null,
 		here: context.placesHere.map((place) => place.title),
 		nearby: context.placesNearby.map((place) => place.title),
 		surrounding: context.placesSurrounding.map((place) => place.title),
@@ -815,7 +966,7 @@ function renderStoriesMarkdown(args, configs, records) {
 	const lines = [
 		'# Story personalization evaluation',
 		'',
-		`Location: ${args.lat}, ${args.lon}  `,
+		`Location: ${args.locations.map((location) => `${location.name} (${location.lat}, ${location.lon})`).join('; ')}  `,
 		`Varied: ${args.vary.join(', ')}  `,
 		`Retries: ${args.retries}, segments: ${args.segments}`,
 		''
