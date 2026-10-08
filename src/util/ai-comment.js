@@ -1,6 +1,7 @@
 import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT } from '../constants/ui-config.js';
 import { buildWalkMottoPromptContext, buildWalkPromptContext } from './walk.js';
+import { buildAddressInstruction, getFamiliarity, getGuideCharacter } from './personalization.js';
 
 // Generate a comment about the current location
 export async function generateLocationComment(
@@ -12,7 +13,10 @@ export async function generateLocationComment(
 ) {
 	const walkContext = buildWalkPromptContext(walk);
 	const mottoContext = buildWalkMottoPromptContext(walk);
-	const instructions = `You are a ${preferences.guideCharacter} city guide providing a brief, characterful comment about the user's current location.
+	const character = getGuideCharacter(preferences);
+	const familiarity = getFamiliarity(preferences);
+	const addressInstruction = buildAddressInstruction(preferences);
+	const instructions = `You are a ${character.value} city guide providing a brief, characterful comment about the user's current location.
 
 Write a short statement (just a short catch phrase) that captures the essence of this place. Answer in language '${preferences.lang}'.
 
@@ -32,7 +36,7 @@ ${placesSurrounding
 	.join('\n')}
 ${walkContext ? `\n${walkContext}\n` : ''}${mottoContext ? `\n${mottoContext}\n` : ''}
 # Important guidelines:
-- Match your personality as a ${preferences.guideCharacter} guide
+- Match your personality as a ${character.value} guide${character.commentInstructions ? `: ${character.commentInstructions}` : ''}${familiarity ? `\n- ${familiarity.commentInstructions}` : ''}${addressInstruction ? `\n- ${addressInstruction}` : ''}
 - Be concise and engaging (1 sentence max)
 - Use emojis appropriately for the personality type
 - Focus on what makes this location unique or interesting

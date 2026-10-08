@@ -17,6 +17,7 @@ import {
 import { LABELS } from '../constants/ui-config.js';
 import { haversineDistance } from './osm.js';
 import { getPlaceIdentity } from './place-identity.js';
+import { getFamiliarity } from './personalization.js';
 
 export function createWalk(motto = '') {
 	return {
@@ -541,7 +542,7 @@ ${place.text || 'No further information available.'}`;
 		`# Walk overview
 
 Started ${formatWalkTime(walk.startedAt)}, duration ${formatWalkDuration(stats.durationMs)}, ${stats.stops} stops, roughly ${formatWalkDistance(stats.distanceMeters)}${stats.areas.length ? ` in ${stats.areas.join(', ')}` : ''}.
-User's interests: ${interestNames.join(', ') || 'none selected'}. Familiarity with the area: ${preferences.familiarity || 'unknown'}.`,
+User's interests: ${interestNames.join(', ') || 'none selected'}. Familiarity with the area: ${getFamiliarity(preferences)?.name || 'unknown'}.`,
 		`# Stops in order
 
 ${stopBlocks.join('\n\n') || 'No stops recorded.'}`,

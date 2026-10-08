@@ -18,7 +18,8 @@ const DIMENSIONS = [
 	{ key: 'difficulty', name: 'Difficulty' },
 	{ key: 'formality', name: 'Formality' },
 	{ key: 'depth', name: 'Depth' },
-	{ key: 'breadth', name: 'Breadth' }
+	{ key: 'breadth', name: 'Breadth' },
+	{ key: 'priorKnowledge', name: 'Prior knowledge' }
 ];
 const FACTOR_NAMES = {
 	guideCharacter: 'Guide character',
@@ -38,7 +39,7 @@ const GAIN_SATURATION = 0.2;
 // Levels are listed in the order of the app settings; other levels follow in
 // order of appearance.
 const LEVEL_ORDER = {
-	guideCharacter: GUIDE_CHARACTERS,
+	guideCharacter: GUIDE_CHARACTERS.map((character) => character.value),
 	familiarity: FAMILIARITY.map((option) => option.value),
 	labels: ['all', 'single', 'none'],
 	lang: LANGUAGES.map((option) => option.value),
@@ -214,9 +215,13 @@ function gainBar(gain, reference) {
 
 function renderTable(runMeta, rows, rename) {
 	const factors = runMeta.factors || runMeta.args?.vary || [];
+	// Judgments made before a dimension was added lack it
+	const dimensions = DIMENSIONS.filter((dimension) =>
+		rows.every((row) => dimension.key in row.judgment)
+	);
 	const gains = computeFocusGains(rows);
 	const overallMeans = Object.fromEntries(
-		DIMENSIONS.map((dimension) => [
+		dimensions.map((dimension) => [
 			dimension.key,
 			mean(rows.map((row) => row.judgment[dimension.key]))
 		])
@@ -240,7 +245,7 @@ function renderTable(runMeta, rows, rename) {
 				index === 0 ? FACTOR_NAMES[factor] || factor : '',
 				displayLevel(factor, level, rename),
 				String(group.length),
-				...DIMENSIONS.map((dimension) =>
+				...dimensions.map((dimension) =>
 					boxPlot(
 						summarize(group.map((row) => row.judgment[dimension.key])),
 						overallMeans[dimension.key]
@@ -259,7 +264,7 @@ function renderTable(runMeta, rows, rename) {
 		'All texts',
 		'',
 		String(all.length),
-		...DIMENSIONS.map((dimension) =>
+		...dimensions.map((dimension) =>
 			boxPlot(summarize(all.map((row) => row.judgment[dimension.key])), overallMeans[dimension.key])
 		),
 		gainBar(overallGain, overallGain)
@@ -286,14 +291,14 @@ function renderTable(runMeta, rows, rename) {
     \\draw[black!60] (0,-0.9) -- (0,0.9);
   }~{\\scriptsize #2}}
 \\begin{tblr}{
-    colspec={l l r *{4}{c} c},
+    colspec={l l r *{${dimensions.length}}{c} c},
     column{1}={font=\\itshape},
     rowsep=0.6pt,
     colsep=3pt,
     cells={font=\\footnotesize},
   }
   \\toprule
-  \\textbf{Factor} & \\textbf{Level} & $n$ & ${DIMENSIONS.map((dimension) => `\\textbf{${dimension.name}}`).join(' & ')} & \\textbf{Focus gain} \\\\
+  \\textbf{Factor} & \\textbf{Level} & $n$ & ${dimensions.map((dimension) => `\\textbf{${dimension.name}}`).join(' & ')} & \\textbf{Focus gain} \\\\
   \\midrule
   ${overall.join(' & ')} \\\\
   \\midrule

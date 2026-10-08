@@ -32,7 +32,7 @@ const STORY_ONLY_KEYS = new Set(['guideCharacter', 'familiarity', 'aiModelAdvanc
 const UPSTREAM_AI_KEYS = ['lang', 'sourceLanguages', 'radius'];
 
 const DEFAULT_VALUE_SETS = {
-	guideCharacter: GUIDE_CHARACTERS,
+	guideCharacter: GUIDE_CHARACTERS.map((character) => character.value),
 	familiarity: FAMILIARITY.map((option) => option.value),
 	lang: LANGUAGES.map((option) => option.value),
 	labels: ['ALL', 'NONE', ...ALL_LABELS],

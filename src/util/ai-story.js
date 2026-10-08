@@ -1,5 +1,5 @@
 import { openai, getAiModel } from './ai-core.js';
-import { AI_REASONING_EFFORT, LABELS, STORY_LENGTH } from '../constants/ui-config.js';
+import { AI_REASONING_EFFORT, LABELS } from '../constants/ui-config.js';
 import { createLogger } from './logger.js';
 import {
 	buildWalkMottoPromptContext,
@@ -10,17 +10,27 @@ import {
 } from './walk.js';
 import { getPlaceIdentity } from './place-identity.js';
 import { formatMapExcerpt, formatRelativePosition } from './map-excerpt.js';
+import {
+	buildAddressInstruction,
+	getFamiliarity,
+	getGuideCharacter,
+	getStoryLength
+} from './personalization.js';
 
 const logger = createLogger('ai.story');
 
-function storyParagraphs(placeCount) {
+function storyParagraphs(placeCount, storyLength) {
 	return Math.min(
 		Math.max(
-			STORY_LENGTH.MIN_PARAGRAPHS,
-			Math.ceil(placeCount / STORY_LENGTH.PLACES_PER_PARAGRAPH) + 1
+			storyLength.MIN_PARAGRAPHS,
+			Math.ceil(placeCount / storyLength.PLACES_PER_PARAGRAPH) + 1
 		),
-		STORY_LENGTH.MAX_PARAGRAPHS
+		storyLength.MAX_PARAGRAPHS
 	);
+}
+
+function paragraphRange(min, max) {
+	return min === max ? String(min) : `${min} to ${max}`;
 }
 
 // generate story about the user position
@@ -53,6 +63,33 @@ export async function generateStory(
 	const mottoReminder = walkMotto
 		? `\nKeep to my motto for this walk: "${walkMotto}". It takes precedence over the general style instructions, as long as you stay factual.\n`
 		: '';
+	const character = getGuideCharacter(preferences);
+	const familiarity = getFamiliarity(preferences);
+	const storyLength = getStoryLength(preferences);
+	const addressInstruction = buildAddressInstruction(preferences);
+	const roleReminder = [
+		character.storyInstructions &&
+			`Keep to the instructions for your role as a ${character.value} guide.`,
+		addressInstruction
+	]
+		.filter(Boolean)
+		.map((line) => `${line}\n`)
+		.join('');
+	const characterInstructions = character.storyInstructions
+		? `${character.storyInstructions}
+These character instructions take precedence over the general style and length instructions above.
+`
+		: '';
+	const familiarityInstructions = familiarity
+		? `
+The user's familiarity with the area: ${familiarity.name}. Select the facts and adapt the explanations accordingly:
+${familiarity.storyInstructions}
+`
+		: '';
+	const continuationParagraphs = paragraphRange(
+		storyLength.CONTINUATION_MIN_PARAGRAPHS,
+		storyLength.CONTINUATION_MAX_PARAGRAPHS
+	);
 	const visitedIdentities = getPreviouslyVisitedIdentities(walk);
 	const visitedNote = (place) =>
 		visitedIdentities.has(getPlaceIdentity(place)) ? ' [already visited earlier on this walk]' : '';
@@ -77,7 +114,7 @@ export async function generateStory(
 	const initialMessage = {
 		role: 'system',
 		content: `
-You are a city guide: ${preferences.guideCharacter}, and always factual and specific.
+You are a city guide: ${character.value}, and always factual and specific.
 
 Tell something interesting about the user's current position. Answer in language '${preferences.lang}'.
 
@@ -143,7 +180,7 @@ ${preferenceLabels}
 User did NOT select the following topics (treat them as negative topics and avoid them unless necessary for local context):
 ${negativePreferenceLabels}
 
-The story should be ${STORY_LENGTH.MIN_PARAGRAPHS} to ${storyParagraphs(placesHere.length + placesSurrounding.length)} paragraphs long and focus on the user's immediate surroundings and the closest places.
+The story should be ${paragraphRange(storyLength.MIN_PARAGRAPHS, storyParagraphs(placesHere.length + placesSurrounding.length, storyLength))} paragraphs long and focus on the user's immediate surroundings and the closest places.
 Use the full paragraph budget when the places offer enough substance; each paragraph should develop one aspect in depth instead of listing many.
 Prioritize in this strict order: (1) current position and places listed as "close to /in", (2) surrounding context, (3) the nearby places list only if needed.
 Nearby places are optional context only. Mention at most one nearby place in detail, and only if it is among the closest provided options.
@@ -184,9 +221,10 @@ Just give summary of the most important information, but do not reply to the use
 Do not welcome the user or ask for feedback.
 Do not mention the exact address and consider that GPS coordinates are not always exact.
 
-Remember that you enact a ${preferences.guideCharacter} guide and take this role seriously towards exaggeration and over-enthusiasm.
-Consider that the user is ${preferences.familiarity} with the area; select the facts and adapt the explanations accordingly.
-${walkMotto ? `Above all, honor the user's motto for this walk: "${walkMotto}".\n` : ''}`
+# Guide character and audience
+
+Remember that you enact a ${character.value} guide and take this role seriously towards exaggeration and over-enthusiasm.
+${characterInstructions}${addressInstruction ? `${addressInstruction}\n` : ''}${familiarityInstructions}${walkMotto ? `\nAbove all, honor the user's motto for this walk: "${walkMotto}".\n` : ''}`
 	};
 	const mapContinuationNote = mapExcerptText
 		? `
@@ -212,8 +250,8 @@ The position is close to /in:
 ${placesHere.map((place) => `* ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}`).join('\n')}
 
 Strictly stick to the initially provided instructions and facts about the places.${mapContinuationNote}
-${mottoReminder}Avoid generic conclusion statements and end with a concrete place-specific detail.
-Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
+${mottoReminder}${roleReminder}Avoid generic conclusion statements and end with a concrete place-specific detail.
+Write ${continuationParagraphs} paragraphs of text.
 Give the text a headline marked in bold font.`
 		});
 	} else if (storyTexts.length === 0) {
@@ -225,9 +263,9 @@ Give the text a headline marked in bold font.`
 		messages.push({
 			role: 'user',
 			content: `Tell me more about something different at this location. Focus on something specific, but never repeat yourself${walkContext ? ', neither from this story nor from the earlier stories of my walk' : ''}.${mapContinuationNote}
-${mottoReminder}
+${mottoReminder}${roleReminder}
 Avoid generic conclusion statements and end with a concrete place-specific detail.
-Write ${STORY_LENGTH.CONTINUATION_MIN_PARAGRAPHS} to ${STORY_LENGTH.CONTINUATION_MAX_PARAGRAPHS} paragraphs of text.
+Write ${continuationParagraphs} paragraphs of text.
 Give the text a headline marked in bold font.`
 		});
 	}
@@ -273,6 +311,7 @@ Give the text a headline marked in bold font.`
 // synthesize the walk so far: highlights, cross-stop connections, timeline, missed places, open threads
 export async function generateWalkRecap(walk, preferences) {
 	const mottoContext = buildWalkMottoPromptContext(walk);
+	const addressInstruction = buildAddressInstruction(preferences);
 	const instructions = `
 You are a city guide: ${preferences.guideCharacter}, and always concise and factual.
 
@@ -294,7 +333,7 @@ Fill the JSON fields as follows; use only the material given above and never inv
 - openThreads: up to three short questions or things to look up later that this walk raised, each anchored in a named place.
 
 Address the user directly and write in past tense where you refer to the walk.
-Avoid generic praise and generic conclusions; every sentence should carry a concrete detail.
+${addressInstruction ? `${addressInstruction}\n` : ''}Avoid generic praise and generic conclusions; every sentence should carry a concrete detail.
 Remember that you enact a ${preferences.guideCharacter} guide and take this role seriously towards exaggeration and over-enthusiasm.
 `;
 	logger.info('Generating walk recap', {

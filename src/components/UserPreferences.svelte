@@ -23,10 +23,7 @@
 	import { clearDebugConsole, debugLogs } from '../util/debug-console.js';
 
 	export let visible = false;
-	const characterOptions = GUIDE_CHARACTERS.map((character) => ({
-		value: character,
-		name: character
-	}));
+	const characterOptions = GUIDE_CHARACTERS.map(({ value }) => ({ value, name: value }));
 
 	let cacheCleared = false;
 	let debugLogPanel;
