@@ -19,7 +19,7 @@ const DIMENSIONS = [
 	{ key: 'formality', name: 'Formality' },
 	{ key: 'depth', name: 'Depth' },
 	{ key: 'breadth', name: 'Breadth' },
-	{ key: 'priorKnowledge', name: 'Prior knowledge' }
+	{ key: 'priorKnowledge', name: 'Prior knowledge', header: 'Prior\\\\knowledge' }
 ];
 const FACTOR_NAMES = {
 	guideCharacter: 'Guide character',
@@ -276,7 +276,7 @@ function renderTable(runMeta, rows, rename) {
 \\definecolor{devhigh}{HTML}{${DEVIATION_COLORS.high}}
 \\providecommand{\\scorebox}{}
 \\renewcommand{\\scorebox}[7]{%
-  \\tikz[baseline=-0.55ex, x=0.29cm, y=1ex]{%
+  \\tikz[baseline=-0.55ex, x=0.23cm, y=1ex]{%
     \\draw[black!15, fill=#7] (0,-0.9) rectangle (${SCALE_MAX - SCALE_MIN},0.9);
     \\draw[black!25] (${(SCALE_MAX - SCALE_MIN) / 2},-0.9) -- (${(SCALE_MAX - SCALE_MIN) / 2},0.9);
     \\draw[black!60] (#1-${SCALE_MIN},0) -- (#2-${SCALE_MIN},0) (#4-${SCALE_MIN},0) -- (#5-${SCALE_MIN},0);
@@ -285,7 +285,7 @@ function renderTable(runMeta, rows, rename) {
   }~{\\scriptsize #6}}
 \\providecommand{\\gainbar}{}
 \\renewcommand{\\gainbar}[3]{%
-  \\tikz[baseline=-0.55ex, x=0.6cm, y=1ex]{%
+  \\tikz[baseline=-0.55ex, x=0.45cm, y=1ex]{%
     \\draw[black!15, fill=#3] (-1,-0.9) rectangle (1,0.9);
     \\fill[black!45] (0,-0.6) rectangle (#1,0.6);
     \\draw[black!60] (0,-0.9) -- (0,0.9);
@@ -294,11 +294,11 @@ function renderTable(runMeta, rows, rename) {
     colspec={l l r *{${dimensions.length}}{c} c},
     column{1}={font=\\itshape},
     rowsep=0.6pt,
-    colsep=3pt,
+    colsep=2pt,
     cells={font=\\footnotesize},
   }
   \\toprule
-  \\textbf{Factor} & \\textbf{Level} & $n$ & ${dimensions.map((dimension) => `\\textbf{${dimension.name}}`).join(' & ')} & \\textbf{Focus gain} \\\\
+  \\textbf{Factor} & \\textbf{Level} & $n$ & ${dimensions.map((dimension) => `{\\bfseries ${dimension.header ?? dimension.name}}`).join(' & ')} & \\textbf{Focus gain} \\\\
   \\midrule
   ${overall.join(' & ')} \\\\
   \\midrule
