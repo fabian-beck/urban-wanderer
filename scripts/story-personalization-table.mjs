@@ -7,7 +7,9 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const rootDir = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const { LABELS } = await import(pathToFileURL(path.join(rootDir, 'src/constants/ui-config.js')));
+const { AI_MODELS, FAMILIARITY, GUIDE_CHARACTERS, LABELS, LANGUAGES } = await import(
+	pathToFileURL(path.join(rootDir, 'src/constants/ui-config.js'))
+);
 
 const ALL_LABELS = LABELS.map((label) => label.value);
 const SCALE_MIN = 1;
@@ -25,6 +27,15 @@ const FACTOR_NAMES = {
 	lang: 'Language',
 	aiModelAdvanced: 'Story model',
 	location: 'Location'
+};
+// Levels are listed in the order of the app settings; other levels follow in
+// order of appearance.
+const LEVEL_ORDER = {
+	guideCharacter: GUIDE_CHARACTERS,
+	familiarity: FAMILIARITY.map((option) => option.value),
+	labels: ['all', 'single', 'none'],
+	lang: LANGUAGES.map((option) => option.value),
+	aiModelAdvanced: AI_MODELS.ADVANCED.map((option) => option.value)
 };
 const LEVEL_NAMES = {
 	lang: { en: 'English', de: 'German' },
@@ -191,10 +202,10 @@ function renderTable(runMeta, rows, rename) {
 			const level = levelOf(factor, row.varied[factor]);
 			if (!levels.includes(level)) levels.push(level);
 		}
-		if (factor === 'labels') {
-			levels.sort(
-				(a, b) => ['all', 'single', 'none'].indexOf(a) - ['all', 'single', 'none'].indexOf(b)
-			);
+		const order = LEVEL_ORDER[factor];
+		if (order) {
+			const rank = (level) => (order.includes(level) ? order.indexOf(level) : order.length);
+			levels.sort((a, b) => rank(a) - rank(b));
 		}
 		levels.forEach((level, index) => {
 			const group = rows.filter((row) => levelOf(factor, row.varied[factor]) === level);
@@ -228,7 +239,7 @@ function renderTable(runMeta, rows, rename) {
 % Requires tikz and tabularray (with the booktabs library).
 \\providecommand{\\scorebox}{}
 \\renewcommand{\\scorebox}[6]{%
-  \\tikz[baseline=-0.55ex, x=0.32cm, y=1ex]{%
+  \\tikz[baseline=-0.55ex, x=0.29cm, y=1ex]{%
     \\draw[black!15] (0,-0.9) rectangle (${SCALE_MAX - SCALE_MIN},0.9);
     \\draw[black!25] (${(SCALE_MAX - SCALE_MIN) / 2},-0.9) -- (${(SCALE_MAX - SCALE_MIN) / 2},0.9);
     \\draw[black!60] (#1-${SCALE_MIN},0) -- (#2-${SCALE_MIN},0) (#4-${SCALE_MIN},0) -- (#5-${SCALE_MIN},0);
