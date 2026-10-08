@@ -21,7 +21,7 @@ const EVAL_USER_AGENT =
 // OSM requests (Overpass, Nominatim) that fail with these delays between attempts
 // abort the run, since the app would silently continue with incomplete place data.
 const OSM_HOSTS = ['overpass-api.de', 'nominatim.openstreetmap.org'];
-const OSM_RETRY_DELAYS_MS = [5000, 15000, 30000];
+const OSM_RETRY_DELAYS_MS = [5000, 15000, 30000, 60000, 120000];
 const OPENAI_HOST = 'api.openai.com';
 
 // Preference keys that only influence the story prompt. Every other key may
