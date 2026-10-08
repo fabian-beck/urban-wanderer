@@ -253,7 +253,7 @@ function createPlaces() {
 	return {
 		subscribe,
 		set,
-		update: async () => {
+		update: async ({ background = true } = {}) => {
 			const currentCoordinates = get(coordinates);
 			if (!currentCoordinates) {
 				return;
@@ -433,10 +433,12 @@ function createPlaces() {
 					analysisCached: analysisCacheStats.cached,
 					analysisUncached: analysisCacheStats.uncached
 				});
-				startMapLayerLoad();
-				perf.checkpoint('background map loads started');
-				walk.recordStop();
-				pregenerateLocationContentInBackground();
+				if (background) {
+					startMapLayerLoad();
+					perf.checkpoint('background map loads started');
+					walk.recordStop();
+					pregenerateLocationContentInBackground();
+				}
 				perf.end({
 					places: get(places)?.length || 0
 				});
@@ -808,7 +810,7 @@ function startLowPriorityMetadataLoad(priorityPlaces, loadSequence) {
 	}, METADATA_BACKGROUND_DELAY_MS);
 }
 
-async function loadMetadata() {
+export async function loadMetadata({ loadImages = true } = {}) {
 	const loadSequence = ++metadataLoadSequence;
 	const herePlaces = get(placesHere);
 	const surroundingPlaces = get(placesSurrounding);
@@ -819,7 +821,9 @@ async function loadMetadata() {
 		surrounding: surroundingPlaces.length,
 		priorityPlaces: priorityPlaces.length
 	});
-	loadPlaceImages('imageThumb', 100, priorityPlaces, 'priority');
+	if (loadImages) {
+		loadPlaceImages('imageThumb', 100, priorityPlaces, 'priority');
+	}
 
 	await withPerformance(
 		'metadata.storyArticleTexts',
@@ -848,7 +852,9 @@ async function loadMetadata() {
 			),
 		{ placesWithArticles: placesWithArticles.length }
 	);
-	startLowPriorityMetadataLoad(priorityPlaces, loadSequence);
+	if (loadImages) {
+		startLowPriorityMetadataLoad(priorityPlaces, loadSequence);
+	}
 	perf.end({
 		insights: placesWithArticles.filter((place) => place.insights).length,
 		deferredImages: getRemainingMetadataPlaces(priorityPlaces).length
@@ -1207,7 +1213,7 @@ export const mapLayersLoading = writable(false);
 export const mapExcerpt = writable(null);
 
 // Update location function - orchestrates all store updates
-export async function updateLocation(coords) {
+export async function updateLocation(coords, { background = true } = {}) {
 	const perf = createPerformanceRun('updateLocation', {
 		mode: coords === 'random' ? 'random' : coords ? 'provided' : 'gps'
 	});
@@ -1235,7 +1241,7 @@ export async function updateLocation(coords) {
 		await withPerformance('updateLocation.coordinates', () => coordinates.update(coords));
 		perf.checkpoint('coordinates updated');
 		loadingMessage.set('Loading places ...');
-		await withPerformance('updateLocation.places', () => places.update());
+		await withPerformance('updateLocation.places', () => places.update({ background }));
 		perf.checkpoint('places updated', {
 			places: get(places)?.length || 0
 		});

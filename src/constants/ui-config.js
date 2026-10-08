@@ -117,6 +117,9 @@ export const AI_SPEECH_MODEL = 'gpt-4o-mini-tts';
 export const AI_SPEECH_VOICE = 'alloy';
 export const AI_SPEECH_SPEED = 1.2;
 
+// Decisions API model used by the headless evaluation scripts to judge generated content
+export const AI_EVAL_JUDGE_MODEL = 'gpt-6-luna';
+
 // Reasoning effort per task: 'low' for classification and short free-text answers,
 // 'medium' where schema-constrained extraction or longer narration benefits from deliberation.
 export const AI_REASONING_EFFORT = {
