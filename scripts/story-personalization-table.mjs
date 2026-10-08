@@ -294,8 +294,8 @@ function renderTable(runMeta, rows, rename) {
     colspec={l l r *{${dimensions.length}}{c} c},
     column{1}={font=\\itshape},
     rowsep=0.6pt,
-    colsep=2pt,
-    cells={font=\\footnotesize},
+    colsep=4pt,
+    cells={font=\\scriptsize},
   }
   \\toprule
   \\textbf{Factor} & \\textbf{Level} & $n$ & ${dimensions.map((dimension) => `{\\bfseries ${dimension.header ?? dimension.name}}`).join(' & ')} & \\textbf{Focus gain} \\\\
