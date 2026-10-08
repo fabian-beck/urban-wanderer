@@ -81,6 +81,12 @@ Execution:
                             expiry for source data (Wikipedia, Wikidata, OSM) and the
                             AI calls of context building; story requests are never cached
   --no-http-cache           Neither read nor write the HTTP cache (fresh source data)
+  --no-flex                 Use the standard OpenAI service tier instead of flex
+                            (flex: about half the price, slower responses)
+  --prompt-cache <mode>     OpenAI prompt caching: on writes every prompt to the cache
+                            (billed extra) so repeated prompts are read cheaply, off
+                            skips it. auto (default) turns it off for one retry and
+                            one segment, where nothing would be read back
   --context <file>          Reuse a contexts/context-*.json file from an earlier run for all
                             configurations instead of running the place pipeline. This holds
                             the place context fixed, so only the story prompt varies (labels
@@ -113,6 +119,8 @@ function parseArgs(argv) {
 		out: null,
 		cacheDir: path.join(rootDir, '.eval-cache'),
 		httpCache: true,
+		flex: true,
+		promptCache: 'auto',
 		context: null,
 		dryRun: false,
 		yes: false,
@@ -184,6 +192,15 @@ function parseArgs(argv) {
 				break;
 			case '--cache-dir':
 				args.cacheDir = path.resolve(next());
+				break;
+			case '--prompt-cache':
+				args.promptCache = next();
+				if (!['auto', 'on', 'off'].includes(args.promptCache)) {
+					throw new Error('--prompt-cache expects auto, on or off');
+				}
+				break;
+			case '--no-flex':
+				args.flex = false;
 				break;
 			case '--no-http-cache':
 				args.httpCache = false;
@@ -513,6 +530,36 @@ function installLocalStorage(cacheDir) {
 	return file;
 }
 
+function usesPromptCache(args) {
+	if (args.promptCache === 'auto') {
+		return args.retries > 1 || args.segments > 1;
+	}
+	return args.promptCache === 'on';
+}
+
+// Adjusts OpenAI Responses API requests for cost: the flex tier (about half the
+// price, slower) and, with promptCache false, explicit cache mode without
+// breakpoints, which skips the implicit cache write that only pays off when an
+// identical prompt prefix is sent again. HTTP cache keys use the original body,
+// so cached entries stay valid.
+function adjustOpenAiRequest(url, method, body, { flex, promptCache }) {
+	if (url.hostname !== OPENAI_HOST || method !== 'POST' || !url.pathname.endsWith('/responses')) {
+		return body;
+	}
+	try {
+		const payload = JSON.parse(body);
+		return JSON.stringify({
+			...payload,
+			...(flex && !payload.service_tier ? { service_tier: 'flex' } : {}),
+			...(!promptCache && !payload.prompt_cache_options
+				? { prompt_cache_options: { mode: 'explicit' } }
+				: {})
+		});
+	} catch {
+		return body;
+	}
+}
+
 // Wraps fetch for the headless run: Node sends "node" as User-Agent, which
 // Nominatim rejects, so an identifying one is set. Failed OSM requests are
 // retried, and those that still fail are recorded in osmFailures so the run
@@ -520,7 +567,7 @@ function installLocalStorage(cacheDir) {
 // With an httpCacheDir, successful responses are stored without expiry and
 // replayed on identical requests: source data (Wikipedia, Wikidata, OSM) always,
 // OpenAI requests only while cacheAi is true (context building, not stories).
-function installFetchWrapper(httpCacheDir) {
+function installFetchWrapper(httpCacheDir, { flex = false, promptCache = true } = {}) {
 	const originalFetch = globalThis.fetch;
 	const state = { osmFailures: [], cacheAi: true, hits: 0, stored: 0 };
 	if (httpCacheDir) {
@@ -554,8 +601,14 @@ function installFetchWrapper(httpCacheDir) {
 				headers: cached.headers
 			});
 		}
+		const sentBody = adjustOpenAiRequest(url, method, body, { flex, promptCache });
 		const response = await fetchWithOsmRetries(
-			() => originalFetch(input, { ...init, headers }),
+			() =>
+				originalFetch(input, {
+					...init,
+					headers,
+					...(sentBody !== body ? { body: sentBody } : {})
+				}),
 			url,
 			state
 		);
@@ -698,6 +751,8 @@ function printEstimate(args, plan) {
 		);
 	}
 	out(`  Concurrency:    ${args.concurrency} parallel story chains`);
+	out(`  Service tier:   ${args.flex ? 'flex (about half price, slower)' : 'standard'}`);
+	out(`  Prompt cache:   ${usesPromptCache(args) ? 'on' : 'off'} (${args.promptCache})`);
 	out(`  Output:         ${displayPath(args.out)}`);
 	out('');
 }
@@ -795,7 +850,10 @@ async function main() {
 
 	mkdirSync(path.join(args.out, 'contexts'), { recursive: true });
 	const cacheFile = installLocalStorage(args.cacheDir);
-	const fetchState = installFetchWrapper(args.httpCache && path.join(args.cacheDir, 'http'));
+	const fetchState = installFetchWrapper(args.httpCache && path.join(args.cacheDir, 'http'), {
+		flex: args.flex,
+		promptCache: usesPromptCache(args)
+	});
 	const { osmFailures } = fetchState;
 	if (!args.verbose) {
 		redirectAppLogs(path.join(args.out, 'app.log'));
@@ -944,60 +1002,63 @@ async function main() {
 	let usageTotal = { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedInputTokens: 0 };
 	out(`Generating ${totalRequests} story segment(s) with concurrency ${args.concurrency} ...`);
 
-	const tasks = configs.flatMap((config) =>
-		Array.from({ length: args.retries }, (_, retryIndex) => async () => {
-			const context = contextById.get(config.contextId);
-			const storyTexts = [];
-			let lastResponseId = null;
-			for (let segment = 1; segment <= args.segments; segment++) {
-				const record = {
-					configId: config.id,
-					configLabel: config.label,
-					contextId: context.id,
-					retry: retryIndex + 1,
-					segment,
-					varied: config.varied,
-					preferences: config.preferences
-				};
-				const segmentStartedAt = Date.now();
-				try {
-					const result = await generateStory(
-						[...storyTexts],
-						context.placesHere,
-						context.placesNearby,
-						context.placesSurrounding,
-						context.coordinates,
-						config.preferences,
-						lastResponseId,
-						null,
-						context.mapExcerpt ?? null
+	// Ordered by retry round, so a configuration's repeated (identical) prompt
+	// is sent after its first one and can hit OpenAI's prompt cache.
+	const tasks = Array.from({ length: args.retries }, (_, retryIndex) => retryIndex).flatMap(
+		(retryIndex) =>
+			configs.map((config) => async () => {
+				const context = contextById.get(config.contextId);
+				const storyTexts = [];
+				let lastResponseId = null;
+				for (let segment = 1; segment <= args.segments; segment++) {
+					const record = {
+						configId: config.id,
+						configLabel: config.label,
+						contextId: context.id,
+						retry: retryIndex + 1,
+						segment,
+						varied: config.varied,
+						preferences: config.preferences
+					};
+					const segmentStartedAt = Date.now();
+					try {
+						const result = await generateStory(
+							[...storyTexts],
+							context.placesHere,
+							context.placesNearby,
+							context.placesSurrounding,
+							context.coordinates,
+							config.preferences,
+							lastResponseId,
+							null,
+							context.mapExcerpt ?? null
+						);
+						record.text = result.text;
+						record.responseId = result.responseId;
+						record.usage = result.usage || null;
+						record.characters = result.text.length;
+						storyTexts.push(result.text);
+						lastResponseId = result.responseId;
+						usageTotal = sumUsage(usageTotal, result.usage);
+					} catch (error) {
+						record.error = error?.message || String(error);
+						failures.push(record);
+					}
+					record.durationMs = Date.now() - segmentStartedAt;
+					records.push(record);
+					appendFileSync(resultsFile, `${JSON.stringify(record)}\n`);
+					completed++;
+					const status = record.error ? `FAILED: ${record.error}` : `${record.characters} chars`;
+					out(
+						`  [${String(completed).padStart(String(totalRequests).length)}/${totalRequests}]` +
+							` config ${config.id} (${config.label}) retry ${record.retry} segment ${segment}:` +
+							` ${status}, ${(record.durationMs / 1000).toFixed(1)}s`
 					);
-					record.text = result.text;
-					record.responseId = result.responseId;
-					record.usage = result.usage || null;
-					record.characters = result.text.length;
-					storyTexts.push(result.text);
-					lastResponseId = result.responseId;
-					usageTotal = sumUsage(usageTotal, result.usage);
-				} catch (error) {
-					record.error = error?.message || String(error);
-					failures.push(record);
+					if (record.error) {
+						break;
+					}
 				}
-				record.durationMs = Date.now() - segmentStartedAt;
-				records.push(record);
-				appendFileSync(resultsFile, `${JSON.stringify(record)}\n`);
-				completed++;
-				const status = record.error ? `FAILED: ${record.error}` : `${record.characters} chars`;
-				out(
-					`  [${String(completed).padStart(String(totalRequests).length)}/${totalRequests}]` +
-						` config ${config.id} (${config.label}) retry ${record.retry} segment ${segment}:` +
-						` ${status}, ${(record.durationMs / 1000).toFixed(1)}s`
-				);
-				if (record.error) {
-					break;
-				}
-			}
-		})
+			})
 	);
 	await runPool(tasks, args.concurrency);
 
