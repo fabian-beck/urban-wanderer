@@ -2,6 +2,7 @@ import { openai, getAiModel } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT, SUMMARY_LENGTH } from '../constants/ui-config.js';
 import { INSIGHTS_CACHE_KEY, FACTS_CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
+import { CLASSES, PROPERTIES } from '../constants/place-classes.js';
 import { createLogger } from './logger.js';
 
 const logger = createLogger('ai.facts');
@@ -143,6 +144,38 @@ If the source contains no meaningful information about the place itself, return 
 	};
 	summaryCache[cacheKey] = summary;
 	return summary;
+}
+
+// Schema properties of the facts request: a short list of other facts plus the class-specific properties
+export function buildFactsProperties(cls) {
+	const factsProperties = {
+		other_facts: {
+			type: 'array',
+			items: {
+				type: 'object',
+				properties: {
+					label: {
+						type: 'string',
+						description: 'short label for the fact'
+					},
+					description: {
+						type: 'string',
+						description: 'the fact itself, described as short as possible, max 30 characters'
+					}
+				},
+				required: ['label', 'description'],
+				additionalProperties: false,
+				description:
+					'list of additional facts (max 5 facts); no redundancies, no links; keep the list short and concise'
+			}
+		}
+	};
+	for (const prop of CLASSES[cls]?.properties || []) {
+		if (PROPERTIES[prop]) {
+			factsProperties[prop] = PROPERTIES[prop];
+		}
+	}
+	return factsProperties;
 }
 
 // extract facts about a place

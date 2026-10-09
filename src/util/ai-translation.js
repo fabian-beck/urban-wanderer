@@ -1,5 +1,7 @@
 import { openai, getAiModel } from './ai-core.js';
 import { AI_REASONING_EFFORT, AI_TRANSLATION_BATCH_SIZE } from '../constants/ui-config.js';
+import { PLACE_NAME_MATCH_MAX_DISTANCE } from '../constants/core.js';
+import { haversineDistance } from './osm.js';
 import { withPerformance } from './performance.js';
 import { createLogger } from './logger.js';
 
@@ -175,6 +177,16 @@ function levenshtein(a, b) {
 	return dp[a.length][b.length];
 }
 
+// Lowercase letters and digits only, with diacritics removed ("Brücke" -> "brucke", "Karlův" -> "karluv")
+function normalizeNameForSimilarity(name) {
+	return String(name || '')
+		.normalize('NFKD')
+		.replace(/\p{M}/gu, '')
+		.toLowerCase()
+		.replace(/ß/g, 'ss')
+		.replace(/[^\p{L}\p{N}]/gu, '');
+}
+
 function placesNameIsSimilar(name1, name2, coordinates) {
 	// if names contain numbers, compare them based on the numbers
 	const numbers1 = name1.match(/\d+/g) || [];
@@ -186,17 +198,11 @@ function placesNameIsSimilar(name1, name2, coordinates) {
 			return false;
 		}
 	}
-	// lower case names
-	name1 = name1.toLowerCase();
-	name2 = name2.toLowerCase();
 	// remove content in brackets
-	name1 = name1.replace(/ *\([^)]*\) */g, '');
-	name2 = name2.replace(/ *\([^)]*\) */g, '');
-	// remove special characters
-	name1 = name1.replace(/[^a-z0-9]/g, '');
-	name2 = name2.replace(/[^a-z0-9]/g, '');
+	name1 = normalizeNameForSimilarity(name1.replace(/ *\([^)]*\) */g, ''));
+	name2 = normalizeNameForSimilarity(name2.replace(/ *\([^)]*\) */g, ''));
 	// remove town name from place name (if place name significantly longer than town name)
-	const townName = coordinates?.town?.toLowerCase();
+	const townName = normalizeNameForSimilarity(coordinates?.town);
 	if (townName && name1.length > townName.length + 5) {
 		name1 = name1.replace(townName, '');
 	}
@@ -236,11 +242,27 @@ function placesNameIsSimilar(name1, name2, coordinates) {
 	return isMatch;
 }
 
+// Name-only matches require the records to be close; records without a position cannot be checked
+function placesAreClose(place1, place2) {
+	const positions = [place1, place2].every(
+		(place) => Number.isFinite(place.lat) && Number.isFinite(place.lon)
+	);
+	if (!positions) {
+		return true;
+	}
+	return (
+		haversineDistance(place1.lat, place1.lon, place2.lat, place2.lon) <=
+		PLACE_NAME_MATCH_MAX_DISTANCE
+	);
+}
+
 function mergeSimilarPlaces(places, coordinates, preferences) {
 	const mergedPlaces = [];
 	for (const place of places) {
 		const previousPlace = mergedPlaces.find(
-			(p) => placesShareIdentity(p, place) || placesNameIsSimilar(p.title, place.title, coordinates)
+			(p) =>
+				placesShareIdentity(p, place) ||
+				(placesAreClose(p, place) && placesNameIsSimilar(p.title, place.title, coordinates))
 		);
 		if (previousPlace) {
 			const previousIndex = mergedPlaces.indexOf(previousPlace);

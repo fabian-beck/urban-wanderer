@@ -172,7 +172,7 @@ ${walkContext}
 
 ----------------------------------------------
 
-# IMPORTANT INSTUCTIONS:
+# IMPORTANT INSTRUCTIONS:
 ${mottoContext ? `\n${mottoContext}\nThe motto also governs the length: if it asks for depth or detail, you may exceed the paragraph budget below by up to half; if it asks for brevity, you may stay below it.\n` : ''}
 User's preferences are the following topics:
 ${preferenceLabels}
@@ -212,7 +212,7 @@ If little new material is left for a place, say less about it rather than repeat
 }
 Keep the language factual and free of filler, but do not cut the story short: give each place room for concrete details.
 You may use an informal tone, but use a moderate language.
-Try to realisticially describe the relevance of places, but do not exaggerate; not all places are "famous" or "important".
+Try to realistically describe the relevance of places, but do not exaggerate; not all places are "famous" or "important".
 Avoid generic claims like "this is a famous place" or "the place has a rich history".
 Do not end paragraphs with generic conclusion statements.
 End each paragraph with a concrete, place-specific detail.

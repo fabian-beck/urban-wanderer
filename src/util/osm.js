@@ -5,9 +5,16 @@ import {
 	OSM_ACTIVITY_FOOD_AMENITY_TYPES,
 	OSM_ACTIVITY_RADIUS,
 	OSM_ACTIVITY_SHOP_TYPES,
+	OSM_CACHE_DURATION,
+	OSM_CACHE_MAX_ENTRIES,
 	OSM_GREEN_LANDUSE_TYPES,
 	OSM_GREEN_LEISURE_TYPES,
 	OSM_GREEN_NATURAL_TYPES,
+	OSM_PLACE_AMENITY_TYPES,
+	OSM_PLACE_HISTORIC_TYPES,
+	OSM_PLACE_LEISURE_TYPES,
+	OSM_PLACE_MAN_MADE_TYPES,
+	OSM_PLACE_TOURISM_TYPES,
 	OSM_SEARCH_RADIUS,
 	OSM_STALE_CACHE_DURATION,
 	OSM_TREE_RADIUS,
@@ -28,9 +35,7 @@ import {
 import { getPerformanceNow, logPerformance } from './performance.js';
 import { createLogger } from './logger.js';
 
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 const CACHE_PREFIX = 'osm_cache_v2_';
-const MAX_CACHE_ENTRIES = 50;
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OVERPASS_MIN_REQUEST_INTERVAL = 1500;
 const OVERPASS_DEFAULT_COOLDOWN = 60 * 1000;
@@ -341,7 +346,7 @@ function loadOverpassJson(overpassQuery, label) {
 	return request;
 }
 
-function getCachedData(key, { allowStale = false, maxAge = CACHE_DURATION } = {}) {
+function getCachedData(key, { allowStale = false, maxAge = OSM_CACHE_DURATION } = {}) {
 	try {
 		if (typeof localStorage === 'undefined') {
 			logger.debug('Cache unavailable');
@@ -354,7 +359,7 @@ function getCachedData(key, { allowStale = false, maxAge = CACHE_DURATION } = {}
 			const age = Date.now() - parsed.timestamp;
 			const ageMinutes = (age / 60000).toFixed(1);
 
-			if (age < CACHE_DURATION) {
+			if (age < OSM_CACHE_DURATION) {
 				const dataLength = Array.isArray(parsed.data) ? parsed.data.length : 'N/A';
 				logger.debug('Cache hit', { key, ageMinutes, items: dataLength });
 				return JSON.parse(JSON.stringify(parsed.data));
@@ -437,9 +442,9 @@ function cleanupOldCacheEntries() {
 			}
 		}
 
-		if (cacheKeys.length > MAX_CACHE_ENTRIES) {
+		if (cacheKeys.length > OSM_CACHE_MAX_ENTRIES) {
 			cacheKeys.sort((a, b) => a.timestamp - b.timestamp);
-			const toRemove = cacheKeys.slice(0, cacheKeys.length - MAX_CACHE_ENTRIES);
+			const toRemove = cacheKeys.slice(0, cacheKeys.length - OSM_CACHE_MAX_ENTRIES);
 			toRemove.forEach((entry) => localStorage.removeItem(entry.key));
 		}
 	} catch (error) {
@@ -457,14 +462,6 @@ export async function loadOsmPlaces(coordinates) {
 			return cached;
 		}
 		logger.info('Loading places from Overpass');
-		const amenities = 'museum|school|college|university|library|place_of_worship';
-		const tourism =
-			'viewpoint|attraction|mall|zoo|theme_park|aquarium|gallery|artwork|memorial|museum|theatre|cinema';
-		const historic =
-			'monument|memorial|monument|memorial|ruins|castle|church|tomb|battlefield|fort|city_gate|citywalls|gate|archaeological_site';
-		const man_made =
-			'statue|sculpture|obelisk|stone|cross|wayside_cross|wayside_shrine|shelter|tower|water_tower|chimney|bridge|tunnel|mine|adit|bunker|silo|tank|reservoir|water_tank|water_reservoir|storage_tank|storage_reservoir|water_storage_tank|water_storage_reservoir|storage|container';
-		const leisure = 'park|nature_reserve|sports_centre|stadium';
 
 		const overpassQuery = `
 [out:json];
@@ -477,29 +474,29 @@ out geom;
 
 (
     // Search for amenities
-    node[amenity~"${amenities}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    way[amenity~"${amenities}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    relation[amenity~"${amenities}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    node[amenity~"${OSM_PLACE_AMENITY_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[amenity~"${OSM_PLACE_AMENITY_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[amenity~"${OSM_PLACE_AMENITY_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for tourism-related points of interest
-    node[tourism~"${tourism}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    way[tourism~"${tourism}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    relation[tourism~"${tourism}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    node[tourism~"${OSM_PLACE_TOURISM_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[tourism~"${OSM_PLACE_TOURISM_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[tourism~"${OSM_PLACE_TOURISM_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for historic landmarks such as monuments and memorials
-    node[historic~"${historic}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    way[historic~"${historic}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    relation[historic~"${historic}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    node[historic~"${OSM_PLACE_HISTORIC_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[historic~"${OSM_PLACE_HISTORIC_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[historic~"${OSM_PLACE_HISTORIC_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for man-made structures such as statues
-    node[man_made~"${man_made}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    way[man_made~"${man_made}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    relation[man_made~"${man_made}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    node[man_made~"${OSM_PLACE_MAN_MADE_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[man_made~"${OSM_PLACE_MAN_MADE_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[man_made~"${OSM_PLACE_MAN_MADE_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 
     // Search for leisure facilities such as parks and gardens
-    node[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    way[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
-    relation[leisure~"${leisure}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    node[leisure~"${OSM_PLACE_LEISURE_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    way[leisure~"${OSM_PLACE_LEISURE_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
+    relation[leisure~"${OSM_PLACE_LEISURE_TYPES}"](around:${radius},${coordinates.latitude},${coordinates.longitude});
 );
 out center;
 `;

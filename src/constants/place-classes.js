@@ -13,7 +13,7 @@ export const CLASSES = {
 	AMBIGUOUS_PLACE: {
 		emoji: '?',
 		description:
-			'Not really a place, but a reference to mulitple places or a vague location (e.g., a public tranport network)',
+			'Not really a place, but a reference to multiple places or a vague location (e.g., a public transport network)',
 		nonGeo: true
 	},
 	ARTWORK: {
@@ -95,7 +95,7 @@ export const CLASSES = {
 	},
 	EVENT: {
 		emoji: '🎉',
-		description: 'Event that happend at this place',
+		description: 'Event that happened at this place',
 		nonGeo: true
 	},
 	INSTITUTION: {

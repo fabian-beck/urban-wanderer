@@ -112,7 +112,7 @@ Aspects that contribute to LOWER IMPORTANCE are:
 * the place is a detail of a larger place
 * the place is a larger administrative area not directly perceived at the user's location (e.g., a city, a district, a region)
 * the place is a generic entity (e.g., a concept, a non-physical object)
-* the place is maybe just an office of a business or intitution
+* the place is maybe just an office of a business or institution
 * the place has vanished or is not accessible anymore
 * the place is built over or is not visible anymore
 

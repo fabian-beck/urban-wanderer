@@ -20,6 +20,8 @@ export const PLACE_VISIBLE_MIN_STARS = 2;
 export const PLACE_HIGH_RATED_MIN_STARS = 3;
 export const PLACE_TWO_STAR_HIGH_RATED_LIMIT = 5;
 export const PLACE_HERE_DEFAULT_RADIUS = 150;
+// Maximum distance between two records that are merged because of similar names alone
+export const PLACE_NAME_MATCH_MAX_DISTANCE = 300;
 export const PLACE_PARTIAL_INTEREST_MATCH_STARS = 1;
 export const PLACE_FULL_INTEREST_MATCH_STARS = 2;
 export const SURROUNDING_ADDRESS_PART_KEYS = [
@@ -55,7 +57,18 @@ export const PLACE_POPUP_TEXT_LENGTH = 220;
 export const OSM_SEARCH_RADIUS = 500;
 export const OSM_ACTIVITY_RADIUS = 600;
 export const OSM_TREE_RADIUS = 400;
+export const OSM_CACHE_DURATION = 15 * 60 * 1000;
+export const OSM_CACHE_MAX_ENTRIES = 50;
 export const OSM_STALE_CACHE_DURATION = 24 * 60 * 60 * 1000;
+// Tag values of named OSM elements loaded as places (Overpass regular expressions)
+export const OSM_PLACE_AMENITY_TYPES = 'museum|school|college|university|library|place_of_worship';
+export const OSM_PLACE_TOURISM_TYPES =
+	'viewpoint|attraction|mall|zoo|theme_park|aquarium|gallery|artwork|memorial|museum|theatre|cinema';
+export const OSM_PLACE_HISTORIC_TYPES =
+	'monument|memorial|monument|memorial|ruins|castle|church|tomb|battlefield|fort|city_gate|citywalls|gate|archaeological_site';
+export const OSM_PLACE_MAN_MADE_TYPES =
+	'statue|sculpture|obelisk|stone|cross|wayside_cross|wayside_shrine|shelter|tower|water_tower|chimney|bridge|tunnel|mine|adit|bunker|silo|tank|reservoir|water_tank|water_reservoir|storage_tank|storage_reservoir|water_storage_tank|water_storage_reservoir|storage|container';
+export const OSM_PLACE_LEISURE_TYPES = 'park|nature_reserve|sports_centre|stadium';
 export const OSM_WATERWAY_TYPES =
 	'river|stream|canal|drain|ditch|weir|dam|waterfall|lock|dock|boatyard|sluice_gate|water_point';
 export const MAP_LOCATION_EXCLUDED_PLACE_CLASSES = ['WATERBODY'];

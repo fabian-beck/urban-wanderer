@@ -6,7 +6,7 @@ export const INSIGHTS_CACHE_KEY = 'urban-wanderer-insights-cache';
 export const FACTS_CACHE_KEY = 'urban-wanderer-facts-cache';
 export const ANALYSIS_CACHE_KEY = 'urban-wanderer-analysis-cache';
 // Bump when the analysis prompt or model changes so stale entries are ignored
-export const ANALYSIS_CACHE_VERSION = 2;
+export const ANALYSIS_CACHE_VERSION = 3;
 // Coordinate precision (decimal places, ~1 km) used to disambiguate places keyed by title
 export const ANALYSIS_CACHE_COORDINATE_PRECISION = 2;
 export const REVERSE_GEOCODE_CACHE_KEY = 'urban-wanderer-reverse-geocode-cache';

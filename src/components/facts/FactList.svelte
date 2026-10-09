@@ -6,10 +6,10 @@
 	import YearFact from './YearFact.svelte';
 	import NumberOfPeopleFact from './NumberOfPeopleFact.svelte';
 	import MaterialFact from './MaterialFact.svelte';
-	import { extractPlaceFacts } from '../../util/ai-facts.js';
+	import { buildFactsProperties, extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
-	import { CLASSES, PROPERTIES, PROPERTY_TRANSLATIONS } from '../../constants/place-classes.js';
+	import { PROPERTIES, PROPERTY_TRANSLATIONS } from '../../constants/place-classes.js';
 	import { HISTORICAL_EVENTS } from '../../constants/reference-data.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
@@ -75,37 +75,12 @@
 	export const loadFacts = async () => {
 		factsLoading = true;
 
-		const factsProperties = {
-			other_facts: {
-				type: 'array',
-				items: {
-					type: 'object',
-					properties: {
-						label: {
-							type: 'string',
-							description: 'short label for the fact'
-						},
-						description: {
-							type: 'string',
-							description: 'the fact itself, described as short as possible, max 30 characters'
-						}
-					},
-					required: ['label', 'description'],
-					additionalProperties: false,
-					description:
-						'list of additional facts (max 5 facts); no redundancies, no links; keep the list short and concise'
-				}
-			}
-		};
-
-		const classProperties = CLASSES[place.cls]?.properties || [];
-		for (const prop of classProperties) {
-			if (PROPERTIES[prop]) {
-				factsProperties[prop] = PROPERTIES[prop];
-			}
-		}
-
-		facts = await extractPlaceFacts(place, factsProperties, get(coordinates), get(preferences));
+		facts = await extractPlaceFacts(
+			place,
+			buildFactsProperties(place.cls),
+			get(coordinates),
+			get(preferences)
+		);
 		factsLoading = false;
 	};
 
