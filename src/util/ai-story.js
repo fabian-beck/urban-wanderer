@@ -9,7 +9,7 @@ import {
 	getWalkMotto
 } from './walk.js';
 import { getPlaceIdentity } from './place-identity.js';
-import { formatMapExcerpt, formatRelativePosition } from './map-excerpt.js';
+import { formatMapExcerpt, formatPlaceDistance } from './map-excerpt.js';
 import {
 	buildAddressInstruction,
 	getFamiliarity,
@@ -54,9 +54,9 @@ export async function generateStory(
 		{ fullStories: true }
 	);
 	const mapExcerptText = formatMapExcerpt(mapExcerpt, [...placesHere, ...placesNearby]);
-	const relativePosition = (place) => {
-		const position = formatRelativePosition(place, coordinates);
-		return position ? ` (${position})` : '';
+	const placeDistance = (place) => {
+		const distance = formatPlaceDistance(place, coordinates);
+		return distance ? ` (${distance})` : '';
 	};
 	const walkMotto = getWalkMotto(walk);
 	const mottoContext = buildWalkMottoPromptContext(walk);
@@ -127,7 +127,7 @@ ${coordinates.address}
 ${placesHere
 	.map(
 		(place) =>
-			`## ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}
+			`## ${place.title}${visitedNote(place)}${placeDistance(place)}: ${place.labels?.join(', ')}
 Rating: ${place.stars}
 
 ${place.insights || place.article || place.description || place.snippet || place.type || ''}
@@ -141,7 +141,7 @@ ${relevantNearbyPlaces
 	.map(
 		(place) =>
 			`
-## ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}
+## ${place.title}${visitedNote(place)}${placeDistance(place)}: ${place.labels?.join(', ')}
 Rating: ${place.stars}
     
 ${place.description || place.snippet || place.type || ''}
@@ -187,17 +187,17 @@ Nearby places are optional context only. Mention at most one nearby place in det
 ${
 	mapExcerptText
 		? `Spatial grounding is mandatory. The map excerpt is the ground truth for what is physically around the user; the position ⌖ is exact (up to GPS error of a few metres).
-Before writing, read the map excerpt like a local: which street or square ⌖ is on, which named buildings and features stand within a few dozen metres, what lies in which direction, what kind of neighbourhood the unnamed buildings and land use indicate.
+Before writing, read the map excerpt like a local: which street or square ⌖ is on, which named buildings and features stand within a few dozen metres, what kind of neighbourhood the unnamed buildings and land use indicate.
 Open the story with what is right at ⌖ (the smallest distances in the excerpt) and move outwards from there; never lead with something 100 m away while closer named features are listed.
 A place from the lists above that is marked in the excerpt as "listed place" is confirmed to stand right here; give such places priority. A listed place that the excerpt does not show within the here radius is not immediate and gets less weight.
 Details from the map (building types, construction dates, architects, inscriptions, street names) are facts you may use.
-Never quote the distances, bearings or coordinates verbatim; turn them into natural description ("across the street", "at the corner of X and Y", "a few steps to the north", "behind you").
+Never quote the distances or coordinates; express closeness naturally ("right here", "across the street", "at the corner of X and Y", "a short walk away").
 `
 		: ''
 }Personalization is mandatory: focus on details that match the listed user preferences.
 Do not focus on topics that are not listed in the user's preferences (for example, do not go deep into religious aspects unless religion is explicitly listed).
 If no matching preference detail is available, prioritize neutral local facts about the immediate area.
-Do not give numeric distances or navigation instructions.
+Tell a story, not a navigation description: do not use compass directions (north, south-west, ...) or directions relative to the user (left, right, ahead, behind), do not give distances, and do not explain how to get somewhere. The user's heading is unknown.
 ${
 	walkContext
 		? `
@@ -228,7 +228,7 @@ ${characterInstructions}${addressInstruction ? `${addressInstruction}\n` : ''}${
 	};
 	const mapContinuationNote = mapExcerptText
 		? `
-Consult the map excerpt again: pick a building, street or feature close to ⌖ that the story has not covered yet, and stay spatially precise about where it is relative to the user.`
+Consult the map excerpt again: pick a building, street or feature close to ⌖ that the story has not covered yet, and anchor it in the surroundings (the street, square, or building it belongs to) without giving directions.`
 		: '';
 	let messages = [initialMessage];
 
@@ -247,7 +247,7 @@ Remember, I am at this position:
 ${coordinates.address}
 
 The position is close to /in:
-${placesHere.map((place) => `* ${place.title}${visitedNote(place)}${relativePosition(place)}: ${place.labels?.join(', ')}`).join('\n')}
+${placesHere.map((place) => `* ${place.title}${visitedNote(place)}${placeDistance(place)}: ${place.labels?.join(', ')}`).join('\n')}
 
 Strictly stick to the initially provided instructions and facts about the places.${mapContinuationNote}
 ${mottoReminder}${roleReminder}Avoid generic conclusion statements and end with a concrete place-specific detail.

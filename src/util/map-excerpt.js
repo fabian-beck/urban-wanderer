@@ -13,7 +13,6 @@ import {
 
 const METERS_PER_DEGREE = 111320;
 const COMPASS_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-const ORIENTATIONS = ['N–S', 'NE–SW', 'E–W', 'NW–SE'];
 const PRIMARY_KEYS = [
 	'amenity',
 	'shop',
@@ -86,11 +85,6 @@ export function compassDirection(bearing) {
 	return COMPASS_DIRECTIONS[Math.round(bearing / 45) % 8];
 }
 
-function orientationOf(dx, dy) {
-	const axis = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 180;
-	return ORIENTATIONS[Math.round(axis / 45) % 4];
-}
-
 // split a geometry at clipped (null) nodes into continuous projected lines
 function projectedLines(geometry, origin) {
 	const lines = [];
@@ -107,13 +101,14 @@ function projectedLines(geometry, origin) {
 	return lines;
 }
 
-function nearestOnLines(lines) {
+// distance from the origin to the closest point of the lines, or null without geometry
+function nearestDistance(lines) {
 	let nearest = null;
 	for (const line of lines) {
 		if (line.length === 1) {
 			const [p] = line;
 			const dist = Math.hypot(p.x, p.y);
-			if (!nearest || dist < nearest.dist) nearest = { dist, x: p.x, y: p.y, dx: 0, dy: 0 };
+			if (nearest === null || dist < nearest) nearest = dist;
 			continue;
 		}
 		for (let i = 0; i < line.length - 1; i++) {
@@ -127,7 +122,7 @@ function nearestOnLines(lines) {
 			const x = a.x + t * dx;
 			const y = a.y + t * dy;
 			const dist = Math.hypot(x, y);
-			if (!nearest || dist < nearest.dist) nearest = { dist, x, y, dx, dy };
+			if (nearest === null || dist < nearest) nearest = dist;
 		}
 	}
 	return nearest;
@@ -230,7 +225,8 @@ function localizedName(tags, lang) {
 }
 
 // Turn the compact Overpass elements into features positioned relative to the
-// exact user coordinates: distance, compass direction, orientation, containment
+// exact user coordinates: distance and containment. Directions are left out on purpose, since
+// stories should not read like navigation (the user's heading is unknown anyway).
 export function buildMapExcerpt(elements, coordinates, lang) {
 	const origin = { latitude: coordinates.latitude, longitude: coordinates.longitude };
 	const features = [];
@@ -249,7 +245,7 @@ export function buildMapExcerpt(elements, coordinates, lang) {
 				: element.point
 					? [[project(element.point, origin)]]
 					: [];
-		const nearest = nearestOnLines(geometryLines);
+		const nearest = nearestDistance(geometryLines);
 		let inside = Boolean(element.inside);
 		if (
 			!inside &&
@@ -260,17 +256,13 @@ export function buildMapExcerpt(elements, coordinates, lang) {
 		) {
 			inside = containsOrigin(geometryLines[0]);
 		}
-		if (!nearest && !inside) continue;
-		const dist = inside ? 0 : nearest.dist;
+		if (nearest === null && !inside) continue;
+		const dist = inside ? 0 : nearest;
 		if (dist > STORY_MAP_RADIUS) continue;
 		const isPlainBuilding =
 			!inside && !name && primary?.key === 'building' && element.type === 'way' && element.point;
 		if (isPlainBuilding) {
-			unnamedBuildings.push({
-				buildingType: tags.building,
-				dist,
-				direction: compassDirection(bearingOf(nearest.x, nearest.y))
-			});
+			unnamedBuildings.push({ buildingType: tags.building, dist });
 			continue;
 		}
 		features.push({
@@ -285,11 +277,6 @@ export function buildMapExcerpt(elements, coordinates, lang) {
 			details: detailsOf(tags),
 			inside,
 			dist,
-			direction: inside ? null : compassDirection(bearingOf(nearest.x, nearest.y)),
-			orientation:
-				(kind === 'street' || kind === 'line') && nearest && (nearest.dx || nearest.dy)
-					? orientationOf(nearest.dx, nearest.dy)
-					: null,
 			notable: isNotable(tags)
 		});
 	}
@@ -331,10 +318,9 @@ function formatFeature(feature, placeTitleByKey) {
 	if (feature.inside) {
 		parts.push(feature.kind === 'street' ? '⌖ is on it' : '⌖ is inside');
 	} else {
-		parts.push(`${formatDistance(feature.dist)} ${feature.direction}`);
+		parts.push(formatDistance(feature.dist));
 		if (feature.kind === 'area') parts.push('to nearest edge');
 	}
-	if (feature.orientation) parts.push(`runs ${feature.orientation}`);
 	const matchedTitle = placeTitleByKey && matchPlaceTitle(feature, placeTitleByKey);
 	const annotation = matchedTitle ? ` [= listed place "${matchedTitle}"]` : '';
 	const details = feature.details.length ? `; ${feature.details.join('; ')}` : '';
@@ -380,7 +366,7 @@ function formatUnnamedBuildings(unnamedBuildings) {
 		.sort((a, b) => b[1] - a[1])
 		.map(([type, count]) => `${type} ${count}`)
 		.join(', ');
-	return `- ${near.length} unnamed ${near.length === 1 ? 'building' : 'buildings'} within ${STORY_MAP_IMMEDIATE_RADIUS} m of ⌖ (${typeList}); nearest ${formatDistance(nearest.dist)} ${nearest.direction}`;
+	return `- ${near.length} unnamed ${near.length === 1 ? 'building' : 'buildings'} within ${STORY_MAP_IMMEDIATE_RADIUS} m of ⌖ (${typeList}); nearest ${formatDistance(nearest.dist)}`;
 }
 
 // the same named feature can arrive as way, relation and is_in area; keep the closest one
@@ -437,7 +423,7 @@ export function formatMapExcerpt(excerpt, places = []) {
 			? list.map((feature) => formatFeature(feature, placeTitleByKey)).join('\n')
 			: emptyText;
 	return `The user's exact position is marked ⌖ at latitude ${position.latitude.toFixed(5)}, longitude ${position.longitude.toFixed(5)}.
-Every entry gives the straight-line distance and compass direction (N, NE, E, SE, S, SW, W, NW) from ⌖; for streets and areas this is the nearest point of their mapped outline. Names are OpenStreetMap names.
+Every entry gives the straight-line distance from ⌖; for streets and areas this is the nearest point of their mapped outline. Names are OpenStreetMap names.
 
 ## ⌖ is inside / on
 ${formatList(insideFeatures, '- no mapped area contains ⌖')}
@@ -456,7 +442,8 @@ ${formatList(rings[1].features, '- no mapped features')}
 ${formatList(rings[2].features, '- no mapped features')}`;
 }
 
-// compass bearing (0° = north, clockwise) from the position to a place, null if unknown
+// compass bearing (0° = north, clockwise) from the position to a place, null if unknown; used by
+// the direction badge of the place lists, not by the story prompt
 export function placeBearing(place, coordinates) {
 	if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lon) || !coordinates) {
 		return null;
@@ -465,11 +452,11 @@ export function placeBearing(place, coordinates) {
 	return x === 0 && y === 0 ? null : bearingOf(x, y);
 }
 
-// short relative position of a place for the place lists in prompts
-export function formatRelativePosition(place, coordinates) {
+// distance of a place from the exact position, for the place lists in prompts
+export function formatPlaceDistance(place, coordinates) {
 	if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lon) || !coordinates) {
 		return Number.isFinite(place?.dist) ? `${Math.round(place.dist)} m` : '';
 	}
 	const { x, y } = project([place.lat, place.lon], coordinates);
-	return `${Math.round(Math.hypot(x, y))} m ${compassDirection(bearingOf(x, y))}`;
+	return `${Math.round(Math.hypot(x, y))} m`;
 }

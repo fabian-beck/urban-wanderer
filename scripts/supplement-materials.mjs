@@ -108,7 +108,7 @@ const { extractHistoricEvents } = await importApp('src/util/ai-history.js');
 const { generateLocationComment } = await importApp('src/util/ai-comment.js');
 const { generateStory, generateWalkRecap } = await importApp('src/util/ai-story.js');
 const walkUtil = await importApp('src/util/walk.js');
-const { formatMapExcerpt, formatRelativePosition } = await importApp('src/util/map-excerpt.js');
+const { formatMapExcerpt, formatPlaceDistance } = await importApp('src/util/map-excerpt.js');
 const personalization = await importApp('src/util/personalization.js');
 const study = await importApp('scripts/story-personalization-common.mjs');
 
@@ -192,8 +192,8 @@ const MAP_EXCERPT = {
 // ---------------------------------------------------------------------------
 // Replacements that turn the instantiated prompts into templates
 
-const relativePositions = [herePlace, nearbyPlace].map((place) =>
-	formatRelativePosition(place, COORDINATES)
+const placeDistances = [herePlace, nearbyPlace].map((place) =>
+	formatPlaceDistance(place, COORDINATES)
 );
 const mapExcerptText = formatMapExcerpt(MAP_EXCERPT, [herePlace, nearbyPlace]);
 const walkContextFull = walkUtil.buildWalkPromptContext(walk, { fullStories: true });
@@ -236,7 +236,7 @@ const RECAP_PREFERENCES = [
 
 const COMMON = [
 	[`Answer in language '${PREFERENCES.lang}'`, "Answer in language '«language code»'"],
-	...relativePositions.map((text) => [text, '«distance and direction»']),
+	...placeDistances.map((text) => [text, '«distance»']),
 	[/Distance: \d+ m/g, 'Distance: «distance» m'],
 	[/, distance: \d+m/g, ', distance: «distance»m']
 ];
@@ -856,7 +856,7 @@ const mapTemplate = applyReplacements(mapExcerptText, templateFixes).replace(
 );
 write(
 	'prompts/map-excerpt.txt',
-	`${mapTemplate}\n\nLine format:\n- «name» («type») [= listed place "«title»"] — «distance» «direction», «to nearest edge, for areas», «runs «orientation», for lines»; «details»\n`
+	`${mapTemplate}\n\nLine format:\n- «name» («type») [= listed place "«title»"] — «distance», «to nearest edge, for areas»; «details»\n`
 );
 write('prompts/walk-context-full.txt', `${applyReplacements(walkContextFull, WALK_FIELDS)}\n`);
 write(

@@ -417,14 +417,14 @@ The system prompt includes:
 - **Guide character** from preferences (e.g., "friendly and helpful", "funny and witty")
 - **Target language** from preferences
 - **Current address** from coordinates
-- **Places here** — with title, distance and compass direction from the user, labels, star rating, and `insights || article || description || snippet || type`
-- **Nearby places** — with title, distance and compass direction, labels, star rating, and `description || snippet || type`
+- **Places here** — with title, distance from the user, labels, star rating, and `insights || article || description || snippet || type`
+- **Nearby places** — with title, distance, labels, star rating, and `description || snippet || type`
 - **Surrounding places** — with title and `insights || article || description || snippet || type`
 - **Map excerpt** — an OpenStreetMap excerpt of the here area plus buffer (`STORY_MAP_RADIUS` = `PLACE_HERE_DEFAULT_RADIUS` + `STORY_MAP_BUFFER`), see below
 - **User interest labels** from preferences
 - **Paragraph length constraint**: `min(round(0.5 + (placesHere.length + placesSurrounding.length) / 3), 4)` paragraphs
 
-Behavioral constraints in the prompt: no numeric distances or navigation instructions, no welcome/farewell, no generic superlatives, no exact address. Guide character and user familiarity level are applied.
+Behavioral constraints in the prompt: a story, not a navigation description (no compass or relative directions, no distances, no routes), no welcome/farewell, no generic superlatives, no exact address. Guide character and user familiarity level are applied.
 
 ### Map Excerpt
 
@@ -437,7 +437,7 @@ The excerpt is requested from Overpass right behind the places request (`startMa
 - named buildings, amenities, shops, tourism/historic/leisure features, land use, water, rail lines and stops, city walls (`out geom` clipped to a bounding box)
 - unnamed buildings as centre points (`out center`)
 
-Elements are stored compactly (tag allowlist, `[lat, lon]` geometry) in the OSM cache with 4-decimal coordinate precision. `buildMapExcerpt()` projects every element relative to the exact position and derives distance, 8-point compass direction, line orientation (N–S, NE–SW, …) at the nearest segment, and containment (ray casting for closed ways, `is_in` otherwise). `formatMapExcerpt()` renders the prompt section: the position marker ⌖ with coordinates, the areas ⌖ is inside, the nearest streets (deduplicated by name), then distance rings (0–50 m, 50–150 m, 150–250 m) with per-ring limits that prefer named and notable features, plus a summary of unnamed buildings within the immediate ring. Features that match a listed place (Wikidata ID or normalized name) are annotated `[= listed place "…"]`. The prompt instructs the model to interpret the excerpt before writing, to open with what is right at ⌖, and to translate distances and bearings into natural description.
+Elements are stored compactly (tag allowlist, `[lat, lon]` geometry) in the OSM cache with 4-decimal coordinate precision. `buildMapExcerpt()` projects every element relative to the exact position and derives the distance (to the nearest segment for lines and outlines) and containment (ray casting for closed ways, `is_in` otherwise). `formatMapExcerpt()` renders the prompt section: the position marker ⌖ with coordinates, the areas ⌖ is inside, the nearest streets (deduplicated by name), then distance rings (0–50 m, 50–150 m, 150–250 m) with per-ring limits that prefer named and notable features, plus a summary of unnamed buildings within the immediate ring. Features that match a listed place (Wikidata ID or normalized name) are annotated `[= listed place "…"]`. The prompt instructs the model to interpret the excerpt before writing, to open with what is right at ⌖, and to express closeness naturally. The excerpt carries no directions, so that stories do not read like navigation (the user's heading is unknown).
 
 ### First vs. Continuation Requests
 
