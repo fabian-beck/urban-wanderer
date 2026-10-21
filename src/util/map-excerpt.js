@@ -456,6 +456,15 @@ ${formatList(rings[1].features, '- no mapped features')}
 ${formatList(rings[2].features, '- no mapped features')}`;
 }
 
+// compass bearing (0° = north, clockwise) from the position to a place, null if unknown
+export function placeBearing(place, coordinates) {
+	if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lon) || !coordinates) {
+		return null;
+	}
+	const { x, y } = project([place.lat, place.lon], coordinates);
+	return x === 0 && y === 0 ? null : bearingOf(x, y);
+}
+
 // short relative position of a place for the place lists in prompts
 export function formatRelativePosition(place, coordinates) {
 	if (!Number.isFinite(place?.lat) || !Number.isFinite(place?.lon) || !coordinates) {

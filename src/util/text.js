@@ -1,4 +1,5 @@
 import {
+	PLACE_MENTION_BOLD_SUFFIX_MIN_WORDS,
 	PLACE_MENTION_HREF_PREFIX,
 	PLACE_MENTION_LEADING_ARTICLES,
 	PLACE_MENTION_MAX_SUFFIX_LETTERS,
@@ -62,24 +63,77 @@ function buildMentionRegExp(name) {
 	return new RegExp(`(?<![\\p{L}\\p{N}])${pattern}(?![\\p{L}\\p{N}])`, 'giu');
 }
 
-// Ranges of text that are already formatted (bold, links) and must not be marked
-function getReservedRanges(text) {
-	const ranges = [];
-	for (const match of text.matchAll(/\*\*[^*]+?\*\*|\[[^\]]*\]\([^)]*\)/g)) {
-		ranges.push({ start: match.index, end: match.index + match[0].length });
+// Formatted ranges of a text: links and bold headlines (a bold span on a line of its own)
+// must not be marked; a mention may replace an inline bold span or lie within it
+function getFormattedRanges(text) {
+	const reserved = [];
+	const bold = [];
+	for (const match of text.matchAll(/\[[^\]]*\]\([^)]*\)/g)) {
+		reserved.push({ start: match.index, end: match.index + match[0].length });
 	}
-	return ranges;
+	for (const match of text.matchAll(/\*\*([^*]+?)\*\*/g)) {
+		const start = match.index;
+		const end = start + match[0].length;
+		const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+		const lineEnd = text.indexOf('\n', end) === -1 ? text.length : text.indexOf('\n', end);
+		const isHeadline =
+			!text.slice(lineStart, start).trim() && !/[\p{L}\p{N}]/u.test(text.slice(end, lineEnd));
+		if (isHeadline) {
+			reserved.push({ start, end });
+		} else if (!overlaps(reserved, start, end)) {
+			bold.push({ start, end, innerStart: start + 2, innerEnd: end - 2, inner: match[1] });
+		}
+	}
+	return { reserved, bold };
 }
 
 const overlaps = (ranges, start, end) =>
 	ranges.some((range) => start < range.end && end > range.start);
 
+// A match within an inline bold span stays inside it, a match of the whole span replaces it
+function fitToBold(boldRanges, start, end) {
+	const span = boldRanges.find((range) => start < range.end && end > range.start);
+	if (!span) {
+		return { start, end };
+	}
+	if (start < span.innerStart || end > span.innerEnd) {
+		return null;
+	}
+	return start === span.innerStart && end === span.innerEnd ? span : { start, end };
+}
+
+// Inline bold spans that name exactly one place by the trailing words of one of its names
+function findBoldSuffixMentions(boldRanges, variantsByPlace) {
+	return boldRanges.flatMap((span) => {
+		const matching = [...variantsByPlace].filter(([, names]) =>
+			names.some((name) => {
+				const words = name.split(/[\s-]+/).filter(Boolean);
+				for (let count = PLACE_MENTION_BOLD_SUFFIX_MIN_WORDS; count < words.length; count++) {
+					const suffix = words.slice(-count).join(' ');
+					const pattern = buildMentionRegExp(suffix);
+					if (suffix.length >= PLACE_MENTION_MIN_LENGTH && fullMatch(pattern, span.inner.trim())) {
+						return true;
+					}
+				}
+				return false;
+			})
+		);
+		return matching.length === 1
+			? [{ place: matching[0][0], start: span.start, end: span.end, text: span.inner.trim() }]
+			: [];
+	});
+}
+
+const fullMatch = (pattern, text) =>
+	[...text.matchAll(pattern)].some((match) => match.index === 0 && match[0].length === text.length);
+
 // Find the first mention of each place in a text; longer names win over shorter ones
 export function findPlaceMentions(text, places) {
-	const reserved = getReservedRanges(text);
+	const { reserved, bold } = getFormattedRanges(text);
 	const mentions = [];
-	const candidates = places
-		.flatMap((place) => getPlaceNameVariants(place).map((name) => ({ place, name })))
+	const variantsByPlace = new Map(places.map((place) => [place, getPlaceNameVariants(place)]));
+	const candidates = [...variantsByPlace]
+		.flatMap(([place, names]) => names.map((name) => ({ place, name })))
 		.sort((a, b) => b.name.length - a.name.length);
 	const mentionedPlaces = new Set();
 	candidates.forEach(({ place, name }) => {
@@ -87,13 +141,26 @@ export function findPlaceMentions(text, places) {
 			return;
 		}
 		for (const match of text.matchAll(buildMentionRegExp(name))) {
-			const start = match.index;
-			const end = start + match[0].length;
-			if (!overlaps(reserved, start, end) && !overlaps(mentions, start, end)) {
-				mentions.push({ place, start, end, text: match[0] });
+			const range = fitToBold(bold, match.index, match.index + match[0].length);
+			if (
+				range &&
+				!overlaps(reserved, range.start, range.end) &&
+				!overlaps(mentions, range.start, range.end)
+			) {
+				mentions.push({ place, start: range.start, end: range.end, text: match[0] });
 				mentionedPlaces.add(place);
 				break;
 			}
+		}
+	});
+	findBoldSuffixMentions(bold, variantsByPlace).forEach((mention) => {
+		const index = mentions.findIndex((other) => other.place === mention.place);
+		if (index !== -1 && mentions[index].start < mention.start) {
+			return;
+		}
+		const others = mentions.filter((_, otherIndex) => otherIndex !== index);
+		if (!overlaps(others, mention.start, mention.end)) {
+			mentions.splice(0, mentions.length, ...others, mention);
 		}
 	});
 	return mentions.sort((a, b) => a.start - b.start);
