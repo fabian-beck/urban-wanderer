@@ -1,4 +1,5 @@
-// Records a demo video of a scripted walk through the app.
+// Records a demo video of the walk of the paper's application example, together with the stills
+// used as the paper's screenshots.
 //
 //   npm run demo:video                   build, preview, warm up caches, record, edit
 //   npm run demo:video -- --skip-build   reuse the existing build/ directory
@@ -12,12 +13,15 @@
 // reverse geocoding are cached in localStorage; the recording pass reuses that storage state
 // without the walk, so it starts a fresh walk and only waits for uncached AI content (comments,
 // stories, recap). With ffmpeg, the raw WebM is edited into an MP4 in which these waits are sped up.
+// The page renders at the paper's pixel density while the video is scaled down; the recording pass
+// saves lossless stills of the paper's views to stills/ (cut-outs also as full screens in
+// stills/screens/), and steps.json lists their times in both videos.
 //
 // Environment: DEMO_BROWSER_PATH overrides the Chromium binary, FFMPEG_PATH points to an ffmpeg
 // binary with libx264 when it is not on PATH.
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -28,9 +32,11 @@ import {
 	FAST_FORWARD,
 	OUTPUT_DIR,
 	PREVIEW_PORT,
+	STILLS_DIR,
 	TIMEOUTS,
 	VIDEO_BASENAME,
-	VIDEO_FPS
+	VIDEO_FPS,
+	VIDEO_SIZE
 } from './config.mjs';
 import { findFfmpeg, planSegments, renderVideo, toEditedTime } from './edit-video.mjs';
 import { runJourney } from './journey.mjs';
@@ -50,10 +56,7 @@ const option = (name) => {
 
 const outputDir = path.resolve(rootDir, option('--out') || OUTPUT_DIR);
 const storageStatePath = path.join(outputDir, 'storage-state.json');
-const videoSize = {
-	width: DEVICE.viewport.width * DEVICE.deviceScaleFactor,
-	height: DEVICE.viewport.height * DEVICE.deviceScaleFactor
-};
+const stillsDir = path.join(outputDir, STILLS_DIR);
 const contextOptions = { ...DEVICE, permissions: ['geolocation'] };
 
 mkdirSync(outputDir, { recursive: true });
@@ -79,7 +82,8 @@ try {
 	const browser = await chromium.launch({
 		headless: !flag('--headed'),
 		executablePath: process.env.DEMO_BROWSER_PATH || undefined,
-		// Without this flag the screencast is captured at CSS pixel size and padded to the video size.
+		// Without this flag the screencast is captured at CSS pixel size instead of being scaled down
+		// from device pixels to the video size.
 		args: [`--force-device-scale-factor=${DEVICE.deviceScaleFactor}`]
 	});
 
@@ -100,15 +104,18 @@ try {
 		const context = await browser.newContext({
 			...contextOptions,
 			storageState: storageStatePath,
-			recordVideo: { dir: outputDir, size: videoSize }
+			recordVideo: { dir: outputDir, size: VIDEO_SIZE }
 		});
 		await seedPreferences(context);
 		await context.addInitScript(installOverlay);
+		rmSync(stillsDir, { recursive: true, force: true });
+		mkdirSync(path.join(stillsDir, 'screens'), { recursive: true });
 		const page = await context.newPage();
 		const recordingStart = Date.now();
 		const seconds = (time) => (time - recordingStart) / 1000;
 		const steps = [];
 		const waits = [];
+		const stills = [];
 		try {
 			await runJourney(page, baseUrl, {
 				recording: true,
@@ -116,7 +123,15 @@ try {
 				onStep: ({ name, caption, startedAt, endedAt }) =>
 					steps.push({ name, caption, start: seconds(startedAt), end: seconds(endedAt) }),
 				onWait: ({ startedAt, endedAt }) =>
-					waits.push({ start: seconds(startedAt), end: seconds(endedAt) })
+					waits.push({ start: seconds(startedAt), end: seconds(endedAt) }),
+				onStill: async ({ name, clip }) => {
+					const time = seconds(Date.now());
+					await page.screenshot({ path: path.join(stillsDir, `${name}.png`), clip });
+					if (clip) {
+						await page.screenshot({ path: path.join(stillsDir, 'screens', `${name}.png`) });
+					}
+					stills.push({ name, time, clip });
+				}
 			});
 		} finally {
 			const video = page.video();
@@ -135,7 +150,8 @@ try {
 					console.log('ffmpeg failed; the WebM recording is still available');
 				}
 			}
-			writeTimeline(steps, waits, ffmpeg ? segments : null);
+			writeTimeline(steps, waits, stills, ffmpeg ? segments : null);
+			console.log(`Stills: ${stills.length} in ${path.relative(rootDir, stillsDir)}`);
 		}
 	} finally {
 		await browser.close();
@@ -166,23 +182,32 @@ function saveStorageState(state) {
 	writeFileSync(storageStatePath, JSON.stringify(state));
 }
 
-// Writes steps.json with the start and end of each step and wait in the recording and, if an
-// edited video was rendered, in that video
-function writeTimeline(steps, waits, segments) {
+// Writes steps.json with the times of each step, wait, and still in the recording and, if an
+// edited video was rendered, in that video; still clips are in CSS pixels of the viewport
+function writeTimeline(steps, waits, stills, segments) {
 	const round = (time) => Math.round(time * 100) / 100;
+	const videoTime = (time) => (segments ? round(toEditedTime(segments, time)) : round(time));
 	const withVideoTimes = (entry) => ({
 		...entry,
 		start: round(entry.start),
 		end: round(entry.end),
-		...(segments && {
-			videoStart: round(toEditedTime(segments, entry.start)),
-			videoEnd: round(toEditedTime(segments, entry.end))
-		})
+		videoStart: videoTime(entry.start),
+		videoEnd: videoTime(entry.end)
+	});
+	const withVideoTime = (entry) => ({
+		...entry,
+		file: path.posix.join(STILLS_DIR, `${entry.name}.png`),
+		time: round(entry.time),
+		videoTime: videoTime(entry.time)
 	});
 	writeFileSync(
 		path.join(outputDir, 'steps.json'),
 		JSON.stringify(
-			{ steps: steps.map(withVideoTimes), waits: waits.map(withVideoTimes) },
+			{
+				steps: steps.map(withVideoTimes),
+				waits: waits.map(withVideoTimes),
+				stills: stills.map(withVideoTime)
+			},
 			null,
 			'\t'
 		)

@@ -35,6 +35,8 @@ export function installOverlay() {
 	let badge;
 	let captionTimer;
 	let badgeTimer;
+	// Until then the caption is visible or still fading out (CSS transition)
+	let captionVisibleUntil = 0;
 
 	const ensureOverlay = () => {
 		if (overlay?.isConnected) {
@@ -61,6 +63,7 @@ export function installOverlay() {
 			caption.textContent = text;
 			caption.classList.remove('demo-hidden');
 			captionTimer = setTimeout(() => caption.classList.add('demo-hidden'), durationMs);
+			captionVisibleUntil = Date.now() + durationMs + 400;
 		},
 		waitStarted(badgeDelayMs) {
 			ensureOverlay();
@@ -70,6 +73,14 @@ export function installOverlay() {
 		waitEnded() {
 			clearTimeout(badgeTimer);
 			badge?.classList.add('demo-hidden');
+		},
+		// True when no caption, badge, or tap ripple is on screen, so a still shows only the app
+		idle() {
+			return (
+				Date.now() > captionVisibleUntil &&
+				(!badge || badge.classList.contains('demo-hidden')) &&
+				!document.querySelector('.demo-tap')
+			);
 		}
 	};
 

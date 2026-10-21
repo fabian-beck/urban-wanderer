@@ -1,15 +1,20 @@
 // Configuration for the scripted demo video (see scripts/demo-video/record-demo.mjs).
 
-// The walk through Bamberg's old town: the emulated GPS position at each stop. Stops stay within
-// the map extent of each other, so the second stop shows the first one as a walk marker.
-export const WALK_STOPS = [
-	{ name: 'Obere Brücke', latitude: 49.8914, longitude: 10.8869 },
-	{ name: 'Domplatz', latitude: 49.8909, longitude: 10.883 }
-];
-export const WALK_MOTTO = 'Tell me about the people behind the places.';
+// The walk of the paper's application example (Section "Application Example: A Visit of Bamberg"):
+// the emulated GPS position at each stop.
+export const WALK_STOPS = {
+	station: { name: 'Train station', latitude: 49.9005, longitude: 10.8988 },
+	bridge: { name: 'Obere Brücke', latitude: 49.8914, longitude: 10.8869 },
+	erba: { name: 'ERBA island', latitude: 49.903, longitude: 10.8712 }
+};
 
-// Preferences seeded into localStorage before the app loads (the application example settings of
-// the paper), so the demo is reproducible.
+// Places whose details the journey opens: the city entry at the station and the old town hall at
+// Obere Brücke. `exact` matches the whole place title, otherwise a substring of it.
+export const CITY_PLACE = { title: 'Bamberg', exact: true };
+export const LANDMARK_PLACE = { title: 'Altes Rathaus', exact: false };
+
+// Preferences seeded into localStorage before the app loads: the settings marked in the paper's
+// personalization table, no walk motto.
 export const DEMO_PREFERENCES = {
 	radius: 500,
 	labels: [
@@ -29,20 +34,22 @@ export const DEMO_PREFERENCES = {
 	debug: false
 };
 
-// The place the details step opens at the first stop: the first list entry containing `title`,
-// searched in `section` ('here' or 'nearby') first, else the first place of that section (or of
-// the other one if it is empty).
-export const DETAILS_PLACE = { title: 'Altes Rathaus', section: 'here' };
-
-// Emulated phone. The video is recorded at viewport size times the device scale factor.
+// Emulated phone at the size and pixel density of the paper's screenshots. The page renders at
+// the full density, so stills are captured at paper resolution; the video is scaled down to
+// VIDEO_SIZE.
 export const DEVICE = {
-	viewport: { width: 390, height: 844 },
-	deviceScaleFactor: 2,
+	viewport: { width: 400, height: 900 },
+	deviceScaleFactor: 3.5,
 	isMobile: true,
 	hasTouch: true,
 	userAgent:
 		'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36'
 };
+export const VIDEO_SIZE = { width: 800, height: 1800 };
+
+// Height-to-width ratios of the story cut-outs in the paper's visit figure (1b and 3b), so new
+// stills fit the existing frames
+export const STORY_CUTOUT_ASPECT = { station: 1.02, erba: 1.51 };
 
 // Pauses (ms) used only during the recording pass; the warm-up pass skips them.
 export const PACING = {
@@ -51,9 +58,9 @@ export const PACING = {
 	long: 3500,
 	read: 6000,
 	caption: 3500,
-	scrollStep: 160,
-	scrollStepDelay: 90,
-	typingDelay: 60
+	// Scroll animations run at this speed (px/s), but take at least scrollMinMs
+	scrollSpeed: 900,
+	scrollMinMs: 500
 };
 
 // Step captions shown at the top of the screen during the recording.
@@ -77,5 +84,6 @@ export const TIMEOUTS = {
 
 export const PREVIEW_PORT = 4173;
 export const OUTPUT_DIR = 'demo-video';
+export const STILLS_DIR = 'stills';
 export const VIDEO_BASENAME = 'urban-wanderer-demo';
 export const VIDEO_FPS = 25;
