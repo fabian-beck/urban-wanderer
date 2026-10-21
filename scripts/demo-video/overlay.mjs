@@ -21,23 +21,26 @@ export function installOverlay() {
 		}
 		.demo-slide {
 			position: fixed; inset: 0; z-index: 2147483645; pointer-events: none;
-			display: flex; flex-direction: column; align-items: center; justify-content: center;
-			gap: 20px; padding: 40px 32px; text-align: center;
-			background: linear-gradient(165deg, #fff5f2 0%, #ffe4de 100%); color: #a5371b;
-			transition: opacity 500ms ease;
+			display: flex; align-items: center; justify-content: center; padding: 40px 32px;
+			background: #000; transition: opacity 500ms ease;
 		}
-		.demo-slide img { width: 112px; height: auto; }
+		.demo-slide-content {
+			display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center;
+			font-family: system-ui, sans-serif; transition: opacity 250ms ease;
+		}
 		.demo-slide-kicker {
-			font: 600 14px/1.4 system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase;
-			color: #cc4522;
+			font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+			color: #a3a3a3;
 		}
-		.demo-slide-title { font-size: 40px; line-height: 1.15; color: #cc4522; }
-		.demo-slide-subtitle { font: 400 18px/1.45 system-ui, sans-serif; color: #5b2414; }
+		.demo-slide-title { font-size: 34px; font-weight: 700; line-height: 1.2; color: #fff; }
+		.demo-slide-subtitle { font-size: 17px; line-height: 1.45; color: #d4d4d4; }
 		.demo-hidden { opacity: 0; }`;
 
 	let badge;
 	let slide;
+	let slideContent;
 	let badgeTimer;
+	let slideTimer;
 
 	const ensureOverlay = () => {
 		if (badge?.isConnected) {
@@ -51,6 +54,9 @@ export function installOverlay() {
 		badge.textContent = '⏩ Fast-forward';
 		slide = document.createElement('div');
 		slide.className = 'demo-slide demo-hidden';
+		slideContent = document.createElement('div');
+		slideContent.className = 'demo-slide-content';
+		slide.append(slideContent);
 		document.body.append(slide, badge);
 	};
 
@@ -62,24 +68,28 @@ export function installOverlay() {
 	};
 
 	window.__demo = {
-		// Covers the app with a slide ({ kicker, title, subtitle, logo }); the title uses the app font
-		showSlide({ kicker, title, subtitle, logo }) {
+		// Covers the app with a slide ({ kicker, title, subtitle }), styled apart from the app; a slide
+		// that follows another one replaces its text in place
+		showSlide({ kicker, title, subtitle }) {
 			ensureOverlay();
-			slide.replaceChildren();
-			if (logo) {
-				const image = document.createElement('img');
-				image.src = '/urban-wanderer-icon.png';
-				image.alt = '';
-				slide.append(image);
+			const render = () => {
+				slideContent.replaceChildren(
+					...[
+						kicker && element('div', 'demo-slide-kicker', kicker),
+						element('div', 'demo-slide-title', title),
+						subtitle && element('div', 'demo-slide-subtitle', subtitle)
+					].filter(Boolean)
+				);
+				slideContent.classList.remove('demo-hidden');
+			};
+			clearTimeout(slideTimer);
+			if (slide.classList.contains('demo-hidden')) {
+				render();
+				slide.classList.remove('demo-hidden');
+			} else {
+				slideContent.classList.add('demo-hidden');
+				slideTimer = setTimeout(render, 250);
 			}
-			if (kicker) {
-				slide.append(element('div', 'demo-slide-kicker', kicker));
-			}
-			slide.append(element('div', 'demo-slide-title uw-font', title));
-			if (subtitle) {
-				slide.append(element('div', 'demo-slide-subtitle', subtitle));
-			}
-			slide.classList.remove('demo-hidden');
 		},
 		hideSlide() {
 			slide?.classList.add('demo-hidden');

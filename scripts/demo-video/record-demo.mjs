@@ -149,6 +149,11 @@ try {
 		rmSync(stillsDir, { recursive: true, force: true });
 		mkdirSync(path.join(stillsDir, 'screens'), { recursive: true });
 		const page = await context.newPage();
+		// Stills come from plain CDP screenshots: Playwright's screenshots re-render the page (at
+		// another scale for clips), which shows up as glitches in the video. Clips are cut out on a
+		// page of a separate, unrecorded context.
+		const cdp = await context.newCDPSession(page);
+		const cropPage = await (await browser.newContext()).newPage();
 		const recordingStart = Date.now();
 		const seconds = (time) => (time - recordingStart) / 1000;
 		let videoStart = 0;
@@ -172,9 +177,14 @@ try {
 					waits.push({ start: seconds(startedAt), end: seconds(endedAt), targetSeconds }),
 				onStill: async ({ name, clip }) => {
 					const time = seconds(Date.now());
-					await page.screenshot({ path: path.join(stillsDir, `${name}.png`), clip });
+					const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
+					const screen = Buffer.from(data, 'base64');
 					if (clip) {
-						await page.screenshot({ path: path.join(stillsDir, 'screens', `${name}.png`) });
+						writeFileSync(path.join(stillsDir, 'screens', `${name}.png`), screen);
+						const cut = await cropPng(cropPage, screen, clip, DEVICE.deviceScaleFactor);
+						writeFileSync(path.join(stillsDir, `${name}.png`), cut);
+					} else {
+						writeFileSync(path.join(stillsDir, `${name}.png`), screen);
 					}
 					stills.push({ name, time, clip });
 				},
@@ -284,6 +294,36 @@ function writeTimeline({ steps, cues, waits, stills }, edited) {
 			'\t'
 		)
 	);
+}
+
+// Cuts the clip (CSS pixels) out of a PNG screenshot taken at the given device scale factor
+async function cropPng(page, png, clip, scale) {
+	const data = await page.evaluate(
+		async ([base64, clip, scale]) => {
+			const image = new Image();
+			image.src = `data:image/png;base64,${base64}`;
+			await image.decode();
+			const canvas = document.createElement('canvas');
+			canvas.width = Math.round(clip.width * scale);
+			canvas.height = Math.round(clip.height * scale);
+			canvas
+				.getContext('2d')
+				.drawImage(
+					image,
+					Math.round(clip.x * scale),
+					Math.round(clip.y * scale),
+					canvas.width,
+					canvas.height,
+					0,
+					0,
+					canvas.width,
+					canvas.height
+				);
+			return canvas.toDataURL('image/png').split(',')[1];
+		},
+		[png.toString('base64'), clip, scale]
+	);
+	return Buffer.from(data, 'base64');
 }
 
 function findFreePort() {

@@ -6,8 +6,7 @@
 export const SLIDES = {
 	title: {
 		title: 'Urban Wanderer',
-		subtitle: 'Personal, adaptive assistance for exploring cities on foot',
-		logo: true
+		subtitle: 'Personal, adaptive assistance for exploring cities on foot'
 	},
 	preferences: { kicker: 'Part 1', title: 'Personalization Settings' },
 	station: {
@@ -23,7 +22,7 @@ export const SLIDES = {
 		title: 'Strolling through Park and Suburban Area'
 	},
 	walk: { kicker: 'Part 5', title: 'Looking Back on the Walk' },
-	end: { title: 'Urban Wanderer', subtitle: 'Thanks for watching', logo: true }
+	end: { title: 'Urban Wanderer', subtitle: 'Thanks for watching' }
 };
 
 export const NARRATION = {

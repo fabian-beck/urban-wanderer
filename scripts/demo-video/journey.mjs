@@ -112,10 +112,13 @@ export async function runJourney(
 		}
 	};
 
-	const slide = async (name, cueKey, { keep = false } = {}) => {
+	// Shows a slide (replacing a visible one), speaks its cue, and runs `behind` while the slide covers
+	// the app, so preparations such as scrolling stay out of view
+	const slide = async (name, cueKey, { keep = false, behind } = {}) => {
 		await narrationDone();
 		await page.evaluate((spec) => window.__demo.showSlide(spec), SLIDES[name]);
 		await pause(PACING.slideFade);
+		await behind?.();
 		if (cueKey) {
 			await say(cueKey);
 			await narrationDone();
@@ -251,12 +254,11 @@ export async function runJourney(
 	await pause(PACING.slideFade);
 	onVideoStart();
 
+	// The title slide stays until the first section slide replaces it
 	await step('title', async () => {
 		await say('intro');
 		await narrationDone();
 		await pause(PACING.slideHold);
-		await page.evaluate(() => window.__demo.hideSlide());
-		await pause(PACING.slideFade);
 	});
 
 	await step('preferences', async () => {
@@ -412,7 +414,7 @@ export async function runJourney(
 	});
 
 	await step('erba', async () => {
-		await slide('erba');
+		await slide('erba', null, { behind: scrollToTop });
 		await say('erbaWalk');
 		await walkTo(WALK_STOPS.erba);
 		await say('erbaOverview');
