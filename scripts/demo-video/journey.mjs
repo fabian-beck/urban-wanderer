@@ -285,6 +285,7 @@ export async function runJourney(
 
 	await step('station', async () => {
 		await slide('station', 'stationIntro');
+		await say('walkIntro');
 		await say('motto');
 		await page.locator('#walk-motto').click();
 		await page.context().setGeolocation({
@@ -319,10 +320,9 @@ export async function runJourney(
 			element: storyParts().first(),
 			maxAspect: STORY_CUTOUT_ASPECT.station
 		});
+		await scrollAlong(modalBody(), 400);
 		await narrationDone();
 		await pause(PACING.read);
-		await scroll(modalBody(), 400);
-		await pause(PACING.medium);
 		await closeModal();
 	});
 
@@ -453,13 +453,15 @@ export async function runJourney(
 		await waitFor(() => modal().locator('h3').first().waitFor({ timeout: TIMEOUTS.ai }));
 		await narrationDone();
 		await pause(PACING.read);
-		await scroll(modalBody(), 500);
-		await pause(PACING.read);
+		await scroll(modalBody(), 500, PACING.read);
+		await pause(PACING.short);
 		await closeModal();
 	});
 
+	// The end slide stays without narration
 	await step('end', async () => {
-		await slide('end', 'outro', { keep: true });
+		await slide('end', null, { keep: true });
+		await pause(PACING.endHold);
 	});
 }
 

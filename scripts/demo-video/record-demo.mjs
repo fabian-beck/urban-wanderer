@@ -36,6 +36,7 @@ import {
 	DEMO_PREFERENCES,
 	DEVICE,
 	FAST_FORWARD,
+	LONG_PAUSE_SECONDS,
 	NARRATION_DIR,
 	NARRATION_INSTRUCTIONS,
 	NARRATION_VOICE,
@@ -227,6 +228,19 @@ try {
 			);
 			const subtitlesPath = outputPath('.srt');
 			writeFileSync(subtitlesPath, buildSubtitles(placedCues));
+			const pauses = placedCues
+				.slice(1)
+				.map((cue, index) => ({
+					after: placedCues[index].key,
+					seconds: cue.start - placedCues[index].start - placedCues[index].duration
+				}))
+				.filter(({ seconds }) => seconds > LONG_PAUSE_SECONDS);
+			console.log(
+				`Narration pauses over ${LONG_PAUSE_SECONDS} s: ${
+					pauses.map(({ after, seconds }) => `${seconds.toFixed(1)} s after ${after}`).join(', ') ||
+					'none'
+				}`
+			);
 			if (ffmpeg) {
 				const mp4Path = outputPath('.mp4');
 				const rendered = renderVideo(ffmpeg, {

@@ -37,6 +37,8 @@ export const NARRATION = {
 	preferencesMore: 'Language settings and more technical options are also available.',
 
 	stationIntro: 'Let us imagine a first-time visit to Bamberg, Germany, arriving by train.',
+	walkIntro:
+		'The app organizes a visit as a walk: it remembers the stops, the places visited, and the stories read, so that nothing is told twice.',
 	motto:
 		'Optionally, a walk can get a motto that steers the guide, for instance to tell about the people behind the places. Here, we leave it empty.',
 	walkStart: 'Starting the walk, the app determines the current location.',
@@ -66,7 +68,7 @@ export const NARRATION = {
 	detailsRating:
 		'Below, the rating is explained, with up to two stars derived from the personal preferences of the user, based on matching user interests with assigned categories of the place.',
 	detailsFacts:
-		'Below, data facts are shown for the place, some illustrated through background images or reference dates.',
+		'Below, data facts are shown for the place, some illustrated through background images.',
 	historyOpen:
 		'However, the location can also be characterized more holistically through a historic timeline that can be opened in another dialogue.',
 	historyScroll:
@@ -90,7 +92,5 @@ export const NARRATION = {
 	walkView:
 		'Finally, the walk view lists the stops on a timeline, together with the places visited and the stories read.',
 	walkRecap:
-		'An AI-generated recap connects the highlights of the walk and points to places worth a return visit.',
-	outro:
-		'Urban Wanderer offers personalized and contextualized assistance for exploring cities on foot.'
+		'An AI-generated recap connects the highlights of the walk and points to places worth a return visit.'
 };

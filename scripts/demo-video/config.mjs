@@ -54,15 +54,17 @@ export const STORY_CUTOUT_ASPECT = { station: 1.02, erba: 1.51 };
 // Pauses (ms) between and after narration cues; most of the pacing follows the narration
 export const PACING = {
 	short: 800,
-	medium: 1800,
-	read: 4000,
+	medium: 1200,
+	read: 2000,
 	// Silence before each narration cue
 	cueGap: 250,
 	// Slides fade in and out, and stay a moment after their narration
 	slideFade: 500,
-	slideHold: 1200,
+	slideHold: 800,
+	// The end slide stays this long before the video ends
+	endHold: 3000,
 	// How long the read-aloud story plays in the video
-	appAudio: 9000,
+	appAudio: 8000,
 	// Scroll animations run at this speed (px/s), but take at least scrollMinMs
 	scrollSpeed: 900,
 	scrollMinMs: 500
@@ -106,3 +108,7 @@ export const OUTPUT_DIR = 'demo-video';
 export const STILLS_DIR = 'stills';
 export const VIDEO_BASENAME = 'urban-wanderer-demo';
 export const VIDEO_FPS = 25;
+
+// Pauses between narration cues longer than this (seconds) are listed after a recording, to spot
+// pacing that drags (e.g., a stalled interaction)
+export const LONG_PAUSE_SECONDS = 3;
