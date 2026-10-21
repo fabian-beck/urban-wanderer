@@ -1,5 +1,5 @@
-// Records a demo video of the walk of the paper's application example, together with the stills
-// used as the paper's screenshots.
+// Records a narrated demo video of the walk of the paper's application example, together with the
+// stills used as the paper's screenshots.
 //
 //   npm run demo:video                   build, preview, record (replaying recorded data), edit
 //   npm run demo:video -- --record       discard the recorded data and record it anew
@@ -9,13 +9,17 @@
 //   npm run demo:video -- --no-fast-forward   keep AI waits in real time in the edited video
 //   npm run demo:video -- --out <dir>    output directory (default demo-video/)
 //
-// All external responses (Wikipedia, Wikidata, OpenStreetMap, OpenAI, images) are recorded to
-// replay/ on the first run and replayed afterwards (replay.mjs), so every recording shows the same
-// places, ratings, and generated texts; the browser clock starts at CLOCK_START, so times shown and
-// sent in prompts repeat as well. With ffmpeg, the raw WebM is edited into an MP4 in which waits for
-// AI content are sped up. The page renders at the paper's pixel density while the video is scaled
-// down; the recording saves lossless stills of the paper's views to stills/ (cut-outs also as full
-// screens in stills/screens/), and steps.json lists their times in both videos.
+// The narration cues (narration.mjs) are synthesized with OpenAI text-to-speech before recording
+// (tts.mjs, cached in narration/), and their durations pace the journey. All external responses
+// (Wikipedia, Wikidata, OpenStreetMap, OpenAI, images) are recorded to replay/ on the first run and
+// replayed afterwards (replay.mjs), so every recording shows the same places, ratings, and
+// generated texts; the browser clock starts at CLOCK_START, so times shown and sent in prompts
+// repeat as well. With ffmpeg, the raw WebM is edited into an MP4 that starts at the title slide,
+// speeds up waits for AI content, and carries the narration mixed with the app's read-aloud story
+// and the narration as subtitles (also written as .srt). The page renders at the paper's pixel
+// density while the video is scaled down; the recording saves lossless stills of the paper's views
+// to stills/ (cut-outs also as full screens in stills/screens/), and steps.json lists the times of
+// steps, cues, waits, and stills in both videos.
 //
 // Environment: DEMO_BROWSER_PATH overrides the Chromium binary, FFMPEG_PATH points to an ffmpeg
 // binary with libx264 when it is not on PATH.
@@ -26,11 +30,15 @@ import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { AI_SPEECH_MODEL } from '../../src/constants/ui-config.js';
 import {
 	CLOCK_START,
 	DEMO_PREFERENCES,
 	DEVICE,
 	FAST_FORWARD,
+	NARRATION_DIR,
+	NARRATION_INSTRUCTIONS,
+	NARRATION_VOICE,
 	OUTPUT_DIR,
 	REPLAY_DIR,
 	REPLAY_MIN_SIMILARITY,
@@ -40,10 +48,18 @@ import {
 	VIDEO_FPS,
 	VIDEO_SIZE
 } from './config.mjs';
-import { findFfmpeg, planSegments, renderVideo, toEditedTime } from './edit-video.mjs';
+import {
+	buildSubtitles,
+	findFfmpeg,
+	planSegments,
+	renderVideo,
+	toEditedTime
+} from './edit-video.mjs';
 import { runJourney } from './journey.mjs';
+import { NARRATION } from './narration.mjs';
 import { installOverlay } from './overlay.mjs';
 import { attachReplay } from './replay.mjs';
+import { synthesizeNarration, writeNarrationTrack } from './tts.mjs';
 
 const rootDir = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const args = process.argv.slice(2);
@@ -56,6 +72,7 @@ const option = (name) => {
 const outputDir = path.resolve(rootDir, option('--out') || OUTPUT_DIR);
 const stillsDir = path.join(outputDir, STILLS_DIR);
 const replayDir = path.join(outputDir, REPLAY_DIR);
+const outputPath = (extension) => path.join(outputDir, `${VIDEO_BASENAME}${extension}`);
 
 mkdirSync(outputDir, { recursive: true });
 
@@ -69,6 +86,18 @@ let previewServer;
 let baseUrl = option('--url');
 
 try {
+	console.log('\nSynthesizing narration');
+	const { clips: narration, requested } = await synthesizeNarration(NARRATION, {
+		dir: path.join(outputDir, NARRATION_DIR),
+		model: AI_SPEECH_MODEL,
+		voice: NARRATION_VOICE,
+		instructions: NARRATION_INSTRUCTIONS
+	});
+	const speech = Object.values(narration).reduce((sum, clip) => sum + clip.duration, 0);
+	console.log(
+		`  ${Object.keys(narration).length} cues (${requested} synthesized), ${speech.toFixed(0)} s of speech`
+	);
+
 	if (!baseUrl) {
 		if (!flag('--skip-build')) {
 			run('npm', ['run', 'build']);
@@ -81,9 +110,13 @@ try {
 	const browser = await chromium.launch({
 		headless: !flag('--headed'),
 		executablePath: process.env.DEMO_BROWSER_PATH || undefined,
-		// Without this flag the screencast is captured at CSS pixel size instead of being scaled down
-		// from device pixels to the video size.
-		args: [`--force-device-scale-factor=${DEVICE.deviceScaleFactor}`]
+		args: [
+			// Without this flag the screencast is captured at CSS pixel size instead of being scaled
+			// down from device pixels to the video size.
+			`--force-device-scale-factor=${DEVICE.deviceScaleFactor}`,
+			// The read-aloud story starts after its speech has loaded, when the tap no longer counts
+			'--autoplay-policy=no-user-gesture-required'
+		]
 	});
 
 	try {
@@ -95,11 +128,18 @@ try {
 			recordVideo: { dir: outputDir, size: VIDEO_SIZE }
 		});
 		const { origin } = new URL(baseUrl);
+		let lastSpeech = null;
 		const replay = await attachReplay(context, {
 			dir: replayDir,
 			record,
 			isLocal: (url) => url.startsWith(origin),
-			minSimilarity: REPLAY_MIN_SIMILARITY
+			fetchInNode: (url) => new URL(url).host === 'api.openai.com',
+			minSimilarity: REPLAY_MIN_SIMILARITY,
+			onResponse: ({ url, body }) => {
+				if (url.includes('/audio/speech')) {
+					lastSpeech = body;
+				}
+			}
 		});
 		await context.clock.install({ time: new Date(CLOCK_START) });
 		await context.addInitScript((prefs) => {
@@ -111,17 +151,25 @@ try {
 		const page = await context.newPage();
 		const recordingStart = Date.now();
 		const seconds = (time) => (time - recordingStart) / 1000;
+		let videoStart = 0;
 		const steps = [];
+		const cues = [];
 		const waits = [];
 		const stills = [];
+		const appAudio = [];
+		let recordingEnd;
 		try {
 			await runJourney(page, baseUrl, {
-				recording: true,
+				narration,
 				fastForward,
-				onStep: ({ name, caption, startedAt, endedAt }) =>
-					steps.push({ name, caption, start: seconds(startedAt), end: seconds(endedAt) }),
-				onWait: ({ startedAt, endedAt }) =>
-					waits.push({ start: seconds(startedAt), end: seconds(endedAt) }),
+				onVideoStart: () => {
+					videoStart = seconds(Date.now());
+				},
+				onStep: ({ name, startedAt, endedAt }) =>
+					steps.push({ name, start: seconds(startedAt), end: seconds(endedAt) }),
+				onCue: ({ key, startedAt }) => cues.push({ key, time: seconds(startedAt) }),
+				onWait: ({ startedAt, endedAt, targetSeconds }) =>
+					waits.push({ start: seconds(startedAt), end: seconds(endedAt), targetSeconds }),
 				onStill: async ({ name, clip }) => {
 					const time = seconds(Date.now());
 					await page.screenshot({ path: path.join(stillsDir, `${name}.png`), clip });
@@ -129,9 +177,15 @@ try {
 						await page.screenshot({ path: path.join(stillsDir, 'screens', `${name}.png`) });
 					}
 					stills.push({ name, time, clip });
+				},
+				onAppAudio: ({ startedAt, endedAt }) => {
+					const file = path.join(outputDir, `app-audio-${appAudio.length + 1}.mp3`);
+					writeFileSync(file, lastSpeech);
+					appAudio.push({ file, start: seconds(startedAt), end: seconds(endedAt) });
 				}
 			});
 		} finally {
+			recordingEnd = seconds(Date.now());
 			const video = page.video();
 			await replay.save();
 			await context.close();
@@ -139,21 +193,51 @@ try {
 			console.log(
 				`\nData: ${replayed} responses replayed, ${similar} by similar request, ${recorded} recorded`
 			);
-			const webmPath = path.join(outputDir, `${VIDEO_BASENAME}.webm`);
+			const webmPath = outputPath('.webm');
 			renameSync(await video.path(), webmPath);
 			console.log(`Recording: ${path.relative(rootDir, webmPath)}`);
+
 			const segments = fastForward
-				? planSegments(waits, FAST_FORWARD)
-				: [{ start: 0, end: null, speed: 1 }];
+				? planSegments(waits, FAST_FORWARD, videoStart)
+				: [{ start: videoStart, end: null, speed: 1 }];
+			const edited = (time) => toEditedTime(segments, time);
+			const placedCues = cues.map(({ key, time }) => ({
+				key,
+				file: narration[key].file,
+				text: NARRATION[key],
+				start: edited(time),
+				duration: narration[key].duration
+			}));
+			const narrationPath = outputPath('-narration.wav');
+			writeNarrationTrack(
+				narrationPath,
+				placedCues.map(({ file, start }) => ({ file, time: start })),
+				edited(recordingEnd)
+			);
+			const subtitlesPath = outputPath('.srt');
+			writeFileSync(subtitlesPath, buildSubtitles(placedCues));
 			if (ffmpeg) {
-				const mp4Path = path.join(outputDir, `${VIDEO_BASENAME}.mp4`);
-				if (renderVideo(ffmpeg, webmPath, mp4Path, segments, VIDEO_FPS)) {
-					console.log(`Edited video: ${path.relative(rootDir, mp4Path)}`);
-				} else {
-					console.log('ffmpeg failed; the WebM recording is still available');
-				}
+				const mp4Path = outputPath('.mp4');
+				const rendered = renderVideo(ffmpeg, {
+					input: webmPath,
+					output: mp4Path,
+					segments,
+					fps: VIDEO_FPS,
+					narration: narrationPath,
+					appAudio: appAudio.map(({ file, start, end }) => ({
+						file,
+						time: edited(start),
+						duration: end - start
+					})),
+					subtitles: subtitlesPath
+				});
+				console.log(
+					rendered
+						? `Edited video: ${path.relative(rootDir, mp4Path)}`
+						: 'ffmpeg failed; the WebM recording is still available'
+				);
 			}
-			writeTimeline(steps, waits, stills, ffmpeg ? segments : null);
+			writeTimeline({ steps, cues, waits, stills }, edited);
 			console.log(`Stills: ${stills.length} in ${path.relative(rootDir, stillsDir)}`);
 		}
 	} finally {
@@ -168,31 +252,33 @@ try {
 	}
 }
 
-// Writes steps.json with the times of each step, wait, and still in the recording and, if an
-// edited video was rendered, in that video; still clips are in CSS pixels of the viewport
-function writeTimeline(steps, waits, stills, segments) {
+// Writes steps.json with the times of each step, narration cue, wait, and still in the recording
+// and in the edited video; still clips are in CSS pixels of the viewport
+function writeTimeline({ steps, cues, waits, stills }, edited) {
 	const round = (time) => Math.round(time * 100) / 100;
-	const videoTime = (time) => (segments ? round(toEditedTime(segments, time)) : round(time));
 	const withVideoTimes = (entry) => ({
 		...entry,
 		start: round(entry.start),
 		end: round(entry.end),
-		videoStart: videoTime(entry.start),
-		videoEnd: videoTime(entry.end)
+		videoStart: round(edited(entry.start)),
+		videoEnd: round(edited(entry.end))
 	});
 	const withVideoTime = (entry) => ({
 		...entry,
-		file: path.posix.join(STILLS_DIR, `${entry.name}.png`),
 		time: round(entry.time),
-		videoTime: videoTime(entry.time)
+		videoTime: round(edited(entry.time))
 	});
 	writeFileSync(
 		path.join(outputDir, 'steps.json'),
 		JSON.stringify(
 			{
 				steps: steps.map(withVideoTimes),
+				cues: cues.map(withVideoTime),
 				waits: waits.map(withVideoTimes),
-				stills: stills.map(withVideoTime)
+				stills: stills.map((still) => ({
+					...withVideoTime(still),
+					file: path.posix.join(STILLS_DIR, `${still.name}.png`)
+				}))
 			},
 			null,
 			'\t'

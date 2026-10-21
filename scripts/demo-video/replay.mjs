@@ -4,6 +4,8 @@ import path from 'node:path';
 
 const INDEX_FILE = 'index.json';
 const RESPONSES_DIR = 'responses';
+// Speech for a long story streams for more than Playwright's default 30 s
+const NODE_FETCH_TIMEOUT_MS = 300_000;
 // Not replayed: they describe the original transfer, not the (decoded) body that is stored
 const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding']);
 
@@ -24,12 +26,14 @@ const similarity = (a, b) => {
 // method, URL, and body; a request whose body differs (e.g., by a time in a prompt) falls back to
 // the most similar recorded request to the same URL that was not replayed yet, if at least
 // `minSimilarity` of their body tokens agree. Unmatched requests are made by the browser itself
-// (requests from Node would be throttled by Wikimedia) and their successful responses are added to
-// the recording. Replayed responses keep their recorded latency, so waits look as recorded.
-// `onResponse` receives every successful external response ({ url, contentType, body }).
+// (requests from Node would be throttled by Wikimedia), except those for which `fetchInNode` holds
+// (streamed responses, such as OpenAI speech, whose body the browser-side capture misses); their
+// successful, non-empty responses are added to the recording. Replayed responses keep their
+// recorded latency, so waits look as recorded. `onResponse` receives every successful external
+// response ({ url, contentType, body }).
 export async function attachReplay(
 	context,
-	{ dir, record = false, isLocal, minSimilarity, onResponse = () => {} }
+	{ dir, record = false, isLocal, fetchInNode = () => false, minSimilarity, onResponse = () => {} }
 ) {
 	if (record) {
 		rmSync(dir, { recursive: true, force: true });
@@ -79,34 +83,27 @@ export async function attachReplay(
 		return best;
 	};
 
-	// Stores the final response of a request that went to the network (after redirects) under the
-	// original request
-	const recordResponse = async (request) => {
-		let original = request;
-		while (original.redirectedFrom()) {
-			original = original.redirectedFrom();
-		}
-		const startedAt = live.get(original);
-		live.delete(original);
-		const response = await request.response();
-		if (!response || response.status() < 200 || response.status() >= 300) {
+	const addEntry = (request, { status, headers, body, durationMs }) => {
+		if (status < 200 || status >= 300 || body.length === 0) {
+			console.log(
+				`    replay: not recorded (status ${status}, ${body.length} bytes) ${request.url()}`
+			);
 			return;
 		}
-		const body = await response.body();
 		const responseFile = hash(body);
 		writeFileSync(path.join(dir, RESPONSES_DIR, responseFile), body);
-		const requestBody = original.postDataBuffer();
+		const requestBody = request.postDataBuffer();
 		const entry = {
-			method: original.method(),
-			url: original.url(),
+			method: request.method(),
+			url: request.url(),
 			bodyHash: requestBody ? hash(requestBody) : '',
 			...(requestBody && { requestBody: requestBody.toString('utf8') }),
-			status: response.status(),
+			status,
 			headers: Object.fromEntries(
-				Object.entries(response.headers()).filter(([name]) => !DROPPED_HEADERS.has(name))
+				Object.entries(headers).filter(([name]) => !DROPPED_HEADERS.has(name))
 			),
 			responseFile,
-			durationMs: Date.now() - startedAt
+			durationMs
 		};
 		entries.push(entry);
 		replayed.add(entry);
@@ -115,7 +112,33 @@ export async function attachReplay(
 		if (!record) {
 			console.log(`    replay: recorded new ${entry.method} ${entry.url.slice(0, 100)}`);
 		}
-		onResponse({ url: entry.url, contentType: entry.headers['content-type'] || '', body });
+	};
+
+	// Stores the final response of a request the browser made (after redirects) under the original
+	// request
+	const recordResponse = async (request) => {
+		let original = request;
+		while (original.redirectedFrom()) {
+			original = original.redirectedFrom();
+		}
+		const startedAt = live.get(original);
+		live.delete(original);
+		const response = await request.response();
+		if (!response) {
+			return;
+		}
+		const body = await response.body();
+		addEntry(original, {
+			status: response.status(),
+			headers: response.headers(),
+			body,
+			durationMs: Date.now() - startedAt
+		});
+		onResponse({
+			url: original.url(),
+			contentType: response.headers()['content-type'] || '',
+			body
+		});
 	};
 
 	context.on('requestfinished', (request) => {
@@ -142,6 +165,36 @@ export async function attachReplay(
 		}
 		const body = request.postDataBuffer();
 		const entry = findEntry(request.method(), url, body ? hash(body) : '', body?.toString('utf8'));
+		if (!entry && fetchInNode(url)) {
+			const startedAt = Date.now();
+			let response;
+			let responseBody;
+			try {
+				response = await route.fetch({ timeout: NODE_FETCH_TIMEOUT_MS });
+				responseBody = await response.body();
+			} catch (error) {
+				// Only the first line: Playwright's call log includes the request headers (API key)
+				console.log(
+					`    replay: Node fetch failed, browser fetches ${url}: ${error.message.split('\n')[0]}`
+				);
+				live.set(request, Date.now());
+				await route.continue();
+				return;
+			}
+			addEntry(request, {
+				status: response.status(),
+				headers: response.headers(),
+				body: responseBody,
+				durationMs: Date.now() - startedAt
+			});
+			onResponse({
+				url,
+				contentType: response.headers()['content-type'] || '',
+				body: responseBody
+			});
+			await route.fulfill({ response, body: responseBody });
+			return;
+		}
 		if (!entry) {
 			live.set(request, Date.now());
 			await route.continue();

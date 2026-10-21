@@ -51,24 +51,33 @@ export const VIDEO_SIZE = { width: 800, height: 1800 };
 // stills fit the existing frames
 export const STORY_CUTOUT_ASPECT = { station: 1.02, erba: 1.51 };
 
-// Pauses (ms) used only during the recording pass; the warm-up pass skips them.
+// Pauses (ms) between and after narration cues; most of the pacing follows the narration
 export const PACING = {
 	short: 800,
 	medium: 1800,
-	long: 3500,
-	read: 6000,
-	caption: 3500,
+	read: 4000,
+	// Silence before each narration cue
+	cueGap: 250,
+	// Slides fade in and out, and stay a moment after their narration
+	slideFade: 500,
+	slideHold: 1200,
+	// How long the read-aloud story plays in the video
+	appAudio: 9000,
 	// Scroll animations run at this speed (px/s), but take at least scrollMinMs
 	scrollSpeed: 900,
 	scrollMinMs: 500
 };
 
-// Step captions shown at the top of the screen during the recording.
-export const SHOW_CAPTIONS = true;
+// Narration (narration.mjs), spoken with the app's text-to-speech model in another voice than the
+// app's guide; clips are cached in NARRATION_DIR
+export const NARRATION_VOICE = 'marin';
+export const NARRATION_INSTRUCTIONS =
+	'You narrate a short demo video of a research prototype. Speak calmly, clearly, and in a friendly tone, at a steady pace.';
+export const NARRATION_DIR = 'narration';
 
 // Waits for AI and network content play the first `afterMs` in real time; the rest is sped up by at
-// least `minSpeed` and to at most `maxSeconds` in the edited video (requires ffmpeg). A badge marks
-// the sped-up part.
+// least `minSpeed`, to the end of the running narration cue or else to at most `maxSeconds`, in the
+// edited video (requires ffmpeg). A badge marks the sped-up part.
 export const FAST_FORWARD = {
 	afterMs: 1500,
 	minSpeed: 4,
