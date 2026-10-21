@@ -24,3 +24,6 @@ src/.openai_api_key.js
 # Headless evaluation runs
 .eval-cache
 eval-results
+
+# Demo video recordings
+/demo-video

@@ -109,6 +109,9 @@ npm run eval:judge -- [--run <dir>] [--unit segment|chain] [--with-context] [--r
 
 # Paper supplement
 node scripts/supplement-materials.mjs [--study-run <dir> --rename key=label ...]   # regenerate paper/supplement/generated/
+
+# Demo video (needs `npx playwright install chromium` once; ffmpeg with libx264 for the edited MP4)
+npm run demo:video -- [--skip-build] [--skip-warmup] [--url <base>] [--headed] [--no-fast-forward] [--out <dir>]
 ```
 
 ## Headless Evaluation
@@ -122,6 +125,10 @@ node scripts/supplement-materials.mjs [--study-run <dir> --rename key=label ...]
 ## Paper Supplement
 
 `paper/supplement/supplement.tex` (LuaLaTeX: `latexmk -lualatex supplement.tex`) documents the pipeline parameters and all AI prompts. Its numbers, tables, and prompt texts come from `scripts/supplement-materials.mjs`, which calls the app's prompt builders with placeholder inputs («...») behind a stubbed `fetch` (no API requests), captures the requests, replaces instance values such as the map excerpt or walk context with placeholders, and writes prompt texts, JSON schemas, a task overview, and constants as LaTeX macros (`\c<ConstantName>`) to `paper/supplement/generated/`. It also writes the personalization study's varied factors, judge input, and judge questions, and with `--study-run <judged run dir>` (same `--rename` options as the table script) the run's macros (`\cStudy...`), positions, sampled configurations, and additional results to `generated/study/`, which is left untouched without the option. Rerun it after changing prompts or constants. `buildFactsProperties(cls)` in `ai-facts.js` builds the facts schema for both the app and the script.
+
+## Demo Video
+
+`npm run demo:video` (`scripts/demo-video/record-demo.mjs`) builds and serves the app (`vite preview`), then drives a scripted walk in Playwright Chromium with an emulated phone and GPS (`context.setGeolocation` per stop, "Update location" button between stops). A warm-up pass without pauses fills the localStorage caches; its storage state is saved to `demo-video/storage-state.json` without `preferences` and the walk (`WALK_STORAGE_KEY`), so the recording pass starts a fresh walk instead of hitting the resume dialog and its stories do not see the warm-up stories. `journey.mjs` holds the steps (each with a caption; stories and recap are recording-only) and wraps every wait for AI content in `waitFor`, which records the interval and shows the in-page fast-forward badge from `overlay.mjs` (also tap ripples and captions). `edit-video.mjs` turns the waits into real-time and sped-up segments (`FAST_FORWARD` in `config.mjs`) and renders the MP4 with an ffmpeg `trim`/`setpts`/`concat` graph; Playwright's bundled ffmpeg lacks these filters and libx264, so editing needs a full ffmpeg (`FFMPEG_PATH`), otherwise only the raw WebM is written. Selectors rely on accessible names (`aria-label` on the icon-only story, history, update-location, and read-aloud buttons) and the test ids `location-comment` and `place-summary`; keep them when changing these components.
 
 ## Mobile Deployment
 

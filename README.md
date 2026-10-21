@@ -43,6 +43,19 @@ You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
 
+## Recording a Demo Video
+
+A scripted walk through the app can be recorded as a video with Playwright:
+
+```bash
+npx playwright install chromium   # once
+npm run demo:video
+```
+
+The script builds the app, serves it with `vite preview`, and emulates a phone whose GPS position moves between two stops in Bamberg. A first pass runs the walk without pauses to fill the place analysis and geocoding caches; the second pass records a paced walk with step captions: preferences, starting a walk with a motto, the comment and place lists, place details, a story with a place preview and "Tell me more", the second stop with the earlier stop on the map and visited places, the continued story, and the walk view with its AI recap. The raw recording lands in `demo-video/` as WebM. If `ffmpeg` with libx264 is on the PATH (or set via `FFMPEG_PATH`), an edited MP4 is rendered in which waits for AI content are sped up, marked with a "Fast-forward" badge. `steps.json` lists the start and end of each step and wait in the recording and in the edited video.
+
+Options: `--skip-build` reuses the existing build, `--skip-warmup` reuses the cached storage state of a previous run, `--url <base>` drives an already running server, `--headed` shows the browser, `--no-fast-forward` keeps the waits in real time, and `--out <dir>` changes the output directory. Stops, motto, seeded preferences, device size, pacing, and fast-forward limits are defined in `scripts/demo-video/config.mjs`; the journey steps live in `scripts/demo-video/journey.mjs`.
+
 # Run as Android App (supported by Capacitor)
 
 ## Build a Debug APK
