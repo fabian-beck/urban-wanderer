@@ -33,6 +33,16 @@ function getPlaceNameVariants(place) {
 	return [...variants];
 }
 
+// Plain text of inline markdown: links keep their label, emphasis and code markers are removed
+export function stripInlineMarkdown(text) {
+	return String(text || '')
+		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/(\*\*|__)(.+?)\1/g, '$2')
+		.replace(/(\*|_)(?=\S)(.+?)(?<=\S)\1(?![\p{L}\p{N}])/gu, '$2')
+		.replace(/`([^`]*)`/g, '$1')
+		.replace(/\*\*|__/g, '');
+}
+
 const escapeRegExp = (text) => text.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 
 // Regex for one word of a name: a short inflection suffix may be appended, and in longer

@@ -18,6 +18,7 @@ import { LABELS } from '../constants/ui-config.js';
 import { haversineDistance } from './osm.js';
 import { getPlaceIdentity } from './place-identity.js';
 import { getFamiliarity } from './personalization.js';
+import { stripInlineMarkdown } from './text.js';
 
 export function createWalk(motto = '') {
 	return {
@@ -307,9 +308,9 @@ export function getStoryHeadline(text) {
 	const trimmed = String(text || '').trim();
 	const boldHeadline = trimmed.match(/^\*\*(.+?)\*\*/);
 	if (boldHeadline) {
-		return boldHeadline[1].trim();
+		return stripInlineMarkdown(boldHeadline[1]).trim();
 	}
-	const firstSentence = trimmed.split(/(?<=[.!?])\s/)[0] || '';
+	const firstSentence = stripInlineMarkdown(trimmed).split(/(?<=[.!?])\s/)[0] || '';
 	return firstSentence.length > 80 ? `${firstSentence.slice(0, 77)}...` : firstSentence;
 }
 
