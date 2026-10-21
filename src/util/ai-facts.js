@@ -1,7 +1,12 @@
 import { openai, getAiModel } from './ai-core.js';
 import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT, SUMMARY_LENGTH } from '../constants/ui-config.js';
-import { INSIGHTS_CACHE_KEY, FACTS_CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
+import {
+	INSIGHTS_CACHE_KEY,
+	FACTS_CACHE_KEY,
+	FACTS_CACHE_VERSION,
+	CACHE_TTL
+} from '../constants/cache-config.js';
 import { CLASSES, PROPERTIES } from '../constants/place-classes.js';
 import { normalizeFacts } from './fact-values.js';
 import { createLogger } from './logger.js';
@@ -66,7 +71,7 @@ function createInsightsCacheKey(article, preferences) {
 function createFactsCacheKey(place, factsProperties, preferences) {
 	// Create a cache key based on place title, properties schema, and language
 	const propertiesHash = Object.keys(factsProperties).sort().join(',');
-	return `${place.title}|${propertiesHash}|${preferences.lang}`;
+	return `v${FACTS_CACHE_VERSION}:${place.title}|${propertiesHash}|${preferences.lang}`;
 }
 
 let insightsCache = loadInsightsCache();

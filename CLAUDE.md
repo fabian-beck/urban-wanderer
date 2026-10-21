@@ -232,7 +232,7 @@ The application processes location data through 9 distinct stages:
 
 - **OSM places & maps**: 15-minute localStorage cache with max 50 entries
 - **AI analysis results**: Persistent localStorage with TTL-based cleanup, keyed by stable place identity (Wikidata ID → Wikipedia page ID → title plus rounded coordinates) and `ANALYSIS_CACHE_VERSION`
-- **AI facts & insights**: Content-based cache keys for cross-session reuse
+- **AI facts & insights**: Content-based cache keys for cross-session reuse; facts keys include `FACTS_CACHE_VERSION` (bump it with facts prompt or schema changes)
 - **User preferences**: Persistent localStorage
 
 **Progressive Loading:**
