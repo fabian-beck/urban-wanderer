@@ -405,51 +405,57 @@
 				<Spinner size="6" />
 			</div>
 		{:else if facts}
-			<div class="grid w-full auto-rows-min grid-cols-4 gap-3">
+			<div class="grid w-full auto-rows-min grid-cols-4 gap-3" data-testid="place-facts">
 				{#each optimizedFacts as fact (fact.key)}
-					{#if fact.key === 'height'}
-						<HeightFact
-							value={fact.value}
-							widthClass={`col-span-${fact.widthSpan}`}
-							containerWidth={debouncedWidth}
-						/>
-					{:else if fact.key === 'architecture_style'}
-						<ArchitectureStyleFact
-							value={fact.value}
-							widthClass={`col-span-${fact.widthSpan}`}
-							containerWidth={debouncedWidth}
-						/>
-					{:else if fact.key === 'building_type'}
-						<BuildingTypeFact
-							value={fact.value}
-							widthClass={`col-span-${fact.widthSpan}`}
-							containerWidth={debouncedWidth}
-						/>
-					{:else if YEAR_PROPERTIES.includes(fact.key)}
-						<YearFact
-							value={fact.value}
-							propertyKey={fact.key}
-							widthClass={`col-span-${fact.widthSpan}`}
-							containerWidth={debouncedWidth}
-							{place}
-						/>
-					{:else if PEOPLE_COUNT_PROPERTIES.includes(fact.key)}
-						<NumberOfPeopleFact
-							value={fact.value}
-							propertyKey={fact.key}
-							placeTitle={place.title}
-							widthClass={`col-span-${fact.widthSpan}`}
-							containerWidth={debouncedWidth}
-						/>
-					{:else if fact.key === 'material'}
-						<MaterialFact
-							value={fact.value}
-							widthClass={`col-span-${fact.widthSpan}`}
-							containerWidth={debouncedWidth}
-						/>
-					{:else}
-						<Fact label={fact.label} value={fact.value} widthClass={`col-span-${fact.widthSpan}`} />
-					{/if}
+					<div class="contents" data-fact-key={fact.key}>
+						{#if fact.key === 'height'}
+							<HeightFact
+								value={fact.value}
+								widthClass={`col-span-${fact.widthSpan}`}
+								containerWidth={debouncedWidth}
+							/>
+						{:else if fact.key === 'architecture_style'}
+							<ArchitectureStyleFact
+								value={fact.value}
+								widthClass={`col-span-${fact.widthSpan}`}
+								containerWidth={debouncedWidth}
+							/>
+						{:else if fact.key === 'building_type'}
+							<BuildingTypeFact
+								value={fact.value}
+								widthClass={`col-span-${fact.widthSpan}`}
+								containerWidth={debouncedWidth}
+							/>
+						{:else if YEAR_PROPERTIES.includes(fact.key)}
+							<YearFact
+								value={fact.value}
+								propertyKey={fact.key}
+								widthClass={`col-span-${fact.widthSpan}`}
+								containerWidth={debouncedWidth}
+								{place}
+							/>
+						{:else if PEOPLE_COUNT_PROPERTIES.includes(fact.key)}
+							<NumberOfPeopleFact
+								value={fact.value}
+								propertyKey={fact.key}
+								placeTitle={place.title}
+								widthClass={`col-span-${fact.widthSpan}`}
+								containerWidth={debouncedWidth}
+							/>
+						{:else if fact.key === 'material'}
+							<MaterialFact
+								value={fact.value}
+								widthClass={`col-span-${fact.widthSpan}`}
+								containerWidth={debouncedWidth}
+							/>
+						{:else}
+							<Fact
+								label={fact.label}
+								value={fact.value}
+								widthClass={`col-span-${fact.widthSpan}`}
+							/>
+						{/if}
+					</div>
 				{/each}
 			</div>
 		{/if}

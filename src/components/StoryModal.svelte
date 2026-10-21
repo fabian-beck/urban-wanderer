@@ -146,7 +146,9 @@
 			{/if}
 			{#if $storyTexts.length > 0}
 				{#each $storyTexts as storyText, index (index)}
-					<PlaceMentions text={storyText} onSelect={showPlacePopup} paragraphClass="mt-2" />
+					<div data-testid="story-part">
+						<PlaceMentions text={storyText} onSelect={showPlacePopup} paragraphClass="mt-2" />
+					</div>
 					<div class="mb-2 flex justify-end">
 						<Button
 							on:click={() => playStory(storyText)}

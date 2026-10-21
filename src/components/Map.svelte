@@ -406,6 +406,7 @@
 </div>
 <div>
 	<svg
+		data-testid="map"
 		width="100%"
 		height="100%"
 		viewBox="0 0 {SVG_SIZE} {SVG_SIZE}"
