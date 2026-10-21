@@ -47,17 +47,20 @@
 		: null;
 	let summary = null;
 	let placeFactListComponent;
-	let imageElement;
 	let isPortrait = false;
+	let imageLoaded = false;
 	let summaryExpanded = false;
 	let imageLoading = false;
 	let summaryLoading = false;
 
-	// Function to determine if image is portrait
-	const onImageLoad = () => {
-		if (imageElement) {
-			isPortrait = imageElement.naturalHeight > imageElement.naturalWidth;
-		}
+	// Portrait images get a square frame; the thumbnail tells before the full image has loaded
+	const updateOrientation = (event) => {
+		isPortrait = event.currentTarget.naturalHeight > event.currentTarget.naturalWidth;
+	};
+
+	const onImageLoad = (event) => {
+		updateOrientation(event);
+		imageLoaded = true;
 	};
 
 	// Get platform name from source URL
@@ -138,16 +141,34 @@
 		<span class="text-xl"><PlaceTitle {place} /></span>
 	</svelte:fragment>
 	<div class="flex min-h-screen flex-col">
-		{#if $reactivePlace.image}
-			<div class="relative mb-2 overflow-visible">
-				<img
-					bind:this={imageElement}
-					src={$reactivePlace.image}
-					alt={$reactivePlace.title}
-					on:load={onImageLoad}
-					class="w-full {isPortrait ? 'aspect-square object-cover' : 'h-64 object-cover'}"
-				/>
-				{#if $reactivePlace.imageSource || $reactivePlace.imageLicense}
+		{#if $reactivePlace.image || $reactivePlace.imageThumb}
+			<!-- The frame is reserved from the start and shows the blurred list thumbnail, over which the
+			full image fades in once loaded, so the content below does not jump -->
+			<div
+				class="relative mb-2 w-full overflow-hidden bg-gray-100 {isPortrait
+					? 'aspect-square'
+					: 'h-64'}"
+			>
+				{#if $reactivePlace.imageThumb}
+					<img
+						src={$reactivePlace.imageThumb}
+						alt=""
+						aria-hidden="true"
+						on:load={updateOrientation}
+						class="absolute inset-0 h-full w-full scale-110 object-cover blur-md"
+					/>
+				{/if}
+				{#if $reactivePlace.image}
+					<img
+						src={$reactivePlace.image}
+						alt={$reactivePlace.title}
+						on:load={onImageLoad}
+						class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 {imageLoaded
+							? 'opacity-100'
+							: 'opacity-0'}"
+					/>
+				{/if}
+				{#if imageLoaded && ($reactivePlace.imageSource || $reactivePlace.imageLicense)}
 					<div
 						class="absolute bottom-0 right-2 z-10 flex items-center gap-0.5 rounded-tl bg-black/70 px-0.5 py-[1px] text-[8px] leading-tight text-white hover:bg-black/90"
 					>
