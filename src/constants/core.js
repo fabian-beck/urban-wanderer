@@ -51,6 +51,8 @@ export const PLACE_MENTION_MAX_SUFFIX_LETTERS = 2;
 export const PLACE_MENTION_INFLECTED_WORD_MIN_LENGTH = 6;
 export const PLACE_MENTION_LEADING_ARTICLES = ['the', 'der', 'die', 'das', 'le', 'la', 'les', 'el'];
 export const PLACE_MENTION_HREF_PREFIX = '#place:';
+// a bold span may name a place by the trailing words of its name ("**ERBA Library**")
+export const PLACE_MENTION_BOLD_SUFFIX_MIN_WORDS = 2;
 export const PLACE_POPUP_TEXT_LENGTH = 220;
 
 // OSM search radius for Overpass API queries

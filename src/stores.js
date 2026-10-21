@@ -1192,7 +1192,7 @@ export async function preloadNextStoryPart(currentStories) {
 	}
 }
 
-// heading
+// compass heading of the device (0° = north, clockwise)
 export const heading = writable(0);
 
 // place details visible

@@ -72,11 +72,11 @@
 		if (lat && lon) {
 			urlCoordinates = { latitude: lat, longitude: lon };
 		}
-		// set heading listener for device orientation
+		// alpha grows counterclockwise, the heading store holds the clockwise compass heading
 		window.addEventListener(
 			'deviceorientationabsolute',
 			(event) => {
-				heading.set(event.alpha);
+				heading.set(event.alpha === null ? null : (360 - event.alpha) % 360);
 			},
 			true
 		);

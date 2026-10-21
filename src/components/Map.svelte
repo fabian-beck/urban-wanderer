@@ -645,7 +645,7 @@
 						x2="0"
 						y2="-20"
 						class="marker-line black stroke-current"
-						transform="rotate(-{$heading})"
+						transform="rotate({$heading ?? 0})"
 						stroke-width="4"
 					/>
 					<circle
