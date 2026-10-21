@@ -371,6 +371,18 @@ export const PROPERTIES = {
 	}
 };
 
+export const YEAR_PROPERTIES = ['constructed', 'created', 'discovered', 'established'];
+
+// String properties holding a number with a unit
+export const MEASUREMENT_PROPERTIES = [
+	'area',
+	'clearance_height',
+	'height',
+	'length',
+	'yearly_revenue',
+	'yearly_tonnage'
+];
+
 export const PROPERTY_TRANSLATIONS = {
 	area: {
 		en: 'Area',

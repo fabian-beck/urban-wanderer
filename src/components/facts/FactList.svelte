@@ -9,7 +9,11 @@
 	import { buildFactsProperties, extractPlaceFacts } from '../../util/ai-facts.js';
 	import { coordinates } from '../../stores.js';
 	import Spinner from 'flowbite-svelte/Spinner.svelte';
-	import { PROPERTIES, PROPERTY_TRANSLATIONS } from '../../constants/place-classes.js';
+	import {
+		PROPERTIES,
+		PROPERTY_TRANSLATIONS,
+		YEAR_PROPERTIES
+	} from '../../constants/place-classes.js';
 	import { HISTORICAL_EVENTS } from '../../constants/reference-data.js';
 	import { preferences } from '../../stores.js';
 	import { get } from 'svelte/store';
@@ -22,9 +26,6 @@
 	let containerElement;
 	let containerWidth = 400; // Default baseline width
 	let resizeTimeout;
-
-	// Define which properties represent years
-	const YEAR_PROPERTIES = ['constructed', 'created', 'discovered', 'established'];
 
 	// Define which properties represent people counts
 	const PEOPLE_COUNT_PROPERTIES = [

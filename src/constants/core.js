@@ -156,3 +156,26 @@ export const WALK_RECAP_MISSED_PLACES_LIMIT = 12;
 export const WALK_MOTTO_MAX_LENGTH = 300;
 // Live position polling while the map is shown (independent of recorded stops)
 export const LIVE_POSITION_INTERVAL_MS = 60 * 1000;
+
+// Fact values that only consist of these placeholders (plus punctuation) count as missing
+export const FACT_NULL_PHRASES = [
+	'null',
+	'nil',
+	'none',
+	'nan',
+	'undefined',
+	'unknown',
+	'n/a',
+	'not available',
+	'not applicable',
+	'k. a.',
+	'k.a.',
+	'kein',
+	'keine',
+	'keine angabe',
+	'unbekannt',
+	'nicht bekannt',
+	'nicht verfügbar'
+];
+// Counts made of one repeated digit with at least this many digits (e.g., 111111) count as missing
+export const FACT_PLACEHOLDER_REPEATED_DIGITS_MIN = 4;
