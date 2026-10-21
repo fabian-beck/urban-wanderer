@@ -13,7 +13,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const rootDir = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const constants = await import(pathToFileURL(path.join(rootDir, 'src/constants/ui-config.js')));
-const { AI_MODELS, FAMILIARITY, GUIDE_CHARACTERS, LABELS, LANGUAGES } = constants;
+const { LABELS } = constants;
+const { DEFAULT_VALUE_SETS } = await import(
+	pathToFileURL(path.join(rootDir, 'scripts/story-personalization-common.mjs'))
+);
 
 const ALL_LABELS = LABELS.map((label) => label.value);
 const EVAL_USER_AGENT =
@@ -30,14 +33,6 @@ const OPENAI_HOST = 'api.openai.com';
 const STORY_ONLY_KEYS = new Set(['guideCharacter', 'familiarity', 'aiModelAdvanced']);
 // Keys whose variation triggers new upstream AI calls (grouping, analysis, insights).
 const UPSTREAM_AI_KEYS = ['lang', 'sourceLanguages', 'radius'];
-
-const DEFAULT_VALUE_SETS = {
-	guideCharacter: GUIDE_CHARACTERS.map((character) => character.value),
-	familiarity: FAMILIARITY.map((option) => option.value),
-	lang: LANGUAGES.map((option) => option.value),
-	labels: ['ALL', 'NONE', ...ALL_LABELS],
-	aiModelAdvanced: AI_MODELS.ADVANCED.map((option) => option.value)
-};
 
 const HELP = `
 Usage: node scripts/story-personalization-eval.mjs --lat <lat> --lon <lon> [options]

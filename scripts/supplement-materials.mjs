@@ -4,21 +4,36 @@
 //   placeholder inputs («...») and a stubbed fetch, so no request leaves the machine
 // - the JSON schemas and an overview of the tasks (model tier, reasoning effort, output)
 // - app constants as LaTeX macros and tables (place classes, guide characters, familiarity)
+// - the personalization study: varied factors, judge input and questions, and with
+//   --study-run the sampled configurations and results of a judged evaluation run
+//   (study/, kept as is without --study-run)
 //
-//   node scripts/supplement-materials.mjs [--out <dir>]
+//   node scripts/supplement-materials.mjs [--out <dir>] [--study-run <dir> [--rename <key=label> ...]]
 
 import { execSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const rootDir = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const outArgIndex = process.argv.indexOf('--out');
-const outDir = path.resolve(
-	outArgIndex > -1
-		? process.argv[outArgIndex + 1]
-		: path.join(rootDir, 'paper/supplement/generated')
-);
+const args = { out: path.join(rootDir, 'paper/supplement/generated'), studyRun: null, rename: {} };
+for (let i = 2; i < process.argv.length; i++) {
+	const arg = process.argv[i];
+	const value = process.argv[++i];
+	if (value === undefined) throw new Error(`Missing value for ${arg}`);
+	if (arg === '--out') {
+		args.out = value;
+	} else if (arg === '--study-run') {
+		args.studyRun = path.resolve(value);
+	} else if (arg === '--rename') {
+		const index = value.indexOf('=');
+		if (index <= 0) throw new Error(`--rename expects key=label, got "${value}"`);
+		args.rename[value.slice(0, index)] = value.slice(index + 1);
+	} else {
+		throw new Error(`Unknown argument: ${arg}`);
+	}
+}
+const outDir = path.resolve(args.out);
 
 const importApp = (file) => import(pathToFileURL(path.join(rootDir, file)));
 
@@ -95,6 +110,7 @@ const { generateStory, generateWalkRecap } = await importApp('src/util/ai-story.
 const walkUtil = await importApp('src/util/walk.js');
 const { formatMapExcerpt, formatRelativePosition } = await importApp('src/util/map-excerpt.js');
 const personalization = await importApp('src/util/personalization.js');
+const study = await importApp('scripts/story-personalization-common.mjs');
 
 // ---------------------------------------------------------------------------
 // Placeholder inputs
@@ -596,6 +612,209 @@ function messagesOf(task) {
 }
 
 // ---------------------------------------------------------------------------
+// Personalization study
+
+const STUDY_FACTORS = ['guideCharacter', 'familiarity', 'labels', 'lang', 'aiModelAdvanced'];
+const STUDY_FACTOR_NAMES = {
+	guideCharacter: 'Guide character',
+	familiarity: 'Familiarity',
+	labels: 'Interests',
+	lang: 'Output language',
+	aiModelAdvanced: 'Story model',
+	location: 'Position'
+};
+const ALL_LABELS = uiConfig.LABELS.map((label) => label.value);
+
+const withoutQualifier = (text) => text.replace(/\s*\(.*\)$/, '');
+const labelName = (value) =>
+	uiConfig.LABELS.find((label) => label.value === value).name.replace(/^\S+\s+/, '');
+const optionName = (options, value) => options.find((option) => option.value === value)?.name;
+
+function labelsOf(value) {
+	if (Array.isArray(value)) return value;
+	if (value === 'ALL') return ALL_LABELS;
+	if (value === 'NONE') return [];
+	return value.split('+');
+}
+
+// Labels come as arrays (configurations) or as ALL, NONE, or a single label (judge summary)
+function studyLevel(factor, value) {
+	switch (factor) {
+		case 'guideCharacter':
+			return latexEscape(withoutQualifier(value));
+		case 'familiarity':
+			return latexEscape(withoutQualifier(optionName(uiConfig.FAMILIARITY, value)));
+		case 'labels': {
+			const labels = labelsOf(value);
+			if (labels.length === ALL_LABELS.length) return 'all';
+			return labels.length ? labels.map(labelName).join(', ') : 'none';
+		}
+		case 'lang':
+			return optionName(uiConfig.LANGUAGES, value);
+		case 'aiModelAdvanced':
+			return `\\texttt{${latexEscape(value)}}`;
+		default:
+			return args.rename[value] ?? latexEscape(value);
+	}
+}
+
+function studyFactorRows() {
+	return STUDY_FACTORS.map((factor) => {
+		const values = study.DEFAULT_VALUE_SETS[factor];
+		const levels =
+			factor === 'labels'
+				? `all, none, or one of ${ALL_LABELS.map(labelName).join(', ')}`
+				: values.map((value) => studyLevel(factor, value)).join(', ');
+		return `${STUDY_FACTOR_NAMES[factor]} & ${values.length} & ${levels} \\\\`;
+	}).join('\n');
+}
+
+const decimals = (value) => value.toFixed(2);
+const signed = (value) => `${value < 0 ? '\\textminus' : '+'}${decimals(Math.abs(value))}`;
+const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
+
+// Sampled configurations and results of a judged run of
+// story-personalization-eval.mjs and story-personalization-judge.mjs
+function writeStudyMaterials(runDir) {
+	const readJson = (file) => JSON.parse(readFileSync(path.join(runDir, file), 'utf8'));
+	const run = readJson('run.json');
+	const judgeMeta = readJson('judgments-meta.json');
+	const summary = readJson('judgments-summary.json');
+	const rows = readFileSync(path.join(runDir, 'judgments.jsonl'), 'utf8')
+		.split('\n')
+		.filter((line) => line.trim())
+		.map((line) => JSON.parse(line))
+		.filter((row) => row.judgment);
+	const locations = run.args.locations;
+	const fixedPreferences = run.contexts[0].preferences;
+	const gains = study.computeFocusGains(rows);
+	const meanGain = (group) => {
+		const values = group.filter((row) => gains.has(row)).map((row) => gains.get(row));
+		return values.length ? average(values) : null;
+	};
+	const levelOrder = {
+		...study.DEFAULT_VALUE_SETS,
+		location: locations.map((location) => location.name)
+	};
+	const orderedLevels = (factor) =>
+		[...summary.factors[factor]].sort(
+			(a, b) => levelOrder[factor].indexOf(a.level) - levelOrder[factor].indexOf(b.level)
+		);
+
+	const studyDir = path.join(outDir, 'study');
+	rmSync(studyDir, { recursive: true, force: true });
+	mkdirSync(studyDir, { recursive: true });
+	const writeStudy = (file, lines) =>
+		writeFileSync(path.join(studyDir, file), `${[].concat(lines).join('\n')}\n`);
+
+	const macros = {
+		cStudyRun: latexEscape(path.basename(runDir)),
+		cStudyCommit: run.gitCommit,
+		cStudySample: run.design.combinations,
+		cStudyCombinations: run.design.fullSize.toLocaleString('en-US'),
+		cStudySeed: run.design.seed,
+		cStudyPositions: locations.length,
+		cStudyStories: rows.length,
+		cStudyContextPipelines: run.contexts.length,
+		cStudyRadius: fixedPreferences.radius,
+		cStudySourceLanguages: fixedPreferences.sourceLanguages
+			.map((code) => optionName(uiConfig.SOURCE_LANGUAGES, code))
+			.join(' and '),
+		cStudySimpleModel: latexEscape(fixedPreferences.aiModelSimple),
+		cStudyServiceTier: run.args.flex ? 'flex' : 'standard',
+		cStudyJudgeModel: latexEscape(judgeMeta.model),
+		cStudyFocusGain: signed(meanGain(rows)),
+		cStudyTopicCertainty: decimals(summary.uncertainty.topicCertainty)
+	};
+	writeStudy('macros.tex', [
+		`% Generated by scripts/supplement-materials.mjs from ${path.basename(runDir)}; do not edit.`,
+		...Object.entries(macros).map(([name, value]) => `\\newcommand{\\${name}}{${value}}`)
+	]);
+
+	writeStudy(
+		'positions.tex',
+		locations.map((location) => {
+			const contexts = run.contexts.filter((context) => context.location.name === location.name);
+			const english = contexts.find((context) => context.preferences.lang === 'en') ?? contexts[0];
+			const range = (key) => {
+				const counts = contexts.map((context) => context[key].length);
+				const [min, max] = [Math.min(...counts), Math.max(...counts)];
+				return min === max ? String(min) : `${min}--${max}`;
+			};
+			return `${studyLevel('location', location.name)} & ${location.lat}, ${location.lon} & ${latexEscape(english.address)} & ${range('here')} & ${range('nearby')} & ${english.mapFeatures} \\\\`;
+		})
+	);
+
+	writeStudy(
+		'configurations.tex',
+		run.configs
+			.filter((config) => config.location.name === locations[0].name)
+			.map(
+				(config, index) =>
+					`${index + 1} & ${STUDY_FACTORS.map((factor) => studyLevel(factor, config.varied[factor])).join(' & ')} \\\\`
+			)
+	);
+
+	writeStudy(
+		'dimensions.tex',
+		study.DIMENSIONS.map((dimension) => {
+			const overall = summary.overall.dimensions[dimension.key];
+			const uncertainty = summary.uncertainty.dimensions[dimension.key];
+			return `${dimension.name} & ${decimals(overall.mean)} & ${decimals(overall.sd)} & ${decimals(summary.model.dimensions[dimension.key].r2)} & ${decimals(uncertainty.sd)} & ${decimals(uncertainty.confidence)} \\\\`;
+		})
+	);
+
+	const meanCells = (dimensions, adjusted) =>
+		study.DIMENSIONS.map((dimension) => {
+			const stats = dimensions[dimension.key];
+			const raw = `${decimals(stats.mean)} (${decimals(stats.sd)})`;
+			return `${raw} & ${adjusted ? decimals(stats.adjustedMean) : ''}`;
+		}).join(' & ');
+	const columns = 2 + 2 * study.DIMENSIONS.length;
+	const levelRows = [
+		`All stories & ${rows.length} & ${meanCells(summary.overall.dimensions, false)} \\\\`
+	];
+	for (const factor of [...STUDY_FACTORS, 'location']) {
+		levelRows.push(
+			'\\midrule',
+			`\\multicolumn{${columns}}{@{}l}{\\textit{${STUDY_FACTOR_NAMES[factor]}}} \\\\`
+		);
+		for (const group of orderedLevels(factor)) {
+			levelRows.push(
+				`\\quad ${studyLevel(factor, group.level)} & ${group.n} & ${meanCells(group.dimensions, true)} \\\\`
+			);
+		}
+	}
+	writeStudy('level-means.tex', levelRows);
+
+	const topicHeader = ALL_LABELS.map((label) => `\\rotatebox{90}{\\textbf{${labelName(label)}}}`);
+	writeStudy('topic-focus.tex', [
+		`\\textbf{Interests} & $n$ & ${topicHeader.join(' & ')} & \\textbf{Focus gain} \\\\`,
+		'\\midrule',
+		...orderedLevels('labels').map((group) => {
+			const preferred = labelsOf(group.level);
+			const cells = ALL_LABELS.map((label) => {
+				const probability = group.topics[label];
+				const text = decimals(probability).replace(/^0/, '');
+				const shade = Math.round(probability * 40);
+				const cell = preferred.length === 1 && preferred[0] === label ? `\\textbf{${text}}` : text;
+				return shade ? `\\cellcolor{black!${shade}}${cell}` : cell;
+			});
+			const gain =
+				preferred.length === 1
+					? meanGain(
+							rows.filter(
+								(row) =>
+									row.preferences.labels.length === 1 && row.preferences.labels[0] === preferred[0]
+							)
+						)
+					: null;
+			return `${studyLevel('labels', group.level)} & ${group.n} & ${cells.join(' & ')} & ${gain === null ? '--' : signed(gain)} \\\\`;
+		})
+	]);
+}
+
+// ---------------------------------------------------------------------------
 // Write
 
 for (const dir of ['prompts', 'schemas']) {
@@ -660,6 +879,15 @@ write('familiarity.tex', `${familiarityRows()}\n`);
 write('german-address.tex', `${addressRows()}\n`);
 write('ai-tasks.tex', `${taskRows()}\n`);
 
+write('prompts/judge-input.txt', `${study.buildJudgeInput('«story text»')}\n`);
+write('schemas/judge-questions.json', `${JSON.stringify(study.JUDGE_QUESTIONS, null, 2)}\n`);
+write('study-factors.tex', `${studyFactorRows()}\n`);
+if (args.studyRun) {
+	writeStudyMaterials(args.studyRun);
+}
+
 process.stdout.write(
-	`Captured ${capturedRequests.length} requests for ${tasks.length} tasks; wrote ${promptFiles} prompt files to ${path.relative(rootDir, outDir)}\n`
+	`Captured ${capturedRequests.length} requests for ${tasks.length} tasks; wrote ${promptFiles} prompt files to ${path.relative(rootDir, outDir)}` +
+		(args.studyRun ? `; study materials from ${path.basename(args.studyRun)}` : '') +
+		'\n'
 );

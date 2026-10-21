@@ -10,10 +10,11 @@ const rootDir = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const { AI_MODELS, FAMILIARITY, GUIDE_CHARACTERS, LABELS, LANGUAGES } = await import(
 	pathToFileURL(path.join(rootDir, 'src/constants/ui-config.js'))
 );
+const { computeFocusGains, SCALE_MAX, SCALE_MIN } = await import(
+	pathToFileURL(path.join(rootDir, 'scripts/story-personalization-common.mjs'))
+);
 
 const ALL_LABELS = LABELS.map((label) => label.value);
-const SCALE_MIN = 1;
-const SCALE_MAX = 5;
 const DIMENSIONS = [
 	{ key: 'difficulty', name: 'Difficulty' },
 	{ key: 'formality', name: 'Formality' },
@@ -148,38 +149,6 @@ function summarize(values) {
 		max: sorted[sorted.length - 1],
 		mean: values.reduce((sum, value) => sum + value, 0) / values.length
 	};
-}
-
-// Interest focus gain per text with exactly one preferred interest: its
-// probability of focusing on that interest minus the baseline, the mean
-// probability for the same interest in texts at the same location that do not
-// prefer it. Without the baseline, places that suggest a topic anyway (e.g.,
-// history in an old town) would look like successful personalization.
-function computeFocusGains(rows) {
-	const locationOf = (row) => row.varied?.location ?? '';
-	const baselines = new Map();
-	const baselineOf = (label, location) => {
-		const key = `${label}@${location}`;
-		if (!baselines.has(key)) {
-			const values = rows
-				.filter(
-					(row) => locationOf(row) === location && !(row.preferences?.labels || []).includes(label)
-				)
-				.map((row) => row.judgment.topics[label]);
-			baselines.set(key, values.length ? mean(values) : null);
-		}
-		return baselines.get(key);
-	};
-	const gains = new Map();
-	for (const row of rows) {
-		const labels = row.preferences?.labels || [];
-		if (labels.length !== 1) continue;
-		const baseline = baselineOf(labels[0], locationOf(row));
-		if (baseline !== null) {
-			gains.set(row, row.judgment.topics[labels[0]] - baseline);
-		}
-	}
-	return gains;
 }
 
 function mean(values) {
