@@ -33,6 +33,7 @@
 		>
 			<Button
 				on:click={() => (storyVisible = true)}
+				aria-label="Story"
 				pill
 				class="!p-2"
 				color="alternative"
@@ -47,6 +48,7 @@
 		>
 			<Button
 				on:click={() => (historyVisible = true)}
+				aria-label="History"
 				pill
 				class="!p-2"
 				color="alternative"
@@ -76,7 +78,7 @@
 		{/if}
 	</div>
 	<div class="ml-2 flex-none">
-		<Button on:click={update} pill class="!p-2" disabled={loading}
+		<Button on:click={update} aria-label="Update location" pill class="!p-2" disabled={loading}
 			><RefreshOutline size="xl" /></Button
 		>
 	</div>

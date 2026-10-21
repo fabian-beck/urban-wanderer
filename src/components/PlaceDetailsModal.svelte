@@ -185,7 +185,7 @@
 		{/if}
 		<div class="p-4">
 			{#if summary?.short}
-				<div>
+				<div data-testid="place-summary">
 					<p>{summary.short}</p>
 					{#if summary.long}
 						{#if summaryExpanded}

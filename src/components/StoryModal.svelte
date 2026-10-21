@@ -150,6 +150,7 @@
 					<div class="mb-2 flex justify-end">
 						<Button
 							on:click={() => playStory(storyText)}
+							aria-label="Read aloud"
 							pill
 							size="sm"
 							outline
