@@ -6,6 +6,10 @@ const INDEX_FILE = 'index.json';
 const RESPONSES_DIR = 'responses';
 // Speech for a long story streams for more than Playwright's default 30 s
 const NODE_FETCH_TIMEOUT_MS = 300_000;
+// Transient failures of requests fetched in Node (e.g., an overloaded Overpass server) are retried
+// after these delays, so that they are not missing from the recording
+const NODE_FETCH_RETRY_DELAYS_MS = [2000, 5000, 10000];
+const isTransientStatus = (status) => status === 429 || status >= 500;
 // Not replayed: they describe the original transfer, not the (decoded) body that is stored
 const DROPPED_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding']);
 
@@ -27,8 +31,9 @@ const similarity = (a, b) => {
 // the most similar recorded request to the same URL that was not replayed yet, if at least
 // `minSimilarity` of their body tokens agree. Unmatched requests are made by the browser itself
 // (requests from Node would be throttled by Wikimedia), except those for which `fetchInNode` holds
-// (streamed responses, such as OpenAI speech, whose body the browser-side capture misses); their
-// successful, non-empty responses are added to the recording. Replayed responses keep their
+// (streamed responses, such as OpenAI speech, whose body the browser-side capture misses, and
+// servers whose transient failures should be retried); their successful, non-empty responses are
+// added to the recording. Replayed responses keep their
 // recorded latency, so waits look as recorded. `onResponse` receives every successful external
 // response ({ url, contentType, body }).
 export async function attachReplay(
@@ -166,11 +171,21 @@ export async function attachReplay(
 		const body = request.postDataBuffer();
 		const entry = findEntry(request.method(), url, body ? hash(body) : '', body?.toString('utf8'));
 		if (!entry && fetchInNode(url)) {
-			const startedAt = Date.now();
+			let startedAt;
 			let response;
 			let responseBody;
 			try {
-				response = await route.fetch({ timeout: NODE_FETCH_TIMEOUT_MS });
+				for (const delay of [0, ...NODE_FETCH_RETRY_DELAYS_MS]) {
+					if (delay) {
+						console.log(`    replay: HTTP ${response.status()}, retrying ${url}`);
+						await new Promise((resolve) => setTimeout(resolve, delay));
+					}
+					startedAt = Date.now();
+					response = await route.fetch({ timeout: NODE_FETCH_TIMEOUT_MS });
+					if (!isTransientStatus(response.status())) {
+						break;
+					}
+				}
 				responseBody = await response.body();
 			} catch (error) {
 				// Only the first line: Playwright's call log includes the request headers (API key)

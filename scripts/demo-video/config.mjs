@@ -98,6 +98,9 @@ export const CLOCK_START = '2026-10-21T10:00:00';
 // replay its response when they differ (share of common tokens)
 export const REPLAY_DIR = 'replay';
 export const REPLAY_MIN_SIMILARITY = 0.5;
+// Hosts whose requests are recorded from Node instead of the browser: OpenAI streams speech, whose
+// body the browser-side capture misses, and Overpass often fails transiently, which Node retries
+export const NODE_FETCH_HOSTS = ['api.openai.com', 'overpass-api.de'];
 
 export const OUTPUT_DIR = 'demo-video';
 export const STILLS_DIR = 'stills';

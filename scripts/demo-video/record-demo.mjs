@@ -39,6 +39,7 @@ import {
 	NARRATION_DIR,
 	NARRATION_INSTRUCTIONS,
 	NARRATION_VOICE,
+	NODE_FETCH_HOSTS,
 	OUTPUT_DIR,
 	REPLAY_DIR,
 	REPLAY_MIN_SIMILARITY,
@@ -133,7 +134,7 @@ try {
 			dir: replayDir,
 			record,
 			isLocal: (url) => url.startsWith(origin),
-			fetchInNode: (url) => new URL(url).host === 'api.openai.com',
+			fetchInNode: (url) => NODE_FETCH_HOSTS.includes(new URL(url).host),
 			minSimilarity: REPLAY_MIN_SIMILARITY,
 			onResponse: ({ url, body }) => {
 				if (url.includes('/audio/speech')) {
