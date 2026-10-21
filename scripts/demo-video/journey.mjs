@@ -14,31 +14,26 @@ const MODAL = '[role="dialog"][aria-modal="true"]';
 const POPUP = '[role="dialog"]:not([aria-modal])';
 
 // Runs the walk of the paper's application example (train station, Obere Brücke, ERBA island) and
-// shows a little more: place previews, "Tell me more", and the walk view with its recap. The
-// recording pass is paced for a viewer, shows captions, marks the waits for AI content, and
-// captures the stills used as the paper's screenshots (`onStill`, named after the paper images and
-// figure labels); the warm-up pass only fills the app caches, so it skips pauses and the steps whose
-// AI content is never cached (stories, history, walk recap).
+// shows a little more: place previews, "Tell me more", and the walk view with its recap. It is paced
+// for a viewer, shows captions, marks the waits for AI content, and captures the stills used as the
+// paper's screenshots (`onStill`, named after the paper images and figure labels).
 export async function runJourney(
 	page,
 	baseUrl,
-	{ recording, fastForward = false, onStep = () => {}, onWait = () => {}, onStill = async () => {} }
+	{ fastForward = false, onStep = () => {}, onWait = () => {}, onStill = async () => {} }
 ) {
-	const pause = (ms) => (recording ? page.waitForTimeout(ms) : Promise.resolve());
-	const scroll = (target, distance) => smoothScroll(page, target, distance, recording);
+	const pause = (ms) => page.waitForTimeout(ms);
+	const scroll = (target, distance) => smoothScroll(page, target, distance);
 	const modal = () => page.locator(MODAL).last();
 	const modalBody = () => modal().getByRole('document');
 	const heading = (name) => page.getByRole('heading', { name, exact: true });
 	const storyParts = () => modal().getByTestId('story-part');
 	const readAloudButtons = () => modal().getByRole('button', { name: 'Read aloud' });
 
-	const step = async (name, caption, fn, { warmup = true } = {}) => {
-		if (!recording && !warmup) {
-			return;
-		}
+	const step = async (name, caption, fn) => {
 		const startedAt = Date.now();
 		console.log(`  ▸ ${name}`);
-		if (recording && SHOW_CAPTIONS) {
+		if (SHOW_CAPTIONS) {
 			await page.evaluate(
 				([text, ms]) => window.__demo.caption(text, ms),
 				[caption, PACING.caption]
@@ -54,7 +49,7 @@ export async function runJourney(
 	// Waits for content that depends on network or AI calls; the edited video speeds them up
 	const waitFor = async (fn) => {
 		const startedAt = Date.now();
-		const marked = recording && fastForward;
+		const marked = fastForward;
 		if (marked) {
 			await page.evaluate((ms) => window.__demo.waitStarted(ms), FAST_FORWARD.afterMs);
 		}
@@ -72,9 +67,6 @@ export async function runJourney(
 	// `element`), at most `maxAspect` times as high as wide and cut to the viewport. Waits until no
 	// caption, badge, or tap ripple is visible and moves the pointer away to avoid hover styles.
 	const still = async (name, { element, to, maxAspect } = {}) => {
-		if (!recording) {
-			return;
-		}
 		await page.mouse.move(1, 1);
 		await page.waitForFunction(() => window.__demo.idle());
 		let clip;
@@ -188,8 +180,7 @@ export async function runJourney(
 			await pause(PACING.medium);
 			await closeModal();
 			await pause(PACING.short);
-		},
-		{ warmup: false }
+		}
 	);
 
 	await step('station', 'Arriving at the train station, start a walk', async () => {
@@ -214,24 +205,19 @@ export async function runJourney(
 		await pause(PACING.short);
 	});
 
-	await step(
-		'station story',
-		'The story puts the station area in context',
-		async () => {
-			await openStory();
-			await pause(PACING.medium);
-			await still('bamberg-visit-1b', {
-				element: storyParts().first(),
-				maxAspect: STORY_CUTOUT_ASPECT.station
-			});
-			await pause(PACING.read);
-			await scroll(modalBody(), 500);
-			await pause(PACING.read);
-			await closeModal();
-			await pause(PACING.short);
-		},
-		{ warmup: false }
-	);
+	await step('station story', 'The story puts the station area in context', async () => {
+		await openStory();
+		await pause(PACING.medium);
+		await still('bamberg-visit-1b', {
+			element: storyParts().first(),
+			maxAspect: STORY_CUTOUT_ASPECT.station
+		});
+		await pause(PACING.read);
+		await scroll(modalBody(), 500);
+		await pause(PACING.read);
+		await closeModal();
+		await pause(PACING.short);
+	});
 
 	await step(
 		'station map',
@@ -241,8 +227,7 @@ export async function runJourney(
 			await pause(PACING.medium);
 			await still('bamberg-visit-1c', { element: page.getByTestId('map') });
 			await pause(PACING.long);
-		},
-		{ warmup: false }
+		}
 	);
 
 	await step('bridge', 'Walking on to the old town: Obere Brücke', async () => {
@@ -252,19 +237,14 @@ export async function runJourney(
 		await pause(PACING.read);
 	});
 
-	await step(
-		'places',
-		'Places here and nearby, rated by your interests',
-		async () => {
-			await scrollTo(heading('Here'), { offset: 88 });
-			await pause(PACING.medium);
-			await still('app-places');
-			await pause(PACING.long);
-			await scrollTo(heading('Nearby'));
-			await pause(PACING.long);
-		},
-		{ warmup: false }
-	);
+	await step('places', 'Places here and nearby, rated by your interests', async () => {
+		await scrollTo(heading('Here'), { offset: 88 });
+		await pause(PACING.medium);
+		await still('app-places');
+		await pause(PACING.long);
+		await scrollTo(heading('Nearby'));
+		await pause(PACING.long);
+	});
 
 	await step('place details', 'Place details: summary, rating, and facts', async () => {
 		await openPlace(LANDMARK_PLACE);
@@ -282,25 +262,18 @@ export async function runJourney(
 		await pause(PACING.short);
 	});
 
-	await step(
-		'history',
-		'The history timeline of the location',
-		async () => {
-			await page.getByRole('button', { name: 'History', exact: true }).click();
-			await modal().waitFor();
-			await waitFor(() =>
-				modal().locator('.timeline li').first().waitFor({ timeout: TIMEOUTS.ai })
-			);
-			await pause(PACING.medium);
-			await still('app-history');
-			await pause(PACING.read);
-			await scroll(modalBody(), 900);
-			await pause(PACING.long);
-			await closeModal();
-			await pause(PACING.short);
-		},
-		{ warmup: false }
-	);
+	await step('history', 'The history timeline of the location', async () => {
+		await page.getByRole('button', { name: 'History', exact: true }).click();
+		await modal().waitFor();
+		await waitFor(() => modal().locator('.timeline li').first().waitFor({ timeout: TIMEOUTS.ai }));
+		await pause(PACING.medium);
+		await still('app-history');
+		await pause(PACING.read);
+		await scroll(modalBody(), 900);
+		await pause(PACING.long);
+		await closeModal();
+		await pause(PACING.short);
+	});
 
 	await step(
 		'story',
@@ -334,8 +307,7 @@ export async function runJourney(
 			await pause(PACING.read);
 			await closeModal();
 			await pause(PACING.short);
-		},
-		{ warmup: false }
+		}
 	);
 
 	await step('erba', 'Along the river to the ERBA island: park and campus', async () => {
@@ -350,24 +322,19 @@ export async function runJourney(
 		await pause(PACING.long);
 	});
 
-	await step(
-		'erba story',
-		'The story explains what you see around you',
-		async () => {
-			await openStory();
-			await pause(PACING.medium);
-			await still('bamberg-visit-3b', {
-				element: storyParts().first(),
-				maxAspect: STORY_CUTOUT_ASPECT.erba
-			});
-			await pause(PACING.read);
-			await scroll(modalBody(), 600);
-			await pause(PACING.read);
-			await closeModal();
-			await pause(PACING.short);
-		},
-		{ warmup: false }
-	);
+	await step('erba story', 'The story explains what you see around you', async () => {
+		await openStory();
+		await pause(PACING.medium);
+		await still('bamberg-visit-3b', {
+			element: storyParts().first(),
+			maxAspect: STORY_CUTOUT_ASPECT.erba
+		});
+		await pause(PACING.read);
+		await scroll(modalBody(), 600);
+		await pause(PACING.read);
+		await closeModal();
+		await pause(PACING.short);
+	});
 
 	await step(
 		'walk view',
@@ -382,35 +349,26 @@ export async function runJourney(
 			await pause(PACING.long);
 			await scroll(modalBody(), -900);
 			await pause(PACING.short);
-		},
-		{ warmup: false }
+		}
 	);
 
-	await step(
-		'walk recap',
-		'A recap connects the highlights of your walk',
-		async () => {
-			await modal().getByRole('button', { name: 'Summarize' }).click();
-			await waitFor(() => modal().locator('h3').first().waitFor({ timeout: TIMEOUTS.ai }));
-			await pause(PACING.read);
-			await scroll(modalBody(), 500);
-			await pause(PACING.read);
-			await scroll(modalBody(), 600);
-			await pause(PACING.long);
-			await closeModal();
-			await pause(PACING.medium);
-		},
-		{ warmup: false }
-	);
+	await step('walk recap', 'A recap connects the highlights of your walk', async () => {
+		await modal().getByRole('button', { name: 'Summarize' }).click();
+		await waitFor(() => modal().locator('h3').first().waitFor({ timeout: TIMEOUTS.ai }));
+		await pause(PACING.read);
+		await scroll(modalBody(), 500);
+		await pause(PACING.read);
+		await scroll(modalBody(), 600);
+		await pause(PACING.long);
+		await closeModal();
+		await pause(PACING.medium);
+	});
 }
 
 // Scrolls the window (target null) or a scroll container by exactly `distance` px with an eased
 // animation, so the motion reads naturally on video and stills land at the intended position.
-// The warm-up pass jumps in one go.
-async function smoothScroll(page, target, distance, recording) {
-	const duration = recording
-		? Math.max(PACING.scrollMinMs, (Math.abs(distance) / PACING.scrollSpeed) * 1000)
-		: 0;
+async function smoothScroll(page, target, distance) {
+	const duration = Math.max(PACING.scrollMinMs, (Math.abs(distance) / PACING.scrollSpeed) * 1000);
 	const element = target ? await target.elementHandle() : null;
 	await page.evaluate(
 		([element, distance, duration]) => {

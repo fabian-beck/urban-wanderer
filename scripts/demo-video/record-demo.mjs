@@ -1,37 +1,39 @@
 // Records a demo video of the walk of the paper's application example, together with the stills
 // used as the paper's screenshots.
 //
-//   npm run demo:video                   build, preview, warm up caches, record, edit
+//   npm run demo:video                   build, preview, record (replaying recorded data), edit
+//   npm run demo:video -- --record       discard the recorded data and record it anew
 //   npm run demo:video -- --skip-build   reuse the existing build/ directory
-//   npm run demo:video -- --skip-warmup  reuse the cached storage state of a previous run
 //   npm run demo:video -- --url http://localhost:5173   drive an already running server
-//   npm run demo:video -- --headed       watch the recording pass in a visible browser
+//   npm run demo:video -- --headed       watch the recording in a visible browser
 //   npm run demo:video -- --no-fast-forward   keep AI waits in real time in the edited video
 //   npm run demo:video -- --out <dir>    output directory (default demo-video/)
 //
-// The warm-up pass runs the walk without pauses so that place analysis, facts, summaries and
-// reverse geocoding are cached in localStorage; the recording pass reuses that storage state
-// without the walk, so it starts a fresh walk and only waits for uncached AI content (comments,
-// stories, recap). With ffmpeg, the raw WebM is edited into an MP4 in which these waits are sped up.
-// The page renders at the paper's pixel density while the video is scaled down; the recording pass
-// saves lossless stills of the paper's views to stills/ (cut-outs also as full screens in
-// stills/screens/), and steps.json lists their times in both videos.
+// All external responses (Wikipedia, Wikidata, OpenStreetMap, OpenAI, images) are recorded to
+// replay/ on the first run and replayed afterwards (replay.mjs), so every recording shows the same
+// places, ratings, and generated texts; the browser clock starts at CLOCK_START, so times shown and
+// sent in prompts repeat as well. With ffmpeg, the raw WebM is edited into an MP4 in which waits for
+// AI content are sped up. The page renders at the paper's pixel density while the video is scaled
+// down; the recording saves lossless stills of the paper's views to stills/ (cut-outs also as full
+// screens in stills/screens/), and steps.json lists their times in both videos.
 //
 // Environment: DEMO_BROWSER_PATH overrides the Chromium binary, FFMPEG_PATH points to an ffmpeg
 // binary with libx264 when it is not on PATH.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { WALK_STORAGE_KEY } from '../../src/constants/cache-config.js';
 import {
+	CLOCK_START,
 	DEMO_PREFERENCES,
 	DEVICE,
 	FAST_FORWARD,
 	OUTPUT_DIR,
-	PREVIEW_PORT,
+	REPLAY_DIR,
+	REPLAY_MIN_SIMILARITY,
 	STILLS_DIR,
 	TIMEOUTS,
 	VIDEO_BASENAME,
@@ -41,10 +43,7 @@ import {
 import { findFfmpeg, planSegments, renderVideo, toEditedTime } from './edit-video.mjs';
 import { runJourney } from './journey.mjs';
 import { installOverlay } from './overlay.mjs';
-
-// Left out of the cached storage state, so each recording starts a new walk with the configured
-// preferences
-const RESET_STORAGE_KEYS = ['preferences', WALK_STORAGE_KEY];
+import { attachReplay } from './replay.mjs';
 
 const rootDir = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const args = process.argv.slice(2);
@@ -55,9 +54,8 @@ const option = (name) => {
 };
 
 const outputDir = path.resolve(rootDir, option('--out') || OUTPUT_DIR);
-const storageStatePath = path.join(outputDir, 'storage-state.json');
 const stillsDir = path.join(outputDir, STILLS_DIR);
-const contextOptions = { ...DEVICE, permissions: ['geolocation'] };
+const replayDir = path.join(outputDir, REPLAY_DIR);
 
 mkdirSync(outputDir, { recursive: true });
 
@@ -75,8 +73,9 @@ try {
 		if (!flag('--skip-build')) {
 			run('npm', ['run', 'build']);
 		}
-		previewServer = await startPreviewServer();
-		baseUrl = `http://127.0.0.1:${PREVIEW_PORT}/`;
+		const port = await findFreePort();
+		previewServer = await startPreviewServer(port);
+		baseUrl = `http://127.0.0.1:${port}/`;
 	}
 
 	const browser = await chromium.launch({
@@ -88,25 +87,24 @@ try {
 	});
 
 	try {
-		if (!flag('--skip-warmup') || !existsSync(storageStatePath)) {
-			console.log('\nWarm-up pass (filling caches)');
-			const context = await browser.newContext(contextOptions);
-			await seedPreferences(context);
-			const page = await context.newPage();
-			await runJourney(page, baseUrl, { recording: false });
-			saveStorageState(await context.storageState());
-			await context.close();
-		} else {
-			console.log(`\nSkipping warm-up, reusing ${path.relative(rootDir, storageStatePath)}`);
-		}
-
-		console.log('\nRecording pass');
+		const record = flag('--record') || !existsSync(path.join(replayDir, 'index.json'));
+		console.log(record ? '\nRecording data and video' : '\nRecording video, replaying data');
 		const context = await browser.newContext({
-			...contextOptions,
-			storageState: storageStatePath,
+			...DEVICE,
+			permissions: ['geolocation'],
 			recordVideo: { dir: outputDir, size: VIDEO_SIZE }
 		});
-		await seedPreferences(context);
+		const { origin } = new URL(baseUrl);
+		const replay = await attachReplay(context, {
+			dir: replayDir,
+			record,
+			isLocal: (url) => url.startsWith(origin),
+			minSimilarity: REPLAY_MIN_SIMILARITY
+		});
+		await context.clock.install({ time: new Date(CLOCK_START) });
+		await context.addInitScript((prefs) => {
+			localStorage.setItem('preferences', JSON.stringify(prefs));
+		}, DEMO_PREFERENCES);
 		await context.addInitScript(installOverlay);
 		rmSync(stillsDir, { recursive: true, force: true });
 		mkdirSync(path.join(stillsDir, 'screens'), { recursive: true });
@@ -135,10 +133,15 @@ try {
 			});
 		} finally {
 			const video = page.video();
+			await replay.save();
 			await context.close();
+			const { replayed, similar, recorded } = replay.stats;
+			console.log(
+				`\nData: ${replayed} responses replayed, ${similar} by similar request, ${recorded} recorded`
+			);
 			const webmPath = path.join(outputDir, `${VIDEO_BASENAME}.webm`);
 			renameSync(await video.path(), webmPath);
-			console.log(`\nRecording: ${path.relative(rootDir, webmPath)}`);
+			console.log(`Recording: ${path.relative(rootDir, webmPath)}`);
 			const segments = fastForward
 				? planSegments(waits, FAST_FORWARD)
 				: [{ start: 0, end: null, speed: 1 }];
@@ -163,23 +166,6 @@ try {
 	if (previewServer) {
 		stopServer(previewServer);
 	}
-}
-
-async function seedPreferences(context) {
-	await context.addInitScript((prefs) => {
-		if (!localStorage.getItem('preferences')) {
-			localStorage.setItem('preferences', JSON.stringify(prefs));
-		}
-	}, DEMO_PREFERENCES);
-}
-
-function saveStorageState(state) {
-	for (const origin of state.origins) {
-		origin.localStorage = origin.localStorage.filter(
-			({ name }) => !RESET_STORAGE_KEYS.includes(name)
-		);
-	}
-	writeFileSync(storageStatePath, JSON.stringify(state));
 }
 
 // Writes steps.json with the times of each step, wait, and still in the recording and, if an
@@ -214,14 +200,25 @@ function writeTimeline(steps, waits, stills, segments) {
 	);
 }
 
-async function startPreviewServer() {
-	console.log(`\nStarting preview server on port ${PREVIEW_PORT}`);
+function findFreePort() {
+	return new Promise((resolve, reject) => {
+		const server = createServer();
+		server.once('error', reject);
+		server.listen(0, '127.0.0.1', () => {
+			const { port } = server.address();
+			server.close(() => resolve(port));
+		});
+	});
+}
+
+async function startPreviewServer(port) {
+	console.log(`\nStarting preview server on port ${port}`);
 	const server = spawn(
 		'npx',
-		['vite', 'preview', '--host', '127.0.0.1', '--port', String(PREVIEW_PORT), '--strictPort'],
+		['vite', 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
 		{ cwd: rootDir, stdio: 'ignore', shell: process.platform === 'win32' }
 	);
-	const url = `http://127.0.0.1:${PREVIEW_PORT}/`;
+	const url = `http://127.0.0.1:${port}/`;
 	const deadline = Date.now() + TIMEOUTS.navigation;
 	while (Date.now() < deadline) {
 		if (server.exitCode !== null) {

@@ -82,7 +82,14 @@ export const TIMEOUTS = {
 	ai: 240_000
 };
 
-export const PREVIEW_PORT = 4173;
+// The browser clock starts here (local time), so walk times in the app and its prompts repeat
+export const CLOCK_START = '2026-10-21T10:00:00';
+
+// Recorded responses (see replay.mjs) and how similar a request body must be to a recorded one to
+// replay its response when they differ (share of common tokens)
+export const REPLAY_DIR = 'replay';
+export const REPLAY_MIN_SIMILARITY = 0.5;
+
 export const OUTPUT_DIR = 'demo-video';
 export const STILLS_DIR = 'stills';
 export const VIDEO_BASENAME = 'urban-wanderer-demo';
