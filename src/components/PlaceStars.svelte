@@ -20,7 +20,10 @@
 	};
 </script>
 
-<div class="mt-1 flex text-left text-xs {detail ? 'flex-col' : dense ? 'h-4' : 'h-5'}">
+<div
+	class="mt-1 flex text-left text-xs {detail ? 'flex-col' : dense ? 'h-4' : 'h-5'}"
+	data-testid={detail ? 'place-rating' : undefined}
+>
 	{#if item.starDescriptions?.length > 0}
 		{#each item.starDescriptions as starDescription, groupIndex (groupIndex)}
 			{@const starOffset = item.starDescriptions
