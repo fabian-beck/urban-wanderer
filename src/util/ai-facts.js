@@ -3,6 +3,7 @@ import { getWikidataContext } from './wikidata.js';
 import { AI_REASONING_EFFORT, SUMMARY_LENGTH } from '../constants/ui-config.js';
 import { INSIGHTS_CACHE_KEY, FACTS_CACHE_KEY, CACHE_TTL } from '../constants/cache-config.js';
 import { CLASSES, PROPERTIES } from '../constants/place-classes.js';
+import { normalizeFacts } from './fact-values.js';
 import { createLogger } from './logger.js';
 
 const logger = createLogger('ai.facts');
@@ -146,7 +147,8 @@ If the source contains no meaningful information about the place itself, return 
 	return summary;
 }
 
-// Schema properties of the facts request: a short list of other facts plus the class-specific properties
+// Schema properties of the facts request: a short list of other facts plus the class-specific
+// properties, each nullable so that the model is not forced to fill facts the sources lack
 export function buildFactsProperties(cls) {
 	const factsProperties = {
 		other_facts: {
@@ -172,7 +174,7 @@ export function buildFactsProperties(cls) {
 	};
 	for (const prop of CLASSES[cls]?.properties || []) {
 		if (PROPERTIES[prop]) {
-			factsProperties[prop] = PROPERTIES[prop];
+			factsProperties[prop] = { ...PROPERTIES[prop], type: [PROPERTIES[prop].type, 'null'] };
 		}
 	}
 	return factsProperties;
@@ -185,7 +187,7 @@ export async function extractPlaceFacts(place, factsProperties, coordinates, pre
 	// Check cache first
 	if (factsCache[cacheKey]) {
 		logger.info('Facts cache hit', { title: place.title });
-		return factsCache[cacheKey].content;
+		return normalizeFacts(factsCache[cacheKey].content);
 	}
 
 	logger.info('Generating facts', { title: place.title, cls: place.cls });
@@ -204,7 +206,7 @@ Avoid redundancies and repetitions in all cases; do not repeat the same informat
 If a fact is already mentioned as a required property (e.g., architectural style), do not repeat as part of the list of other facts.
 Directions, address, location are not necessary as the user is at the place already. 
 Avoid any general description of the place and do not provide general information about the city or region. 
-Use null for missing values.
+Use null for every property the sources do not state for this place. Never estimate or invent a value, and never fill a property with a different fact (e.g., the year of a listing or renovation as the year of establishment).
 Keep the language as concise as possible and factual, do not use acronyms or abbreviations. 
 Descriptions should not be full sentences, but short phrases or single words.
 Keep list short or empty if there are no relevant facts.
@@ -242,29 +244,7 @@ ${place.article || place.description || place.snippet || '[no description availa
 	const facts = JSON.parse(response.output_text).facts;
 	logger.debug('Facts response', { title: place.title, facts });
 
-	// Clean up facts - normalize various null representations
-	const cleanedFacts = {};
-	for (const [key, value] of Object.entries(facts)) {
-		// Handle various null representations that AI might return
-		if (
-			value === null ||
-			value === undefined ||
-			value === '.null' ||
-			value === 'null' ||
-			value === 'NULL' ||
-			value === '.NULL' ||
-			value === 'n/a' ||
-			value === 'N/A' ||
-			value === '' ||
-			value === '.' ||
-			value === '/' ||
-			(typeof value === 'string' && value.trim() === '')
-		) {
-			cleanedFacts[key] = null;
-		} else {
-			cleanedFacts[key] = value;
-		}
-	}
+	const cleanedFacts = normalizeFacts(facts);
 
 	// Cache the result with timestamp
 	factsCache[cacheKey] = {
