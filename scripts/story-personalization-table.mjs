@@ -20,7 +20,7 @@ const DIMENSIONS = [
 	{ key: 'formality', name: 'Formality' },
 	{ key: 'depth', name: 'Depth' },
 	{ key: 'breadth', name: 'Breadth' },
-	{ key: 'priorKnowledge', name: 'Prior knowledge', header: 'Prior\\\\knowledge' }
+	{ key: 'priorKnowledge', name: 'Prior knowledge', header: 'Prior kn.' }
 ];
 const FACTOR_NAMES = {
 	guideCharacter: 'Guide character',
