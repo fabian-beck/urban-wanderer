@@ -2,11 +2,13 @@
 // Generates material for the paper supplement (paper/supplement/generated/):
 // - the prompts of all AI tasks, captured from the app's own prompt builders with
 //   placeholder inputs («...») and a stubbed fetch, so no request leaves the machine
-// - the JSON schemas and an overview of the tasks (model tier, reasoning effort, output)
+// - the output schemas in a compact notation and an overview of the tasks (model tier,
+//   reasoning effort, output)
 // - app constants as LaTeX macros and tables (place classes, guide characters, familiarity)
 // - the personalization study: varied factors, judge input and questions, and with
 //   --study-run the sampled configurations and results of a judged evaluation run
 //   (study/, kept as is without --study-run)
+// Text that a listing would repeat (class list, motto section) is replaced by a placeholder.
 //
 //   node scripts/supplement-materials.mjs [--out <dir>] [--study-run <dir> [--rename <key=label> ...]]
 
@@ -199,6 +201,10 @@ const mapExcerptText = formatMapExcerpt(MAP_EXCERPT, [herePlace, nearbyPlace]);
 const walkContextFull = walkUtil.buildWalkPromptContext(walk, { fullStories: true });
 const walkContextShort = walkUtil.buildWalkPromptContext(walk);
 const walkRecapContext = walkUtil.buildWalkRecapContext(walk, PREFERENCES);
+const mottoSection = walkUtil.buildWalkMottoPromptContext(walk);
+const classList = Object.entries(CLASSES)
+	.map(([name, cls]) => `- ${name}: ${cls.description}`)
+	.join('\n');
 const addressInstruction = personalization.buildAddressInstruction(PREFERENCES);
 const selectedLabels = PREFERENCES.labels.map((label) => `- ${label}`).join('\n');
 const deselectedLabels = uiConfig.LABELS.map((label) => label.value)
@@ -299,7 +305,10 @@ await capture(
 		id: 'analysis',
 		name: 'Place analysis',
 		trigger: 'Every location update, for places without cached analysis',
-		replacements: [...COMMON]
+		replacements: [
+			...COMMON,
+			[classList, '«one line per class: "- NAME: description" (see place classes)»']
+		]
 	},
 	() =>
 		analyzePlaces(
@@ -386,6 +395,7 @@ await capture(
 		replacements: [
 			...COMMON,
 			[walkContextShort, '«walk context with story excerpts (see walk context)»'],
+			[mottoSection, '«motto section (see story prompt)»'],
 			...PERSONALIZATION
 		]
 	},
@@ -439,6 +449,7 @@ await capture(
 		replacements: [
 			...COMMON,
 			[walkRecapContext, '«walk material (see walk recap material)»'],
+			[mottoSection, '«motto section (see story prompt)»'],
 			...PERSONALIZATION
 		]
 	},
@@ -544,21 +555,28 @@ function placeClassRows() {
 		.join('\n');
 }
 
-function guideCharacterRows() {
+const guideSlug = (guide) => withoutQualifier(guide.value).replace(/\W+/g, '-');
+
+// Inline list of the guide characters with their German form of address and story length
+function guideCharacterList() {
 	return uiConfig.GUIDE_CHARACTERS.map((guide) => {
 		const length = { ...uiConfig.STORY_LENGTH, ...guide.storyLength };
-		const lengths = guide.storyLength
-			? `first part ${length.MIN_PARAGRAPHS}--${length.MAX_PARAGRAPHS}, continuations ${length.CONTINUATION_MIN_PARAGRAPHS}--${length.CONTINUATION_MAX_PARAGRAPHS}`
-			: '--';
-		const instructions = [
-			guide.storyInstructions && `\\textbf{Story:} ${latexEscape(guide.storyInstructions)}`,
-			guide.commentInstructions && `\\textbf{Comment:} ${latexEscape(guide.commentInstructions)}`
-		]
-			.filter(Boolean)
-			.join('\\par ')
-			.replace(/\n/g, '\\par ');
-		return `${latexEscape(guide.value)} & \\emph{${guide.germanAddress}} & ${instructions || '--'} & ${lengths} \\\\`;
-	}).join('\n');
+		const details = [
+			`\\emph{${guide.germanAddress}}`,
+			guide.storyLength &&
+				`first story part ${length.MIN_PARAGRAPHS}--${length.MAX_PARAGRAPHS} and continuations ${length.CONTINUATION_MIN_PARAGRAPHS}--${length.CONTINUATION_MAX_PARAGRAPHS} paragraphs`
+		].filter(Boolean);
+		return `\\textit{${latexEscape(guide.value)}} (${details.join(', ')})`;
+	}).join(', ');
+}
+
+function guideInstructions(guide) {
+	return [
+		guide.storyInstructions && `Story instructions:\n${guide.storyInstructions}`,
+		guide.commentInstructions && `Comment instructions:\n${guide.commentInstructions}`
+	]
+		.filter(Boolean)
+		.join('\n\n');
 }
 
 function familiarityRows() {
@@ -568,10 +586,101 @@ function familiarityRows() {
 	).join('\n');
 }
 
-function addressRows() {
+function addressInstructions() {
 	return Object.entries(uiConfig.GERMAN_ADDRESS_INSTRUCTIONS)
-		.map(([form, text]) => `\\emph{${form}} & ${latexEscape(text)} \\\\`)
+		.map(([form, text]) => `${form}: ${text}`)
 		.join('\n');
+}
+
+// Output schemas in a compact notation: one field per line, [T] for arrays, "| null" for
+// nullable fields, and the schema's descriptions as // comments. Objects whose fields carry
+// no descriptions stay on one line. The notation leaves out required and
+// additionalProperties, so it only accepts objects that require all fields and allow no others.
+const fieldDescription = (schema) => schema.description ?? schema.items?.description;
+
+function hasDescriptions(schema) {
+	return Boolean(
+		schema &&
+		(schema.description ||
+			hasDescriptions(schema.items) ||
+			Object.values(schema.properties || {}).some(hasDescriptions))
+	);
+}
+
+function schemaLines(schema) {
+	const types = [].concat(schema.type);
+	const type = types.find((name) => name !== 'null');
+	let lines;
+	if (type === 'object') {
+		const fields = schemaFieldLines(schema);
+		lines = Object.values(schema.properties).some(hasDescriptions)
+			? ['{', ...fields.map((line) => `  ${line}`), '}']
+			: [`{ ${fields.join(', ')} }`];
+	} else if (type === 'array') {
+		const [first, ...rest] = schemaLines(schema.items);
+		lines = [`[${first}`, ...rest];
+		lines[lines.length - 1] += ']';
+	} else {
+		lines = [type];
+	}
+	if (types.includes('null')) {
+		lines[lines.length - 1] += ' | null';
+	}
+	return lines;
+}
+
+function schemaFieldLines(schema) {
+	const fields = Object.entries(schema.properties);
+	const required = new Set(schema.required);
+	if (schema.additionalProperties !== false || fields.some(([key]) => !required.has(key))) {
+		throw new Error('The compact schema notation expects objects that require all fields');
+	}
+	return fields.flatMap(([key, field]) => {
+		const [first, ...rest] = schemaLines(field);
+		const description = fieldDescription(field);
+		return [`${key}: ${first}${description ? `  // ${description}` : ''}`, ...rest];
+	});
+}
+
+// Score questions with their levels, then the topic questions as one template row
+function judgeQuestionRows() {
+	const rows = [];
+	for (const question of study.JUDGE_QUESTIONS.filter(({ type }) => type === 'score')) {
+		const lines = [];
+		let plain = [];
+		question.levels.forEach((level, index) => {
+			const text = `${index + 1}~\\emph{${latexEscape(level.label)}}`;
+			if (level.description) {
+				if (plain.length) lines.push(plain.join(', '));
+				plain = [];
+				lines.push(`${text}: ${latexEscape(level.description)}`);
+			} else {
+				plain.push(text);
+			}
+		});
+		if (plain.length) lines.push(plain.join(', '));
+		const name = study.DIMENSIONS.find((dimension) => dimension.key === question.name).name;
+		rows.push(
+			`${name} & ${latexEscape(question.instructions)} & ${lines.join(' \\newline ')} \\\\`
+		);
+	}
+	const templates = new Set(
+		study.JUDGE_QUESTIONS.filter(({ type }) => type === 'predicate').map((question) => {
+			const label = uiConfig.LABELS.find(
+				({ value }) => question.name === `topic_${value.toLowerCase()}`
+			);
+			return question.instructions
+				.replace(`"${label.value.toLowerCase()}"`, '"«interest»"')
+				.replace(`(${label.description})`, '(«description»)');
+		})
+	);
+	if (templates.size !== 1) {
+		throw new Error('The topic questions of the judge differ beyond interest and description');
+	}
+	rows.push(
+		`Topic focus (one per interest) & ${latexEscape([...templates][0])} & \\emph{yes} or \\emph{no} \\\\`
+	);
+	return rows.join('\n');
 }
 
 function modelTier(model) {
@@ -637,6 +746,22 @@ function labelsOf(value) {
 	return value.split('+');
 }
 
+// Level of the labels factor (ALL, NONE, or a single label) for a configuration's labels
+function labelsLevel(labels) {
+	if (labels.length === ALL_LABELS.length) return 'ALL';
+	return labels.length ? labels.join('+') : 'NONE';
+}
+
+// Shared prefix of the story model names up to its last dash (e.g., gpt-6-)
+const modelPrefix = (() => {
+	const [first, ...others] = study.DEFAULT_VALUE_SETS.aiModelAdvanced;
+	let prefix = first.slice(0, first.lastIndexOf('-') + 1);
+	while (prefix && !others.every((model) => model.startsWith(prefix))) {
+		prefix = prefix.slice(0, prefix.slice(0, -1).lastIndexOf('-') + 1);
+	}
+	return prefix;
+})();
+
 // Labels come as arrays (configurations) or as ALL, NONE, or a single label (judge summary)
 function studyLevel(factor, value) {
 	switch (factor) {
@@ -670,6 +795,10 @@ function studyFactorRows() {
 }
 
 const decimals = (value) => value.toFixed(2);
+const range = (values, format = String) => {
+	const [min, max] = [Math.min(...values), Math.max(...values)];
+	return min === max ? format(min) : `${format(min)}--${format(max)}`;
+};
 const signed = (value) => `${value < 0 ? '\\textminus' : '+'}${decimals(Math.abs(value))}`;
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
 
@@ -724,7 +853,12 @@ function writeStudyMaterials(runDir) {
 		cStudyServiceTier: run.args.flex ? 'flex' : 'standard',
 		cStudyJudgeModel: latexEscape(judgeMeta.model),
 		cStudyFocusGain: signed(meanGain(rows)),
-		cStudyTopicCertainty: decimals(summary.uncertainty.topicCertainty)
+		cStudyJudgeConfidence: range(
+			Object.values(summary.uncertainty.dimensions).map(({ confidence }) => confidence),
+			decimals
+		),
+		cStudyTopicCertainty: decimals(summary.uncertainty.topicCertainty),
+		cStudyModelPrefix: latexEscape(modelPrefix)
 	};
 	writeStudy('macros.tex', [
 		`% Generated by scripts/supplement-materials.mjs from ${path.basename(runDir)}; do not edit.`,
@@ -736,43 +870,53 @@ function writeStudyMaterials(runDir) {
 		locations.map((location) => {
 			const contexts = run.contexts.filter((context) => context.location.name === location.name);
 			const english = contexts.find((context) => context.preferences.lang === 'en') ?? contexts[0];
-			const range = (key) => {
-				const counts = contexts.map((context) => context[key].length);
-				const [min, max] = [Math.min(...counts), Math.max(...counts)];
-				return min === max ? String(min) : `${min}--${max}`;
-			};
-			return `${studyLevel('location', location.name)} & ${location.lat}, ${location.lon} & ${latexEscape(english.address)} & ${range('here')} & ${range('nearby')} & ${english.mapFeatures} \\\\`;
+			const count = (key) => range(contexts.map((context) => context[key].length));
+			return `${studyLevel('location', location.name)} & ${location.lat}, ${location.lon} & ${latexEscape(english.address)} & ${count('here')} & ${count('nearby')} & ${english.mapFeatures} \\\\`;
 		})
 	);
 
+	// Two blocks side by side, sorted by the factor levels
+	const levelIndex = (factor, value) =>
+		study.DEFAULT_VALUE_SETS[factor].indexOf(factor === 'labels' ? labelsLevel(value) : value);
+	const configurations = run.configs
+		.filter((config) => config.location.name === locations[0].name)
+		.map((config) => config.varied)
+		.sort((a, b) => {
+			for (const factor of STUDY_FACTORS) {
+				const difference = levelIndex(factor, a[factor]) - levelIndex(factor, b[factor]);
+				if (difference) return difference;
+			}
+			return 0;
+		});
+	const configurationCells = (varied) =>
+		varied
+			? [
+					latexEscape(withoutQualifier(varied.guideCharacter).split(' ')[0]),
+					levelIndex('familiarity', varied.familiarity) + 1,
+					studyLevel('labels', varied.labels),
+					varied.lang.toUpperCase(),
+					latexEscape(varied.aiModelAdvanced.slice(modelPrefix.length))
+				].join(' & ')
+			: ' & & & & ';
+	const half = Math.ceil(configurations.length / 2);
 	writeStudy(
 		'configurations.tex',
-		run.configs
-			.filter((config) => config.location.name === locations[0].name)
+		configurations
+			.slice(0, half)
 			.map(
-				(config, index) =>
-					`${index + 1} & ${STUDY_FACTORS.map((factor) => studyLevel(factor, config.varied[factor])).join(' & ')} \\\\`
+				(varied, index) =>
+					`${configurationCells(varied)} & ${configurationCells(configurations[half + index])} \\\\`
 			)
 	);
 
-	writeStudy(
-		'dimensions.tex',
-		study.DIMENSIONS.map((dimension) => {
-			const overall = summary.overall.dimensions[dimension.key];
-			const uncertainty = summary.uncertainty.dimensions[dimension.key];
-			return `${dimension.name} & ${decimals(overall.mean)} & ${decimals(overall.sd)} & ${decimals(summary.model.dimensions[dimension.key].r2)} & ${decimals(uncertainty.sd)} & ${decimals(uncertainty.confidence)} \\\\`;
-		})
-	);
-
-	const meanCells = (dimensions, adjusted) =>
+	const meanCells = (dimensions) =>
 		study.DIMENSIONS.map((dimension) => {
 			const stats = dimensions[dimension.key];
-			const raw = `${decimals(stats.mean)} (${decimals(stats.sd)})`;
-			return `${raw} & ${adjusted ? decimals(stats.adjustedMean) : ''}`;
+			return `${decimals(stats.mean)} (${decimals(stats.sd)})`;
 		}).join(' & ');
-	const columns = 2 + 2 * study.DIMENSIONS.length;
+	const columns = 2 + study.DIMENSIONS.length;
 	const levelRows = [
-		`All stories & ${rows.length} & ${meanCells(summary.overall.dimensions, false)} \\\\`
+		`All stories & ${rows.length} & ${meanCells(summary.overall.dimensions)} \\\\`
 	];
 	for (const factor of [...STUDY_FACTORS, 'location']) {
 		levelRows.push(
@@ -781,7 +925,7 @@ function writeStudyMaterials(runDir) {
 		);
 		for (const group of orderedLevels(factor)) {
 			levelRows.push(
-				`\\quad ${studyLevel(factor, group.level)} & ${group.n} & ${meanCells(group.dimensions, true)} \\\\`
+				`\\quad ${studyLevel(factor, group.level)} & ${group.n} & ${meanCells(group.dimensions)} \\\\`
 			);
 		}
 	}
@@ -831,7 +975,7 @@ for (const task of tasks) {
 	});
 	const format = task.request.text?.format;
 	if (format?.schema) {
-		write(`schemas/${task.id}.json`, `${JSON.stringify(format.schema, null, 2)}\n`);
+		write(`schemas/${task.id}.txt`, `${schemaFieldLines(format.schema).join('\n')}\n`);
 	}
 }
 
@@ -860,10 +1004,6 @@ write(
 );
 write('prompts/walk-context-full.txt', `${applyReplacements(walkContextFull, WALK_FIELDS)}\n`);
 write(
-	'prompts/walk-context-short.txt',
-	`${applyReplacements(walkContextShort, [...WALK_FIELDS, ...STORY_EXCERPT(core.WALK_STORY_EXCERPT_LENGTH)])}\n`
-);
-write(
 	'prompts/walk-recap-context.txt',
 	`${applyReplacements(walkRecapContext, [
 		...WALK_FIELDS,
@@ -874,13 +1014,16 @@ write(
 
 write('constants.tex', constantMacros([core, cacheConfig, uiConfig]));
 write('place-classes.tex', `${placeClassRows()}\n`);
-write('guide-characters.tex', `${guideCharacterRows()}\n`);
+write('guide-characters.tex', `${guideCharacterList()}%\n`);
+for (const guide of uiConfig.GUIDE_CHARACTERS.filter(guideInstructions)) {
+	write(`prompts/guide-${guideSlug(guide)}.txt`, `${guideInstructions(guide)}\n`);
+}
 write('familiarity.tex', `${familiarityRows()}\n`);
-write('german-address.tex', `${addressRows()}\n`);
+write('prompts/german-address.txt', `${addressInstructions()}\n`);
 write('ai-tasks.tex', `${taskRows()}\n`);
 
 write('prompts/judge-input.txt', `${study.buildJudgeInput('«story text»')}\n`);
-write('schemas/judge-questions.json', `${JSON.stringify(study.JUDGE_QUESTIONS, null, 2)}\n`);
+write('judge-questions.tex', `${judgeQuestionRows()}\n`);
 write('study-factors.tex', `${studyFactorRows()}\n`);
 if (args.studyRun) {
 	writeStudyMaterials(args.studyRun);
