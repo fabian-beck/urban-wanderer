@@ -40,7 +40,7 @@ export const NARRATION = {
 	walkIntro:
 		'The app organizes a visit as a walk: it remembers the stops, the places visited, and the stories read, so that nothing is told twice.',
 	motto:
-		'Optionally, a walk can get a motto that steers the guide, for instance to tell about the people behind the places. Here, we leave it empty.',
+		'Optionally, a walk can get a motto that steers the guide, for instance to tell about the people behind the places, but here we leave it empty.',
 	walkStart: 'Starting the walk, the app determines the current location.',
 	loading:
 		"The available content for the location is loaded from Wikipedia, Wikidata, and OpenStreetMap and analyzed regarding the user's preferences on the fly.",
