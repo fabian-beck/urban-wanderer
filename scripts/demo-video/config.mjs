@@ -51,6 +51,9 @@ export const VIDEO_SIZE = { width: 800, height: 1800 };
 // stills fit the existing frames
 export const STORY_CUTOUT_ASPECT = { station: 1.02, erba: 1.51 };
 
+// Margin (CSS px) around the paper's cut-outs (`bamberg-visit-*` stills)
+export const CUTOUT_PADDING = 12;
+
 // Pauses (ms) between and after narration cues; most of the pacing follows the narration
 export const PACING = {
 	short: 800,

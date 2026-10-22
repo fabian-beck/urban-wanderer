@@ -1,6 +1,7 @@
 import { PLACE_MENTION_HREF_PREFIX } from '../../src/constants/core.js';
 import {
 	CITY_PLACE,
+	CUTOUT_PADDING,
 	FAST_FORWARD,
 	LANDMARK_PLACE,
 	PACING,
@@ -144,13 +145,18 @@ export async function runJourney(
 			if (maxAspect) {
 				bottom = Math.min(bottom, box.y + box.width * maxAspect);
 			}
-			const top = Math.max(0, box.y);
-			const height = Math.min(bottom, page.viewportSize().height) - top;
+			// The paper's cut-outs get a margin of the surrounding app so they do not look cramped
+			const padding = name.startsWith('bamberg-visit-') ? CUTOUT_PADDING : 0;
+			const viewport = page.viewportSize();
+			const top = Math.max(0, box.y - padding);
+			const left = Math.max(0, box.x - padding);
+			const right = Math.min(viewport.width, box.x + box.width + padding);
+			const height = Math.min(bottom + padding, viewport.height) - top;
 			if (height <= 0) {
 				console.log(`    still ${name} skipped: outside the viewport`);
 				return;
 			}
-			clip = { x: box.x, y: top, width: box.width, height };
+			clip = { x: left, y: top, width: right - left, height };
 		}
 		await onStill({ name, clip });
 	};
