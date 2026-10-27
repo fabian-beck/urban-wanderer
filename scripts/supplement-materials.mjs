@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 // Generates material for the paper supplement (paper/supplement/generated/):
-// - the prompts of all AI tasks, captured from the app's own prompt builders with
-//   placeholder inputs («...») and a stubbed fetch, so no request leaves the machine
-// - the output schemas in a compact notation and an overview of the tasks (model tier,
-//   reasoning effort, output)
-// - app constants as LaTeX macros and tables (place classes, guide characters, familiarity)
-// - the personalization study: varied factors, judge input and questions, and with
-//   --study-run the sampled configurations and results of a judged evaluation run
-//   (study/, kept as is without --study-run)
-// Text that a listing would repeat (class list, motto section) is replaced by a placeholder.
+// - an overview of all AI tasks (trigger, model tier, reasoning effort, output) from their
+//   requests, captured from the app's own prompt builders with placeholder inputs («...»)
+//   and a stubbed fetch, so no request leaves the machine
+// - the system prompts of the place analysis and the story, with the story's map excerpt
+//   and walk context sections, and the personalization instructions
+// - the constants that the supplement cites as LaTeX macros, and the place classes
+// - the personalization study: judge input and questions, and with --study-run the
+//   sampled configurations and results of a judged evaluation run (study/, kept as is
+//   without --study-run)
+// Text that another listing or table shows (class list, map excerpt, walk context) is
+// replaced by a placeholder.
 //
 //   node scripts/supplement-materials.mjs [--out <dir>] [--study-run <dir> [--rename <key=label> ...]]
 
@@ -99,7 +101,6 @@ globalThis.fetch = async (input, init = {}) => {
 };
 
 const core = await importApp('src/constants/core.js');
-const cacheConfig = await importApp('src/constants/cache-config.js');
 const uiConfig = await importApp('src/constants/ui-config.js');
 const { CLASSES, PROPERTIES } = await importApp('src/constants/place-classes.js');
 const { analyzePlaces } = await importApp('src/util/ai-analysis.js');
@@ -199,9 +200,6 @@ const placeDistances = [herePlace, nearbyPlace].map((place) =>
 );
 const mapExcerptText = formatMapExcerpt(MAP_EXCERPT, [herePlace, nearbyPlace]);
 const walkContextFull = walkUtil.buildWalkPromptContext(walk, { fullStories: true });
-const walkContextShort = walkUtil.buildWalkPromptContext(walk);
-const walkRecapContext = walkUtil.buildWalkRecapContext(walk, PREFERENCES);
-const mottoSection = walkUtil.buildWalkMottoPromptContext(walk);
 const classList = Object.entries(CLASSES)
 	.map(([name, cls]) => `- ${name}: ${cls.description}`)
 	.join('\n');
@@ -220,24 +218,7 @@ const WALK_FIELDS = [
 		/duration \d+ min, \d+ stops, roughly \d+(\.\d+)? k?m/g,
 		'duration «duration», «number of» stops, roughly «distance»'
 	],
-	[/\b\d{1,2}:\d{2}( ?[AP]M)?/g, '«time»'],
-	[/Rating: 4;/g, 'Rating: «stars»;'],
-	[/, rating 3, about \d+ m from/g, ', rating «stars», about «distance» m from']
-];
-const STORY_EXCERPT = (length) => [
-	['«full text of an earlier story»', `«story excerpt, up to ${length} characters»`]
-];
-const RECAP_PREFERENCES = [
-	[
-		`User's interests: ${uiConfig.LABELS.map((label) => label.value)
-			.filter((label) => PREFERENCES.labels.includes(label))
-			.join(', ')}.`,
-		"User's interests: «selected interests, or none selected»."
-	],
-	[
-		`Familiarity with the area: ${familiarity.name}.`,
-		'Familiarity with the area: «familiarity level».'
-	]
+	[/\b\d{1,2}:\d{2}( ?[AP]M)?/g, '«time»']
 ];
 
 const COMMON = [
@@ -252,12 +233,7 @@ const PERSONALIZATION = [
 		character.storyInstructions,
 		'«character-specific story instructions, if any (see guide characters)»'
 	],
-	[
-		character.commentInstructions,
-		'«character-specific comment instructions, if any (see guide characters)»'
-	],
 	[familiarity.storyInstructions, '«familiarity instructions (see familiarity levels)»'],
-	[familiarity.commentInstructions, '«familiarity comment instructions (see familiarity levels)»'],
 	[familiarity.name, '«familiarity level»'],
 	[addressInstruction, '«form of address, German only (see forms of address)»'],
 	[character.value, '«guide character»']
@@ -268,8 +244,7 @@ const STORY = [
 	[walkContextFull, '«walk context with earlier stories in full (see walk context)»'],
 	[selectedLabels, '«selected interests, one per line, or "- no specific topics selected"»'],
 	[deselectedLabels, '«interests not selected, one per line, or "- none"»'],
-	[/The story should be [\d to]+ paragraphs/g, 'The story should be «paragraph range» paragraphs'],
-	[/Write [\d to]+ paragraphs/g, 'Write «paragraph range» paragraphs']
+	[/The story should be [\d to]+ paragraphs/g, 'The story should be «paragraph range» paragraphs']
 ];
 
 function applyReplacements(text, replacements) {
@@ -282,7 +257,7 @@ function applyReplacements(text, replacements) {
 }
 
 // ---------------------------------------------------------------------------
-// Capture
+// Capture: every task appears in the task overview, tasks with replacements also as listing
 
 const tasks = [];
 
@@ -327,11 +302,7 @@ await capture(
 	{
 		id: 'translation',
 		name: 'Title translation',
-		trigger: 'Every location update, for visible places from another language edition',
-		replacements: [
-			[`names to ${PREFERENCES.lang}.`, 'names to «language code».'],
-			[`(${PREFERENCES.lang})`, '(«language code»)']
-		]
+		trigger: 'Every location update, for visible places from another language edition'
 	},
 	() =>
 		translatePlaceTitles(
@@ -345,44 +316,22 @@ await capture(
 	{
 		id: 'insights',
 		name: 'Article insights',
-		trigger: 'Every location update, for places here and surrounding places with an article',
-		replacements: [...COMMON]
+		trigger: 'Every location update, for places here and surrounding places with an article'
 	},
 	() => extractInsightsFromArticle('«article text»', PREFERENCES)
 );
-await capture(
-	{
-		id: 'summary',
-		name: 'Place summary',
-		trigger: 'Opening the place details',
-		replacements: [...COMMON]
-	},
-	() => summarizeArticle('«article text, else OSM description»', PREFERENCES)
+await capture({ id: 'summary', name: 'Place summary', trigger: 'Opening the place details' }, () =>
+	summarizeArticle('«article text, else OSM description»', PREFERENCES)
 );
-const factsPlace = {
-	title: '«title»',
-	cls: 'BUILDING',
-	article: '«article text, else description, else snippet»'
-};
-await capture(
-	{
-		id: 'facts',
-		name: 'Fact extraction',
-		trigger: 'Opening the place details',
-		replacements: [...COMMON, ['(BUILDING)', '(«class»)']],
-		// Wikidata lookups are stubbed, so the section the app appends when Wikidata has the place
-		// (getWikidataContext in src/util/wikidata.js) is added as a placeholder
-		appendix: '\n\nSTRUCTURED DATA FROM WIKIDATA:\n«Wikidata properties and values, one per line»'
-	},
-	() =>
-		extractPlaceFacts(factsPlace, buildFactsProperties(factsPlace.cls), COORDINATES, PREFERENCES)
+const factsPlace = { title: '«title»', cls: 'BUILDING', article: '«article text»' };
+await capture({ id: 'facts', name: 'Fact extraction', trigger: 'Opening the place details' }, () =>
+	extractPlaceFacts(factsPlace, buildFactsProperties(factsPlace.cls), COORDINATES, PREFERENCES)
 );
 await capture(
 	{
 		id: 'history',
 		name: 'Historic events',
-		trigger: 'Every location update (background), shown in the history timeline',
-		replacements: [...COMMON]
+		trigger: 'Every location update (background), shown in the history timeline'
 	},
 	() =>
 		extractHistoricEvents([herePlace], [nearbyPlace], surroundingPlaces, COORDINATES, PREFERENCES)
@@ -391,13 +340,7 @@ await capture(
 	{
 		id: 'comment',
 		name: 'Location comment',
-		trigger: 'Every location update, shown below the map',
-		replacements: [
-			...COMMON,
-			[walkContextShort, '«walk context with story excerpts (see walk context)»'],
-			[mottoSection, '«motto section (see story prompt)»'],
-			...PERSONALIZATION
-		]
+		trigger: 'Every location update, shown below the map'
 	},
 	() => generateLocationComment([herePlace], surroundingPlaces, COORDINATES, PREFERENCES, walk)
 );
@@ -425,8 +368,7 @@ await capture(
 	{
 		id: 'story-continuation',
 		name: 'Story, continuation',
-		trigger: '"Tell me more" (preloaded after each part)',
-		replacements: [...COMMON, ...STORY, ...PERSONALIZATION]
+		trigger: '"Tell me more" (preloaded after each part)'
 	},
 	() =>
 		generateStory(
@@ -441,19 +383,8 @@ await capture(
 			MAP_EXCERPT
 		)
 );
-await capture(
-	{
-		id: 'recap',
-		name: 'Walk recap',
-		trigger: 'Opening the walk overview',
-		replacements: [
-			...COMMON,
-			[walkRecapContext, '«walk material (see walk recap material)»'],
-			[mottoSection, '«motto section (see story prompt)»'],
-			...PERSONALIZATION
-		]
-	},
-	() => generateWalkRecap(walk, PREFERENCES)
+await capture({ id: 'recap', name: 'Walk recap', trigger: 'Opening the walk overview' }, () =>
+	generateWalkRecap(walk, PREFERENCES)
 );
 
 // ---------------------------------------------------------------------------
@@ -481,61 +412,29 @@ function macroName(...parts) {
 	);
 }
 
-function formatDuration(ms) {
-	const units = [
-		['d', 24 * 60 * 60 * 1000],
-		['h', 60 * 60 * 1000],
-		['min', 60 * 1000],
-		['s', 1000]
+// Constants of src/constants/core.js that the supplement text cites
+const CITED_CONSTANTS = [
+	'PLACE_NAME_MATCH_MAX_DISTANCE',
+	'PLACE_VISIBLE_MIN_STARS',
+	'PLACE_HIGH_RATED_MIN_STARS',
+	'PLACE_TWO_STAR_HIGH_RATED_LIMIT',
+	'PLACE_PARTIAL_INTEREST_MATCH_STARS',
+	'PLACE_FULL_INTEREST_MATCH_STARS',
+	'WALK_STORY_CONTEXT_LIMIT',
+	'WALK_STORY_CONTEXT_MAX_CHARS',
+	'WALK_STORY_EXCERPT_LENGTH',
+	'WALK_VISITED_CONTEXT_LIMIT'
+];
+
+function constantMacros() {
+	const macros = [
+		...CITED_CONSTANTS.map((key) => [macroName(key), latexEscape(core[key])]),
+		['cSourceCommit', execSync('git rev-parse --short HEAD', { cwd: rootDir }).toString().trim()]
 	];
-	for (const [unit, size] of units) {
-		if (ms >= size && ms % size === 0) return `${ms / size}~${unit}`;
-	}
-	return `${ms}~ms`;
-}
-
-function isDurationKey(key) {
-	return /(_MS|_TTL|TTL|DURATION)$/.test(key) || key === 'CACHE_TTL';
-}
-
-function formatScalar(key, value) {
-	if (typeof value === 'number') {
-		return isDurationKey(key) ? formatDuration(value) : String(value);
-	}
-	if (typeof value === 'string') {
-		const items = [...new Set(value.split('|'))];
-		return items.length > 1 ? items.map(latexEscape).join(', ') : latexEscape(value);
-	}
-	return null;
-}
-
-function constantMacros(modules) {
-	const lines = [];
-	const seen = new Set();
-	const add = (name, value) => {
-		if (value === null || seen.has(name)) return;
-		seen.add(name);
-		lines.push(`\\newcommand{\\${name}}{${value}}`);
-	};
-	for (const module of modules) {
-		for (const [key, value] of Object.entries(module)) {
-			if (Array.isArray(value)) {
-				if (value.every((item) => typeof item === 'string')) {
-					add(macroName(key), value.map(latexEscape).join(', '));
-				}
-			} else if (value && typeof value === 'object') {
-				for (const [subKey, subValue] of Object.entries(value)) {
-					if (typeof subValue !== 'object') {
-						add(macroName(key, subKey), formatScalar(subKey, subValue));
-					}
-				}
-			} else {
-				add(macroName(key), formatScalar(key, value));
-			}
-		}
-	}
-	add('cSourceCommit', execSync('git rev-parse --short HEAD', { cwd: rootDir }).toString().trim());
-	return `% Generated by scripts/supplement-materials.mjs from src/constants/; do not edit.\n${lines.join('\n')}\n`;
+	return [
+		'% Generated by scripts/supplement-materials.mjs from src/constants/core.js; do not edit.',
+		...macros.map(([name, value]) => `\\newcommand{\\${name}}{${value}}`)
+	].join('\n');
 }
 
 function placeClassRows() {
@@ -590,56 +489,6 @@ function addressInstructions() {
 	return Object.entries(uiConfig.GERMAN_ADDRESS_INSTRUCTIONS)
 		.map(([form, text]) => `${form}: ${text}`)
 		.join('\n');
-}
-
-// Output schemas in a compact notation: one field per line, [T] for arrays, "| null" for
-// nullable fields, and the schema's descriptions as // comments. Objects whose fields carry
-// no descriptions stay on one line. The notation leaves out required and
-// additionalProperties, so it only accepts objects that require all fields and allow no others.
-const fieldDescription = (schema) => schema.description ?? schema.items?.description;
-
-function hasDescriptions(schema) {
-	return Boolean(
-		schema &&
-		(schema.description ||
-			hasDescriptions(schema.items) ||
-			Object.values(schema.properties || {}).some(hasDescriptions))
-	);
-}
-
-function schemaLines(schema) {
-	const types = [].concat(schema.type);
-	const type = types.find((name) => name !== 'null');
-	let lines;
-	if (type === 'object') {
-		const fields = schemaFieldLines(schema);
-		lines = Object.values(schema.properties).some(hasDescriptions)
-			? ['{', ...fields.map((line) => `  ${line}`), '}']
-			: [`{ ${fields.join(', ')} }`];
-	} else if (type === 'array') {
-		const [first, ...rest] = schemaLines(schema.items);
-		lines = [`[${first}`, ...rest];
-		lines[lines.length - 1] += ']';
-	} else {
-		lines = [type];
-	}
-	if (types.includes('null')) {
-		lines[lines.length - 1] += ' | null';
-	}
-	return lines;
-}
-
-function schemaFieldLines(schema) {
-	const fields = Object.entries(schema.properties);
-	const required = new Set(schema.required);
-	if (schema.additionalProperties !== false || fields.some(([key]) => !required.has(key))) {
-		throw new Error('The compact schema notation expects objects that require all fields');
-	}
-	return fields.flatMap(([key, field]) => {
-		const [first, ...rest] = schemaLines(field);
-		const description = fieldDescription(field);
-		return [`${key}: ${first}${description ? `  // ${description}` : ''}`, ...rest];
-	});
 }
 
 // Score questions with their levels, then the topic questions as one template row
@@ -699,25 +548,9 @@ function taskRows() {
 		.join('\n');
 }
 
-function messagesOf(task) {
-	const { request } = task;
-	const input =
-		typeof request.input === 'string' ? [{ role: 'user', content: request.input }] : request.input;
-	return input.map((message, index) => {
-		let content = message.content;
-		if (message.role === 'user') {
-			try {
-				content = JSON.stringify(JSON.parse(content), null, 2);
-			} catch {
-				// plain text message
-			}
-		}
-		content = applyReplacements(content, task.replacements).replace(/^\n+/, '').trimEnd();
-		if (task.appendix && index === input.length - 1) {
-			content += task.appendix;
-		}
-		return { role: message.role, content };
-	});
+function systemPrompt({ request, replacements }) {
+	const { content } = request.input.find(({ role }) => role === 'system');
+	return applyReplacements(content, replacements).replace(/^\n+/, '').trimEnd();
 }
 
 // ---------------------------------------------------------------------------
@@ -783,17 +616,6 @@ function studyLevel(factor, value) {
 	}
 }
 
-function studyFactorRows() {
-	return STUDY_FACTORS.map((factor) => {
-		const values = study.DEFAULT_VALUE_SETS[factor];
-		const levels =
-			factor === 'labels'
-				? `all, none, or one of ${ALL_LABELS.map(labelName).join(', ')}`
-				: values.map((value) => studyLevel(factor, value)).join(', ');
-		return `${STUDY_FACTOR_NAMES[factor]} & ${values.length} & ${levels} \\\\`;
-	}).join('\n');
-}
-
 const decimals = (value) => value.toFixed(2);
 const range = (values, format = String) => {
 	const [min, max] = [Math.min(...values), Math.max(...values)];
@@ -807,7 +629,6 @@ const average = (values) => values.reduce((sum, value) => sum + value, 0) / valu
 function writeStudyMaterials(runDir) {
 	const readJson = (file) => JSON.parse(readFileSync(path.join(runDir, file), 'utf8'));
 	const run = readJson('run.json');
-	const judgeMeta = readJson('judgments-meta.json');
 	const summary = readJson('judgments-summary.json');
 	const rows = readFileSync(path.join(runDir, 'judgments.jsonl'), 'utf8')
 		.split('\n')
@@ -839,20 +660,13 @@ function writeStudyMaterials(runDir) {
 	const macros = {
 		cStudyRun: latexEscape(path.basename(runDir)),
 		cStudyCommit: run.gitCommit,
-		cStudySample: run.design.combinations,
-		cStudyCombinations: run.design.fullSize.toLocaleString('en-US'),
 		cStudySeed: run.design.seed,
 		cStudyPositions: locations.length,
-		cStudyStories: rows.length,
-		cStudyContextPipelines: run.contexts.length,
 		cStudyRadius: fixedPreferences.radius,
 		cStudySourceLanguages: fixedPreferences.sourceLanguages
 			.map((code) => optionName(uiConfig.SOURCE_LANGUAGES, code))
 			.join(' and '),
 		cStudySimpleModel: latexEscape(fixedPreferences.aiModelSimple),
-		cStudyServiceTier: run.args.flex ? 'flex' : 'standard',
-		cStudyJudgeModel: latexEscape(judgeMeta.model),
-		cStudyFocusGain: signed(meanGain(rows)),
 		cStudyJudgeConfidence: range(
 			Object.values(summary.uncertainty.dimensions).map(({ confidence }) => confidence),
 			decimals
@@ -961,22 +775,12 @@ function writeStudyMaterials(runDir) {
 // ---------------------------------------------------------------------------
 // Write
 
-for (const dir of ['prompts', 'schemas']) {
-	rmSync(path.join(outDir, dir), { recursive: true, force: true });
-	mkdirSync(path.join(outDir, dir), { recursive: true });
-}
+rmSync(path.join(outDir, 'prompts'), { recursive: true, force: true });
+mkdirSync(path.join(outDir, 'prompts'), { recursive: true });
 const write = (file, content) => writeFileSync(path.join(outDir, file), content);
 
-let promptFiles = 0;
-for (const task of tasks) {
-	messagesOf(task).forEach(({ role, content }, index) => {
-		write(`prompts/${task.id}-${index + 1}-${role}.txt`, `${content}\n`);
-		promptFiles++;
-	});
-	const format = task.request.text?.format;
-	if (format?.schema) {
-		write(`schemas/${task.id}.txt`, `${schemaFieldLines(format.schema).join('\n')}\n`);
-	}
+for (const task of tasks.filter((task) => task.replacements)) {
+	write(`prompts/${task.id}.txt`, `${systemPrompt(task)}\n`);
 }
 
 const templateFixes = [
@@ -1003,16 +807,8 @@ write(
 	`${mapTemplate}\n\nLine format:\n- «name» («type») [= listed place "«title»"] — «distance», «to nearest edge, for areas»; «details»\n`
 );
 write('prompts/walk-context-full.txt', `${applyReplacements(walkContextFull, WALK_FIELDS)}\n`);
-write(
-	'prompts/walk-recap-context.txt',
-	`${applyReplacements(walkRecapContext, [
-		...WALK_FIELDS,
-		...RECAP_PREFERENCES,
-		...STORY_EXCERPT(core.WALK_RECAP_STORY_EXCERPT_LENGTH)
-	])}\n`
-);
 
-write('constants.tex', constantMacros([core, cacheConfig, uiConfig]));
+write('constants.tex', `${constantMacros()}\n`);
 write('place-classes.tex', `${placeClassRows()}\n`);
 write('guide-characters.tex', `${guideCharacterList()}%\n`);
 for (const guide of uiConfig.GUIDE_CHARACTERS.filter(guideInstructions)) {
@@ -1024,13 +820,12 @@ write('ai-tasks.tex', `${taskRows()}\n`);
 
 write('prompts/judge-input.txt', `${study.buildJudgeInput('«story text»')}\n`);
 write('judge-questions.tex', `${judgeQuestionRows()}\n`);
-write('study-factors.tex', `${studyFactorRows()}\n`);
 if (args.studyRun) {
 	writeStudyMaterials(args.studyRun);
 }
 
 process.stdout.write(
-	`Captured ${capturedRequests.length} requests for ${tasks.length} tasks; wrote ${promptFiles} prompt files to ${path.relative(rootDir, outDir)}` +
+	`Captured ${capturedRequests.length} requests for ${tasks.length} tasks; wrote ${path.relative(rootDir, outDir)}` +
 		(args.studyRun ? `; study materials from ${path.basename(args.studyRun)}` : '') +
 		'\n'
 );
