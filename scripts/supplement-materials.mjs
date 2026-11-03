@@ -428,7 +428,10 @@ const CITED_CONSTANTS = [
 
 function constantMacros() {
 	const macros = [
-		...CITED_CONSTANTS.map((key) => [macroName(key), latexEscape(core[key])]),
+		...CITED_CONSTANTS.map((key) => [
+			macroName(key),
+			latexEscape(core[key].toLocaleString('en-US'))
+		]),
 		['cSourceCommit', execSync('git rev-parse --short HEAD', { cwd: rootDir }).toString().trim()]
 	];
 	return [
